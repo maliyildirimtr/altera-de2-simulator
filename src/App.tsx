@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import { Navbar } from './components/Layout/Navbar';
 import Home from './pages/Home';
 import DE2Simulator from './pages/DE2Simulator';
