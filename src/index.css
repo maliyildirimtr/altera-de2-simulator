@@ -1,0 +1,527 @@
+@import "tailwindcss";
+
+:root {
+  /* Altera DE2 Cyclone II PCB authentic colors */
+  --pcb-blue: #0d3b66;
+  --pcb-mid: #0f4880;
+  --pcb-dark: #0a2d50;
+  --pcb-trace: rgba(20, 80, 140, 0.5);
+  --pcb-highlight: rgba(30, 100, 180, 0.25);
+  --silkscreen-white: #e8f0fe;
+  --silkscreen-yellow: #f5c842;
+}
+
+[data-theme='dark'] {
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #12121a;
+  --border-color: #1f1f2e;
+  --text-primary: #ffffff;
+  --text-secondary: #9ca3af;
+  --accent-color: #2563eb;
+  --accent-hover: #1d4ed8;
+  --canvas-bg: #0a0a0f;
+  --grid-color: rgba(255, 255, 255, 0.03);
+}
+
+[data-theme='light'] {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --border-color: #e2e8f0;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --accent-color: #3b82f6;
+  --accent-hover: #2563eb;
+  --canvas-bg: #f8fafc;
+  --grid-color: rgba(0, 0, 0, 0.05);
+}
+
+.dot-grid {
+  background-color: var(--canvas-bg);
+  background-image: radial-gradient(var(--grid-color) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #0a0f18;
+  color: #fff;
+  font-family: 'Inter', system-ui, sans-serif;
+  height: 100%;
+  overflow: hidden;
+}
+
+html {
+  height: 100%;
+  overflow: hidden;
+}
+
+#root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* =============================================
+   ALTERA DE2 CYCLONE II PCB BOARD
+   ============================================= */
+.pcb-board {
+  background-color: var(--pcb-blue);
+  /* Layered PCB texture: grid + subtle trace patterns */
+  background-image:
+    /* Fine PCB grid */
+    linear-gradient(rgba(14, 60, 105, 0.6) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(14, 60, 105, 0.6) 1px, transparent 1px),
+    /* Coarser routing channel grid */
+    linear-gradient(rgba(20, 75, 130, 0.25) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(20, 75, 130, 0.25) 1px, transparent 1px),
+    /* Diagonal PCB weave texture */
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 10px,
+      rgba(10, 45, 80, 0.15) 10px,
+      rgba(10, 45, 80, 0.15) 11px
+    );
+  background-size:
+    5px 5px,
+    5px 5px,
+    25px 25px,
+    25px 25px,
+    20px 20px;
+  box-shadow:
+    inset 0 0 60px rgba(0, 0, 0, 0.6),
+    inset 0 0 20px rgba(0, 30, 80, 0.4),
+    0 0 0 3px #06243d,
+    0 0 0 5px #0a3358,
+    0 25px 60px rgba(0, 0, 0, 0.95),
+    0 0 40px rgba(13, 59, 102, 0.3);
+  border: 2px solid #1a5080;
+  border-radius: 6px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* PCB edge gold fingers (connector pads along bottom) */
+.pcb-board::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 8%;
+  right: 8%;
+  height: 8px;
+  background: repeating-linear-gradient(
+    90deg,
+    #c8961a 0px, #c8961a 8px,
+    transparent 8px, transparent 12px
+  );
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Subtle PCB varnish sheen */
+.pcb-board::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255,255,255,0.03) 0%,
+    transparent 40%,
+    rgba(0,0,0,0.1) 100%
+  );
+  pointer-events: none;
+  border-radius: 6px;
+}
+
+/* =============================================
+   MOUNTING SCREWS — Brass/Gold metallic
+   ============================================= */
+.screw {
+  width: 18px;
+  height: 18px;
+  background: radial-gradient(circle at 38% 35%,
+    #f0d060 0%,
+    #c8961a 35%,
+    #8a6010 65%,
+    #5a3e08 100%
+  );
+  border-radius: 50%;
+  box-shadow:
+    inset 0 2px 4px rgba(255, 255, 180, 0.5),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.6),
+    0 2px 5px rgba(0, 0, 0, 0.7),
+    0 0 0 2px rgba(0,0,0,0.4);
+  position: relative;
+  z-index: 10;
+}
+
+/* Phillips-head cross slot */
+.screw::before {
+  content: '';
+  position: absolute;
+  top: 15%;
+  left: 48%;
+  width: 2px;
+  height: 70%;
+  background: rgba(0,0,0,0.55);
+  transform: translateX(-50%);
+  border-radius: 1px;
+}
+.screw::after {
+  content: '';
+  position: absolute;
+  top: 48%;
+  left: 15%;
+  height: 2px;
+  width: 70%;
+  background: rgba(0,0,0,0.55);
+  transform: translateY(-50%);
+  border-radius: 1px;
+}
+
+/* =============================================
+   SILKSCREEN — White + Yellow reference marks
+   ============================================= */
+.silkscreen {
+  color: var(--silkscreen-white);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-weight: 700;
+  opacity: 0.8;
+  letter-spacing: 1px;
+  text-shadow:
+    0 0 1px rgba(255, 255, 255, 0.4),
+    0 1px 1px rgba(0, 0, 0, 0.6);
+}
+
+.silkscreen-ref {
+  color: var(--silkscreen-yellow);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  opacity: 0.75;
+}
+
+/* =============================================
+   FPGA CHIP — Altera Cyclone II BGA Package
+   ============================================= */
+.fpga-chip {
+  background:
+    linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 50%, #0f0f0f 100%);
+  border: 1px solid #050505;
+  border-top-color: #3a3a3a;
+  border-left-color: #323232;
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.9),
+    inset 0 1px 2px rgba(255, 255, 255, 0.1),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.8);
+  position: relative;
+}
+
+/* BGA pin array dots & Silicone Texture */
+.fpga-chip::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  background-image:
+    radial-gradient(circle, rgba(50,50,50,0.8) 1.5px, transparent 1.5px);
+  background-size: 8px 8px;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Glossy Silicone Reflection */
+.fpga-chip::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.01) 35%, transparent 40%, rgba(0,0,0,0.4) 100%);
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* =============================================
+   LCD SCREEN
+   ============================================= */
+.lcd-screen {
+  background-color: #0c3010;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.9);
+  border: 4px solid #111;
+  border-radius: 3px;
+}
+.lcd-backlight {
+  background: linear-gradient(135deg, #8ac520 0%, #6a9e10 100%);
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3);
+}
+
+/* =============================================
+   LED INDICATORS
+   ============================================= */
+.led-red {
+  background: radial-gradient(circle at 35% 35%, #ffbaba 0%, #ff1010 40%, #cc0000 75%, #880000 100%);
+  box-shadow: 
+    0 0 12px 3px rgba(255, 0, 0, 0.85),
+    0 0 25px 8px rgba(255, 0, 0, 0.4),
+    inset 0 0 6px rgba(255, 255, 255, 0.7);
+}
+.led-red-off {
+  background: radial-gradient(circle at 35% 35%, #4a1515 0%, #200505 70%, #0a0101 100%);
+  box-shadow: 
+    inset 0 2px 5px rgba(0, 0, 0, 0.9), 
+    inset 0 -1px 2px rgba(255, 255, 255, 0.1),
+    0 1px 1px rgba(255, 255, 255, 0.05);
+}
+.led-green {
+  background: radial-gradient(circle at 35% 35%, #baffba 0%, #10ff10 40%, #00cc00 75%, #008800 100%);
+  box-shadow: 
+    0 0 12px 3px rgba(0, 255, 0, 0.85),
+    0 0 25px 8px rgba(0, 255, 0, 0.4),
+    inset 0 0 6px rgba(255, 255, 255, 0.7);
+}
+.led-green-off {
+  background: radial-gradient(circle at 35% 35%, #154a15 0%, #052005 70%, #010a01 100%);
+  box-shadow: 
+    inset 0 2px 5px rgba(0, 0, 0, 0.9), 
+    inset 0 -1px 2px rgba(255, 255, 255, 0.1),
+    0 1px 1px rgba(255, 255, 255, 0.05);
+}
+
+/* =============================================
+   METALLIC PUSH BUTTON (KEY0–KEY3)
+   ============================================= */
+.btn-metallic {
+  background: radial-gradient(circle at 40% 30%, #e0e0e0 0%, #a0a0a0 45%, #666 80%, #333 100%);
+  border: 1px solid #111;
+  box-shadow:
+    0 5px 8px rgba(0, 0, 0, 0.7),
+    0 2px 2px rgba(0, 0, 0, 0.5),
+    inset 0 2px 4px rgba(255, 255, 255, 0.8),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.6);
+  transition: all 0.05s ease;
+}
+.btn-metallic:active, .btn-pressed {
+  background: radial-gradient(circle at 40% 30%, #999 0%, #666 45%, #444 80%, #222 100%);
+  box-shadow:
+    inset 0 4px 8px rgba(0, 0, 0, 0.9),
+    inset 0 1px 2px rgba(0, 0, 0, 0.8),
+    0 1px 1px rgba(255, 255, 255, 0.1);
+  transform: translateY(3px);
+}
+
+/* =============================================
+   TOGGLE SWITCH (SW0–SW17)
+   ============================================= */
+.switch-base {
+  background: linear-gradient(to bottom, #111, #050505);
+  border: 1px solid #000;
+  box-shadow:
+    inset 0 6px 12px rgba(0, 0, 0, 0.95),
+    inset 0 1px 3px rgba(0, 0, 0, 0.8),
+    0 1px 2px rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+.switch-toggle {
+  background: linear-gradient(to bottom, #e2e2e2 0%, #a5a5a5 35%, #7a7a7a 60%, #444 100%);
+  border: 1px solid #1a1a1a;
+  box-shadow:
+    inset 0 2px 3px rgba(255, 255, 255, 0.9),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.5),
+    0 4px 6px rgba(0, 0, 0, 0.8),
+    0 2px 3px rgba(0, 0, 0, 0.6);
+  border-radius: 2px;
+}
+
+/* =============================================
+   7-SEGMENT HEX DISPLAY FRAME
+   ============================================= */
+.hex-frame {
+  background: #000000;
+  border: 2px solid #1a1a1a;
+  border-top-color: #2a2a2a;
+  border-left-color: #252525;
+  border-bottom-color: #0a0a0a;
+  border-right-color: #0a0a0a;
+  box-shadow:
+    0 3px 6px rgba(0, 0, 0, 0.9),
+    inset 0 0 8px rgba(0, 0, 0, 0.8);
+  border-radius: 2px;
+}
+
+/* =============================================
+   SIDEBAR COLLAPSE TRANSITIONS
+   ============================================= */
+.sidebar-panel {
+  transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.22s ease,
+              min-width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+.sidebar-panel.open {
+  opacity: 1;
+}
+.sidebar-panel.closed {
+  width: 0 !important;
+  min-width: 0 !important;
+  opacity: 0;
+}
+
+/* DigitalJS Overrides */
+/* =========================================
+   DigitalJS Koyu Tema (Dark Mode) Override 
+   ========================================= */
+/* Kapı Gövdeleri (Yumuşak Köşeler ve Renk Uyumu) */
+.joint-element .body { 
+  fill: rgba(30, 41, 59, 0.7) !important; /* Saydam koyu lacivert/gri */
+  stroke: #475569 !important; /* Neon hatlara daha uyumlu kenarlık */
+  stroke-width: 2px !important; 
+  rx: 8px !important;
+  ry: 8px !important;
+}
+
+/* Yazı Boyutunu BOZMADAN sadece rengini ve kalınlığını ayarlıyoruz */
+.joint-element text, 
+.wire text, 
+.link text,
+text {
+  fill: #f8fafc !important; 
+  font-weight: bold !important;
+}
+
+/* Aktif (1) Sinyal Yolları ve Bağlantılar - Parlak Neon Yeşil */
+path[stroke="#03c03c"],
+line[stroke="#03c03c"],
+circle[stroke="#03c03c"],
+.connection[stroke="#03c03c"] { 
+  stroke: #22c55e !important; 
+  stroke-width: 3px !important;
+  filter: drop-shadow(0 0 5px rgba(34, 197, 94, 0.8));
+}
+circle[fill="#03c03c"] {
+  fill: #22c55e !important;
+}
+
+/* Pasif (0) Sinyal Yolları ve Bağlantılar - Koyu Kırmızı */
+path[stroke="#fc7c68"],
+line[stroke="#fc7c68"],
+circle[stroke="#fc7c68"],
+.connection[stroke="#fc7c68"] { 
+  stroke: #ef4444 !important; 
+  stroke-width: 2px !important;
+  filter: drop-shadow(0 0 5px rgba(239, 68, 68, 0.8));
+}
+circle[fill="#fc7c68"] {
+  fill: #ef4444 !important;
+}
+
+/* Tanımsız/Boş (X/Z) Sinyaller - Gri */
+path[stroke="#999"],
+line[stroke="#999"],
+circle[stroke="#999"] { 
+  stroke: #64748b !important; 
+}
+
+/* =========================================
+   Giriş (Input) ve Çıkış (Output) Özel Tasarımı (Neon Glow)
+   ========================================= */
+
+/* Input - 0 (Low) Durumu Kırmızı Glow (Her İki Temada) */
+.joint-element[data-type="digitaljs.Input"]:has(.btnface[fill="white"]) .body,
+.joint-element[data-type="digitaljs.Output"]:has(circle[fill="#fc7c68"]) .body,
+.joint-element[data-type="digitaljs.Output"]:has(circle[fill="#ef4444"]) .body {
+  stroke: #ef4444 !important;
+  stroke-width: 3px !important;
+  filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.6));
+}
+/* Input İç Kutusu - Artık şeffaf, sadece sayı görünecek */
+.joint-element[data-type="digitaljs.Input"] .btnface {
+  fill: transparent !important;
+  stroke: transparent !important;
+}
+
+/* Input Yazısı (0) */
+.joint-element[data-type="digitaljs.Input"]:has(.btnface[fill="white"]) text.value {
+  fill: #ef4444 !important;
+  font-size: 18px !important;
+  font-weight: 900 !important;
+}
+
+/* Input - 1 (High) Durumu Yeşil Glow */
+.joint-element[data-type="digitaljs.Input"]:has(.btnface[fill="black"]) .body,
+.joint-element[data-type="digitaljs.Output"]:has(circle[fill="#03c03c"]) .body,
+.joint-element[data-type="digitaljs.Output"]:has(circle[fill="#22c55e"]) .body {
+  stroke: #22c55e !important;
+  stroke-width: 3px !important;
+  filter: drop-shadow(0 0 8px rgba(34, 197, 94, 0.6));
+}
+
+/* Input Yazısı (1) */
+.joint-element[data-type="digitaljs.Input"]:has(.btnface[fill="black"]) text.value {
+  fill: #22c55e !important;
+  font-size: 18px !important;
+  font-weight: 900 !important;
+}
+
+/* Output İç Yuvarlak Renk Ezmeleri - Şeffaf yapıyoruz, sadece sayı görünecek */
+.joint-element[data-type="digitaljs.Output"] circle:not(.port) {
+  fill: transparent !important;
+  stroke: transparent !important;
+}
+
+/* Output Yazısı - 0 Durumu */
+.joint-element[data-type="digitaljs.Output"]:has(circle[fill="#fc7c68"]) text.value,
+.joint-element[data-type="digitaljs.Output"]:has(circle[fill="#ef4444"]) text.value {
+  fill: #ef4444 !important;
+  font-size: 18px !important;
+  font-weight: 900 !important;
+}
+
+/* Output Yazısı - 1 Durumu */
+.joint-element[data-type="digitaljs.Output"]:has(circle[fill="#03c03c"]) text.value,
+.joint-element[data-type="digitaljs.Output"]:has(circle[fill="#22c55e"]) text.value {
+  fill: #22c55e !important;
+  font-size: 18px !important;
+  font-weight: 900 !important;
+}
+
+/* Portlar (Bağlantı Yuvaları) da glow'a uysun */
+.joint-element[data-type="digitaljs.Input"]:has(.btnface[fill="white"]) .port,
+.joint-element[data-type="digitaljs.Output"]:has(circle[fill="#fc7c68"]) .port,
+.joint-element[data-type="digitaljs.Output"]:has(circle[fill="#ef4444"]) .port {
+  stroke: #ef4444 !important;
+  stroke-width: 2px !important;
+}
+.joint-element[data-type="digitaljs.Input"]:has(.btnface[fill="black"]) .port,
+.joint-element[data-type="digitaljs.Output"]:has(circle[fill="#03c03c"]) .port,
+.joint-element[data-type="digitaljs.Output"]:has(circle[fill="#22c55e"]) .port {
+  stroke: #22c55e !important;
+  stroke-width: 2px !important;
+}
+
+/* Kapı İsimleri (A, B, Cin) Input'ların alt/üst yazıları */
+.joint-element[data-type="digitaljs.Input"] > text.label,
+.joint-element[data-type="digitaljs.Output"] > text.label {
+  fill: var(--text-primary) !important;
+  font-weight: bold !important;
+  font-size: 14px !important;
+}
+
+/* JointJS SVG Clipping Fix - ÖNEMLİ: Kırpılma engellemesi */
+.joint-paper,
+.joint-paper > svg {
+  width: 100% !important;
+  height: 100% !important;
+  overflow: visible !important;
+}
+
+/* =========================================
+   Wire Hover (Kablo üstüne gelince çıkan bilgilendirme kutusu)
+   ========================================= */
+.wire_hover {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-primary) !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5) !important;
+  border-radius: 4px !important;
+}
