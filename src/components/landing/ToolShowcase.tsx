@@ -217,7 +217,7 @@ export function ToolShowcase() {
             Four tools. One workspace.
           </h2>
           <p className="mt-4 text-base max-w-xl mx-auto" style={{ color: 'var(--landing-text-secondary)' }}>
-            Each tool covers a distinct part of the digital logic learning workflow —
+            Each tool covers a distinct part of the engineering learning workflow —
             from interactive board simulation to RTL gate visualisation.
           </p>
         </div>

@@ -5,10 +5,11 @@ import fs from 'node:fs';
 async function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 async function main() {
+  const baseUrl = (process.env.APP_BASE_URL || 'http://localhost:5173').replace(/\/$/, '');
   const chrome = spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', [
     '--headless=new',
     '--remote-debugging-port=9246',
-    'http://localhost:5173/altera-de2-simulator/#/de2'
+    `${baseUrl}/#/de2-simulator`
   ]);
 
   for (let i = 0; i < 20; i++) {

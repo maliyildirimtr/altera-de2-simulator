@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, Link } from 'react-router-dom';
-import { Zap, Cpu, Activity, GitGraph, BookOpen, Sun, Moon, Menu, X } from 'lucide-react';
+import { Zap, Cpu, Activity, GitGraph, BookOpen, Sun, Moon, Menu, X, Layers, Grid } from 'lucide-react';
 import { PLATFORM_NAME } from '../../lib/platform';
 
 interface NavbarProps {
@@ -8,11 +8,16 @@ interface NavbarProps {
   setIsDarkMode: (val: boolean) => void;
 }
 
-const NAV_LINKS = [
+const TOOL_LINKS = [
   { to: '/de2-simulator', label: 'DE2 Simulator', icon: Cpu },
   { to: '/waveform',      label: 'Waveform',      icon: Activity },
   { to: '/schematic',     label: 'Schematic',      icon: GitGraph },
   { to: '/examples',      label: 'Examples',       icon: BookOpen },
+] as const;
+
+const EXPLORE_LINKS = [
+  { to: '/digital-logic', label: 'Digital Logic', icon: Layers },
+  { to: '/fpga',          label: 'FPGA',          icon: Grid },
 ] as const;
 
 export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => {
@@ -45,7 +50,7 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
         {/* Brand */}
         <Link
           to="/"
-          className="flex items-center gap-2.5 group mr-10"
+          className="flex items-center gap-2.5 group mr-8"
           aria-label={`${PLATFORM_NAME} — go to home`}
         >
           <div className="w-7 h-7 rounded-md bg-blue-600 flex items-center justify-center shadow-md shadow-blue-700/40 transition-opacity group-hover:opacity-85">
@@ -57,16 +62,28 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
         </Link>
 
         {/* Desktop nav */}
-        <div className="hidden md:flex items-center gap-1 flex-1">
-          {NAV_LINKS.map(({ to, label }) => (
-            <NavLink key={to} to={to} className={desktopLinkClass}>
-              {label}
-            </NavLink>
-          ))}
+        <div className="hidden lg:flex items-center gap-6 flex-1">
+          <div className="flex items-center gap-1">
+            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mr-2">Tools</div>
+            {TOOL_LINKS.map(({ to, label }) => (
+              <NavLink key={to} to={to} className={desktopLinkClass}>
+                {label}
+              </NavLink>
+            ))}
+          </div>
+          <div className="w-px h-5 bg-white/10" />
+          <div className="flex items-center gap-1">
+            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mr-2">Explore</div>
+            {EXPLORE_LINKS.map(({ to, label }) => (
+              <NavLink key={to} to={to} className={desktopLinkClass}>
+                {label}
+              </NavLink>
+            ))}
+          </div>
         </div>
 
         {/* Right actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 ml-auto lg:ml-0">
           {/* Theme toggle */}
           <button
             onClick={() => setIsDarkMode(!isDarkMode)}
@@ -80,7 +97,7 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
           {/* Mobile menu button */}
           <button
             onClick={() => setMobileOpen((o) => !o)}
-            className="md:hidden w-8 h-8 flex items-center justify-center rounded text-slate-400 hover:text-white hover:bg-white/8 transition-colors"
+            className="lg:hidden w-8 h-8 flex items-center justify-center rounded text-slate-400 hover:text-white hover:bg-white/8 transition-colors"
             aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={mobileOpen}
           >
@@ -92,12 +109,25 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
       {/* ── Mobile drawer ── */}
       {mobileOpen && (
         <div
-          className="md:hidden fixed top-16 left-0 right-0 z-30 flex flex-col"
-          style={{ background: 'var(--landing-navy)', borderBottom: '1px solid rgba(255,255,255,0.10)' }}
+          className="lg:hidden fixed top-16 left-0 right-0 z-30 flex flex-col h-[calc(100vh-64px)] overflow-y-auto"
+          style={{ background: 'var(--landing-navy)' }}
           role="navigation"
           aria-label="Mobile navigation"
         >
-          {NAV_LINKS.map(({ to, label, icon: Icon }) => (
+          <div className="px-4 py-2 mt-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tools</div>
+          {TOOL_LINKS.map(({ to, label, icon: Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={mobileLinkClass}
+              onClick={() => setMobileOpen(false)}
+            >
+              <Icon size={16} className="shrink-0" />
+              {label}
+            </NavLink>
+          ))}
+          <div className="px-4 py-2 mt-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-t border-white/5 pt-4">Explore</div>
+          {EXPLORE_LINKS.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}

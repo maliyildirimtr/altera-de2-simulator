@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
-  base: '/altera-de2-simulator/',
+  base: '/',
   plugins: [react(), tailwindcss()],
   resolve: {
     // Explicit extension order so Vite always finds .tsx service files

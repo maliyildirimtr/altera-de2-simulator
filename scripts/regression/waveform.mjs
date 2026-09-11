@@ -5,12 +5,13 @@ import fs from 'node:fs';
 async function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 async function main() {
+  const baseUrl = (process.env.APP_BASE_URL || 'http://127.0.0.1:5173').replace(/\/$/, '');
   const chrome = spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', [
     '--headless=new',
     '--remote-debugging-port=9246',
     `--user-data-dir=/tmp/phase8-chrome-${process.pid}`,
     '--no-first-run',
-    'http://127.0.0.1:5173/altera-de2-simulator/#/waveform'
+    `${baseUrl}/#/waveform`
   ]);
 
   for (let i = 0; i < 20; i++) {

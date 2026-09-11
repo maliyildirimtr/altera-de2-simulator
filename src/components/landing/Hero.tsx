@@ -708,17 +708,17 @@ export function Hero() {
           {/* CTAs */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'center', marginBottom: 20 }}>
             <Link
-              to="/de2-simulator"
+              to="/digital-logic"
               className="inline-flex items-center gap-2 font-semibold rounded-lg transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
               style={{ background: '#2563eb', color: '#fff', fontSize: 15, padding: '12px 28px' }}
               onMouseEnter={e => (e.currentTarget.style.background = '#1d4ed8')}
               onMouseLeave={e => (e.currentTarget.style.background = '#2563eb')}
             >
               <Play size={16} strokeWidth={2.5} />
-              Open DE2 Simulator
+              Start Building
             </Link>
             <Link
-              to="/projects"
+              to="/examples"
               className="inline-flex items-center gap-2 font-semibold rounded-lg transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
               style={{ background: 'transparent', color: 'var(--landing-navy)', fontSize: 15, padding: '12px 28px', border: '1px solid var(--landing-border)' }}
               onMouseEnter={e => { e.currentTarget.style.background = 'var(--landing-surface-alt)'; e.currentTarget.style.borderColor = 'var(--landing-navy)'; }}

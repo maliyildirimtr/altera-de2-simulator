@@ -4,12 +4,13 @@ import assert from 'node:assert';
 async function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 async function main() {
+  const baseUrl = (process.env.APP_BASE_URL || 'http://127.0.0.1:5173').replace(/\/$/, '');
   const chrome = spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', [
     '--headless=new',
     '--remote-debugging-port=9251',
     `--user-data-dir=/tmp/phase10-chrome-${process.pid}`,
     '--no-first-run',
-    'http://127.0.0.1:5173/altera-de2-simulator/#/examples'
+    `${baseUrl}/#/examples`
   ]);
 
   for (let i = 0; i < 20; i++) {
@@ -82,7 +83,7 @@ async function main() {
       '*://esm.sh/*',
     ],
   });
-  await send('Page.navigate', { url: 'http://127.0.0.1:5173/altera-de2-simulator/#/examples' });
+  await send('Page.navigate', { url: `${baseUrl}/#/examples` });
   await waitFor('[data-testid="examples-page"]');
 
   console.log('--- Phase 10 Dependency Regression ---');
