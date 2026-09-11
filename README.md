@@ -1,5 +1,7 @@
 # Engineering Lab
 
+Production URL: [https://lab.maliyildirimtr.com](https://lab.maliyildirimtr.com)
+
 Browser-based learning tools for digital logic and Electrical & Electronics Engineering. Write HDL, run testbenches, inspect waveforms, synthesize RTL schematics, and interact with a virtual Altera DE2 board without installing a desktop EDA suite.
 
 ## Tools
@@ -39,7 +41,7 @@ npm ci
 npm run dev
 ```
 
-The development server defaults to `http://localhost:5173`. Vite serves the project below `/altera-de2-simulator/` to match GitHub Pages deployment.
+The development server defaults to `http://localhost:5173`. Vite serves the application from the root `/` to match custom domain production deployment at `https://lab.maliyildirimtr.com`.
 
 ## Release checks
 
@@ -75,11 +77,23 @@ The browser regressions cover current-editor compilation and bridge removal (Pha
 
 The six Icarus files in `public/` (`ivlpp.js`, `ivlpp.wasm`, `ivl.js`, `ivl.wasm`, `vvp.js`, and `vvp.wasm`) total about **2.7 MiB on disk** in the current release. They are served locally and reused by the persistent compiler worker.
 
+## Deployment
+
+The platform is deployed to GitHub Pages at the custom domain:
+
+- **Canonical URL:** [https://lab.maliyildirimtr.com](https://lab.maliyildirimtr.com)
+- **Build Output:** Vite builds production assets into `dist/` with root base path (`base: '/'`).
+- **Continuous Deployment:** `.github/workflows/deploy.yml` builds and deploys `dist/` directly to GitHub Pages using official GitHub Actions (`actions/deploy-pages@v4`).
+- **Domain Configuration:** The custom domain `lab.maliyildirimtr.com` is configured through GitHub Repository Settings → Pages.
+- **DNS:** Managed separately via DNS provider CNAME record pointing `lab.maliyildirimtr.com` to `maliyildirimtr.github.io`.
+
 ## Project structure
 
 ```text
 altera-de2-simulator/
-├── .github/workflows/release-checks.yml
+├── .github/workflows/
+│   ├── ci.yml
+│   └── deploy.yml
 ├── docs/simulation-engines.md
 ├── public/                         # favicon, icons, local Icarus assets
 ├── scripts/regression/             # maintained local browser lock checks
@@ -87,11 +101,13 @@ altera-de2-simulator/
 │   ├── components/
 │   │   ├── DE2Workspace/
 │   │   ├── Examples/
+│   │   ├── Layout/
 │   │   ├── SchematicWorkspace/
-│   │   └── Waveform/
+│   │   ├── Waveform/
+│   │   └── landing/
 │   ├── core/simulator/             # safe DE2 parser/evaluator + security test
 │   ├── examples/                   # canonical 14-example registry and HDL files
-│   ├── pages/                      # route-level tool workspaces
+│   ├── pages/                      # route-level tool and hub workspaces
 │   ├── services/                   # compiler, synthesis, VCD and handoff services
 │   └── workers/compiler.worker.ts  # active Icarus WebAssembly worker
 ├── LICENSE
@@ -105,7 +121,9 @@ altera-de2-simulator/
 - Phase 8: waveform editor freshness, failure recovery, and debug-bridge removal — locked
 - Phase 9: example handoff dirty-state behavior — locked
 - Phase 10: local dependency migration and zero external runtime requests — locked
-- Phase 11: public-release cleanup, reproducibility, and repository hardening — current release gate
+- Phase 11: public-release cleanup, reproducibility, and repository hardening — locked
+- Phase 12: Engineering Lab platform foundation — locked
+- Phase 12.1: custom domain production deployment (`lab.maliyildirimtr.com`) — current release gate
 
 ## License
 

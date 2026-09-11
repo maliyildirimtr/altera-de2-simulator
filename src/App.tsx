@@ -6,6 +6,8 @@ import DE2Simulator from './pages/DE2Simulator';
 import Projects from './pages/Projects';
 import SchematicPage from './pages/SchematicPage';
 import WaveformSimulator from './pages/WaveformSimulator';
+import DigitalLogicHub from './pages/DigitalLogicHub';
+import FpgaHub from './pages/FpgaHub';
 import './index.css';
 
 export default function App() {
@@ -28,6 +30,8 @@ export default function App() {
             <Route path="/projects" element={<Projects />} />
             <Route path="/schematic" element={<SchematicPage isDarkMode={isDarkMode} />} />
             <Route path="/waveform" element={<WaveformSimulator />} />
+            <Route path="/digital-logic" element={<DigitalLogicHub />} />
+            <Route path="/fpga" element={<FpgaHub />} />
           </Routes>
         </div>
       </div>
