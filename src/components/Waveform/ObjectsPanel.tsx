@@ -4,6 +4,7 @@
 // ============================================================
 
 import React, { useState } from 'react';
+import { Layers, FolderTree, Info } from 'lucide-react';
 import type { VCDScope, VCDSignal } from '../../services/vcdParser';
 import { getSignalValueAtTime } from '../../services/waveformRenderer';
 import { useResizableColumns } from '../../hooks/useResizableColumns';
@@ -12,11 +13,13 @@ export interface ObjectsPanelProps {
   activeScope: VCDScope | null;
   currentTime: number;
   waveSignalNames: string[];
+  isCompiled?: boolean;
+  hasSimulationData?: boolean;
   onAddSignals: (names: string[]) => void;
 }
 
 export function ObjectsPanel({
-  activeScope, currentTime, waveSignalNames, onAddSignals,
+  activeScope, currentTime, waveSignalNames, isCompiled = false, hasSimulationData = false, onAddSignals,
 }: ObjectsPanelProps) {
   const [selectedObjects, setSelectedObjects] = useState<string[]>([]);
   const [lastSelected, setLastSelected]       = useState<string | null>(null);
@@ -26,7 +29,9 @@ export function ObjectsPanel({
   const { widths, getHandleProps } = useResizableColumns([120, 70, 70]);
   const [nameW, valW] = widths;
 
-  const signals: VCDSignal[] = activeScope ? Object.values(activeScope.signals) : [];
+  const signals: VCDSignal[] = (hasSimulationData && isCompiled && activeScope)
+    ? Object.values(activeScope.signals)
+    : [];
 
   const handleSelect = (e: React.MouseEvent, sig: VCDSignal) => {
     e.stopPropagation();
@@ -96,54 +101,78 @@ export function ObjectsPanel({
         <div className={cell('flex-1 flex items-center')} style={{ minWidth: 40 }}>Type</div>
       </div>
 
-      {/* Signal rows */}
-      <div className="flex-1 overflow-auto text-gray-200 font-mono text-[13px] py-1 bg-[#0c0d0e]">
-        {signals.map((sig, idx) => {
-          const isSelected = selectedObjects.includes(sig.name);
-          return (
-            <div
-              key={idx}
-              onClick={e => handleSelect(e, sig)}
-              className={`flex items-center hover:bg-[#1e3a5f] border-b border-[#222222] group cursor-pointer ${isSelected ? 'bg-[#2a3f5f]' : ''}`}
-              style={{ height: 28 }}
-            >
-              {/* Name */}
-              <div className="flex items-center gap-1 overflow-hidden px-1" style={{ width: nameW }} title={sig.name}>
-                {sig.width > 1 ? (
-                  <div className="w-1.5 h-1.5 rounded-sm bg-purple-500 shrink-0 mx-0.5" />
-                ) : (
-                  <div className="w-1.5 h-1.5 rotate-45 bg-cyan-400 shrink-0 mx-0.5" />
-                )}
-                <span className="truncate">{sig.name.split('.').pop()}</span>
-                {sig.width > 1 && (
-                  <span className="text-[10px] text-gray-500 shrink-0 ml-0.5">[{sig.width - 1}:0]</span>
-                )}
+      {/* Signal rows / Empty state */}
+      {signals.length === 0 ? (
+        <div className="flex-1 flex flex-col items-center justify-center p-4 text-center text-slate-500 text-xs bg-[#0c0d0e] select-none">
+          {!hasSimulationData || !isCompiled ? (
+            <>
+              <Layers size={22} className="mb-2 opacity-30 text-blue-400" />
+              <p className="font-medium text-slate-400 mb-1">Signals appear after compilation.</p>
+              <p className="text-[11px] text-slate-600 max-w-[200px]">Compile your design to inspect module signals and variables.</p>
+            </>
+          ) : !activeScope ? (
+            <>
+              <FolderTree size={22} className="mb-2 opacity-30 text-blue-400" />
+              <p className="font-medium text-slate-400 mb-1">Select a scope in Hardware Hierarchy</p>
+              <p className="text-[11px] text-slate-600 max-w-[200px]">Choose a module from the Project hierarchy tree to view its signals.</p>
+            </>
+          ) : (
+            <>
+              <Info size={22} className="mb-2 opacity-30 text-slate-400" />
+              <p className="font-medium text-slate-400 mb-1">No signals in this scope.</p>
+              <p className="text-[11px] text-slate-600 max-w-[200px]">This module does not contain any monitored signals or variables.</p>
+            </>
+          )}
+        </div>
+      ) : (
+        <div className="flex-1 overflow-auto text-gray-200 font-mono text-[13px] py-1 bg-[#0c0d0e]">
+          {signals.map((sig, idx) => {
+            const isSelected = selectedObjects.includes(sig.name);
+            return (
+              <div
+                key={idx}
+                onClick={e => handleSelect(e, sig)}
+                className={`flex items-center hover:bg-[#1e3a5f] border-b border-[#222222] group cursor-pointer ${isSelected ? 'bg-[#2a3f5f]' : ''}`}
+                style={{ height: 28 }}
+              >
+                {/* Name */}
+                <div className="flex items-center gap-1 overflow-hidden px-1" style={{ width: nameW }} title={sig.name}>
+                  {sig.width > 1 ? (
+                    <div className="w-1.5 h-1.5 rounded-sm bg-purple-500 shrink-0 mx-0.5" />
+                  ) : (
+                    <div className="w-1.5 h-1.5 rotate-45 bg-cyan-400 shrink-0 mx-0.5" />
+                  )}
+                  <span className="truncate">{sig.name.split('.').pop()}</span>
+                  {sig.width > 1 && (
+                    <span className="text-[10px] text-gray-500 shrink-0 ml-0.5">[{sig.width - 1}:0]</span>
+                  )}
+                </div>
+
+                <div className="w-[3px] shrink-0 bg-[#222]" />
+
+                {/* Value */}
+                <div className="overflow-hidden px-1 font-bold text-yellow-300 truncate" style={{ width: valW }}>
+                  {getSignalValueAtTime(sig, currentTime)}
+                </div>
+
+                <div className="w-[3px] shrink-0 bg-[#222]" />
+
+                {/* Type */}
+                <div className="flex-1 flex items-center justify-between overflow-hidden px-1 text-gray-500 text-[11px] uppercase min-w-0">
+                  <span className="truncate">{sig.type}</span>
+                  <button
+                    onClick={e => handleAddOne(e, sig.name)}
+                    className="opacity-0 group-hover:opacity-100 shrink-0 px-1.5 py-0.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-[10px] cursor-pointer shadow-sm transition-opacity ml-1"
+                    title="Add to Waveform"
+                  >
+                    + Add
+                  </button>
+                </div>
               </div>
-
-              <div className="w-[3px] shrink-0 bg-[#222]" />
-
-              {/* Value */}
-              <div className="overflow-hidden px-1 font-bold text-yellow-300 truncate" style={{ width: valW }}>
-                {getSignalValueAtTime(sig, currentTime)}
-              </div>
-
-              <div className="w-[3px] shrink-0 bg-[#222]" />
-
-              {/* Type */}
-              <div className="flex-1 flex items-center justify-between overflow-hidden px-1 text-gray-500 text-[11px] uppercase min-w-0">
-                <span className="truncate">{sig.type}</span>
-                <button
-                  onClick={e => handleAddOne(e, sig.name)}
-                  className="opacity-0 group-hover:opacity-100 shrink-0 px-1.5 py-0.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-[10px] cursor-pointer shadow-sm transition-opacity ml-1"
-                  title="Add to Waveform"
-                >
-                  + Add
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

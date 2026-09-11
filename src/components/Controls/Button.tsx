@@ -16,6 +16,9 @@ export const Button: React.FC<ButtonProps> = ({ index, label }) => {
   return (
     <div className="flex flex-col items-center gap-2">
       <button
+        data-testid={`de2-key-${index}`}
+        data-active={isPressed ? 'true' : 'false'}
+        aria-label={`Key ${index}`}
         className={`w-10 h-10 rounded-full btn-metallic outline-none select-none transition-all duration-75 ${isPressed ? 'btn-pressed' : ''}`}
         onMouseDown={() => setKey(index, true)}
         onMouseUp={() => setKey(index, false)}

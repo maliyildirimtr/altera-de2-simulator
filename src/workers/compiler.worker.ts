@@ -13,12 +13,22 @@ import type {
 
 import { parseRawVCD } from '../services/vcdParser';
 
+const BASE_URL = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '') + '/';
+
+function resolvePublicUrl(path: string): string {
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  if (path.startsWith(BASE_URL)) return path;
+  const clean = path.replace(/^\/+/, '');
+  return BASE_URL + clean;
+}
+
 // ── Fetch yardımcıları ────────────────────────────────────────
 // Vite dev sunucusu var olmayan URL'ler için 200 + HTML döner.
 // Content-Type kontrolüyle gerçek dosyaları ayırt ediyoruz.
 async function fetchText(url: string): Promise<string | null> {
+  const target = resolvePublicUrl(url);
   try {
-    const res = await fetch(url);
+    const res = await fetch(target);
     if (!res.ok) return null;
     if ((res.headers.get('content-type') ?? '').includes('text/html')) return null;
     return await res.text();
@@ -40,7 +50,7 @@ const factoryCache: Record<string, (opts?: object) => Promise<unknown>> = {};
 
 async function loadEmscriptenModule(
   jsPublicPath: string,
-  wasmPublicDir: string,
+  _wasmPublicDir: string,
   options: Record<string, unknown> = {}
 ): Promise<{
   FS: {
@@ -49,12 +59,13 @@ async function loadEmscriptenModule(
   };
   callMain(args: string[]): void;
 }> {
-  let factory = factoryCache[jsPublicPath];
+  const resolvedJsPath = resolvePublicUrl(jsPublicPath);
+  let factory = factoryCache[resolvedJsPath];
 
   if (!factory) {
     // 1. Emscripten JS glue dosyasını text olarak indir (patch YAPMA)
-    const jsText = await fetchText(jsPublicPath);
-    if (!jsText) throw new Error(`FILE_NOT_FOUND: ${jsPublicPath}`);
+    const jsText = await fetchText(resolvedJsPath);
+    if (!jsText) throw new Error(`FILE_NOT_FOUND: ${resolvedJsPath}`);
 
     // 2. Blob URL → dynamic import (Rollup statik analizi atlatılır)
     const blob    = new Blob([jsText], { type: 'application/javascript' });
@@ -67,23 +78,18 @@ async function loadEmscriptenModule(
 
       factory = mod.default as (opts?: object) => Promise<unknown>;
       if (typeof factory !== 'function') {
-        throw new Error(`${jsPublicPath} geçerli bir Emscripten modülü değil (default export yok)`);
+        throw new Error(`${resolvedJsPath} geçerli bir Emscripten modülü değil (default export yok)`);
       }
       
-      factoryCache[jsPublicPath] = factory;
+      factoryCache[resolvedJsPath] = factory;
     } finally {
       URL.revokeObjectURL(blobUrl);
     }
   }
 
-  // 3. locateFile → findWasmBinary() içindeki import.meta.url satırını ATLAR
-  //    Emscripten wasm'ı locateFile'ın döndürdüğü URL'den fetch eder.
-  //    noInitialRun → callMain() biz çağırana kadar main() çalışmaz.
-  const dir = wasmPublicDir.endsWith('/') ? wasmPublicDir : wasmPublicDir + '/';
-
   const instance = await factory({
     noInitialRun: true,
-    locateFile: (path: string) => dir + path,
+    locateFile: (path: string) => resolvePublicUrl(path),
     ...options,
   });
 
@@ -324,7 +330,22 @@ self.onmessage = async (event: MessageEvent<CompilerInput>) => {
     let vcdContent = '';
     let simulationData: ParsedSimulationData | undefined;
     try {
-      const vcdRaw = vvpMod.FS.readFile('/dump.vcd', { encoding: 'binary' }) as unknown as Uint8Array;
+      let vcdRaw: Uint8Array;
+      try {
+        vcdRaw = vvpMod.FS.readFile('/dump.vcd', { encoding: 'binary' }) as unknown as Uint8Array;
+      } catch {
+        try {
+          vcdRaw = vvpMod.FS.readFile('/out.vcd', { encoding: 'binary' }) as unknown as Uint8Array;
+        } catch {
+          const fsFiles = (vvpMod.FS as any).readdir('/') as string[];
+          const anyVcd = fsFiles.find((f: string) => f.endsWith('.vcd'));
+          if (anyVcd) {
+            vcdRaw = vvpMod.FS.readFile('/' + anyVcd, { encoding: 'binary' }) as unknown as Uint8Array;
+          } else {
+            throw new Error('No .vcd file found');
+          }
+        }
+      }
       vcdContent   = new TextDecoder('utf-8').decode(vcdRaw);
       logs.push(`[VCD] ${vcdContent.length} byte VCD çıktısı alındı. ✓`);
 

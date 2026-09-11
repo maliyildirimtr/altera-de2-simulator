@@ -13,8 +13,9 @@
 //   Etikete sağ tıklayınca context-menu → Remove.
 // ============================================================
 
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import type { MouseEvent as ReactMouseEvent } from 'react';
+import { AlertTriangle } from 'lucide-react';
 import type { SimulationData } from '../../services/vcdParser';
 import {
   renderSignalWaveform,
@@ -48,6 +49,7 @@ const VP_BUFFER = 0.3;
 export interface WaveformCanvasProps {
   simulationData: SimulationData | null;
   isSimRunning: boolean;
+  compileStatus?: 'idle' | 'compiling' | 'success' | 'error';
   rows: RenderableRow[];
   selectedSignal: string | null;
   zoomLevel: number;
@@ -57,6 +59,7 @@ export interface WaveformCanvasProps {
   hoverTime: number | null;
   radixes: Record<string, 'hex' | 'dec' | 'bin'>;
   markers: WaveformMarker[];
+  containerRef?: React.RefObject<HTMLDivElement | null>;
   onTimeChange: (t: number) => void;
   onCursorBChange: (t: number | null) => void;
   onHoverChange: (t: number | null) => void;
@@ -65,13 +68,37 @@ export interface WaveformCanvasProps {
 }
 
 export function WaveformCanvas({
-  simulationData, isSimRunning, rows, selectedSignal,
+  simulationData, isSimRunning, compileStatus = 'idle', rows, selectedSignal,
   zoomLevel, rulerTicks, currentTime, cursorB, hoverTime,
-  radixes, markers,
+  radixes, markers, containerRef,
   onTimeChange, onCursorBChange, onHoverChange,
   onAddMarker, onRemoveMarker,
 }: WaveformCanvasProps) {
   const waveformRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState<number>(0);
+
+  const setContainerRefs = useCallback((el: HTMLDivElement | null) => {
+    (waveformRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+    if (containerRef) {
+      (containerRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+    }
+  }, [containerRef]);
+
+  // Track container width via ResizeObserver for responsive Zoom Fit
+  useEffect(() => {
+    const el = waveformRef.current;
+    if (!el) return;
+    setContainerWidth(el.clientWidth);
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.width > 0) {
+          setContainerWidth(entry.contentRect.width);
+        }
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   // F2.3: Track scroll position for viewport culling
   const [scrollLeft, setScrollLeft] = useState(0);
@@ -122,11 +149,52 @@ export function WaveformCanvas({
     onAddMarker({ id: crypto.randomUUID(), time, label, color: nextMarkerColor() });
   };
 
-  // ── Early returns for empty states ──────────────────────────
-  if (!simulationData) {
+  // ── Early returns for empty and error states ──────────────
+  if (compileStatus === 'error') {
     return (
-      <div className="flex-1 overflow-x-auto overflow-y-hidden relative cursor-crosshair">
-        <div className="absolute inset-0 flex items-center justify-center text-gray-400 font-mono text-sm bg-black">
+      <div
+        ref={setContainerRefs}
+        data-testid="wf-canvas-container"
+        className="flex-1 overflow-x-auto overflow-y-hidden relative cursor-crosshair bg-[#090b10]"
+      >
+        <div data-testid="wf-error-state" className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center select-none">
+          <div className="w-12 h-12 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mb-3 text-rose-400 shadow-sm">
+            <AlertTriangle size={24} />
+          </div>
+          <div className="text-slate-200 font-semibold text-sm mb-1">
+            Compilation Failed
+          </div>
+          <div className="text-slate-400 text-xs max-w-sm font-sans">
+            Fix the errors reported in the Problems tab below and recompile to generate waveforms.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (compileStatus === 'compiling') {
+    return (
+      <div
+        ref={setContainerRefs}
+        data-testid="wf-canvas-container"
+        className="flex-1 overflow-x-auto overflow-y-hidden relative cursor-crosshair bg-black"
+      >
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 font-mono text-sm gap-2 select-none">
+          <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <span>Compiling HDL &amp; Generating VCD...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!simulationData || simulationData.maxTime <= 0) {
+    return (
+      <div
+        ref={setContainerRefs}
+        data-testid="wf-canvas-container"
+        className="flex-1 overflow-x-auto overflow-y-hidden relative cursor-crosshair"
+      >
+        <div className="absolute inset-0 flex items-center justify-center text-gray-400 font-mono text-sm bg-black select-none">
           Load a project and click Compile to begin.
         </div>
       </div>
@@ -135,17 +203,22 @@ export function WaveformCanvas({
 
   if (!isSimRunning) {
     return (
-      <div className="flex-1 overflow-x-auto overflow-y-hidden relative cursor-crosshair">
-        <div className="absolute inset-0 flex items-center justify-center text-gray-400 font-mono text-sm bg-black">
+      <div
+        ref={setContainerRefs}
+        data-testid="wf-canvas-container"
+        className="flex-1 overflow-x-auto overflow-y-hidden relative cursor-crosshair"
+      >
+        <div className="absolute inset-0 flex items-center justify-center text-gray-400 font-mono text-sm bg-black select-none">
           Simulation Compiled. Select signals and click &apos;Run&apos;.
         </div>
       </div>
     );
   }
 
-  const ts         = simulationData.timescale;
-  const maxTime    = simulationData.maxTime;
-  const totalWidth = Math.max(100, maxTime * scale);
+  const ts          = simulationData.timescale;
+  const maxTime     = simulationData.maxTime;
+  const scaledWidth = Math.max(100, maxTime * scale);
+  const totalWidth  = Math.max(containerWidth, scaledWidth);
 
   // ── F2.3: Compute viewport window ────────────────────────────
   const viewportWidth = waveformRef.current?.clientWidth ?? window.innerWidth * 0.5;
@@ -172,14 +245,15 @@ export function WaveformCanvas({
       )}
 
       <div
-        ref={waveformRef}
+        ref={setContainerRefs}
+        data-testid="wf-canvas-container"
         className="flex-1 overflow-x-auto overflow-y-hidden relative cursor-crosshair group"
         onClick={handleClick}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         onScroll={handleScroll}  // F2.3: track scroll
       >
-        <div className="relative h-full" style={{ width: totalWidth }}>
+        <div className="relative h-full min-w-full" style={{ width: totalWidth }}>
 
           {/* ── Top Ruler (ΔT badge + tick marks + double-click markers) ── */}
           <div
@@ -250,6 +324,7 @@ export function WaveformCanvas({
           <div className="absolute top-6 bottom-6 left-0 right-0 pointer-events-none pt-1">
             {rows.map((row, idx) => (
               <div key={idx}
+                data-testid="wf-row-highlight"
                 className={`h-[40px] w-full border-b border-[#222222] ${selectedSignal === row.id ? 'bg-[#1e3a5f]/30' : ''}`}
               />
             ))}

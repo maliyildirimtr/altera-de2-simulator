@@ -1,217 +1,585 @@
 // ============================================================
-// WaveformSimulator.tsx — EDA Lab Container (F2.1 Refactored)
+// WaveformSimulator.tsx — Modern Waveform Simulation Workspace
 //
-// This is the pure orchestration layer. All rendering logic has
-// been extracted to:
-//   src/components/Waveform/
-//     ├── InstanceTree.tsx
-//     ├── ObjectsPanel.tsx
-//     ├── SignalNamePanel.tsx
-//     └── WaveformCanvas.tsx
-//   src/services/
-//     ├── waveformRenderer.ts
-//     └── transitionSearch.ts
+// Phase 4: Structured Teaching-First EDA Waveform Workspace
+// - WaveformToolbar: View toggles, Compile, Run, Restart, Zoom Fit, Real Timings
+// - WaveformProjectPanel: Source & Testbench slots with explicit assignment + Hierarchy
+// - WaveformObjectsPanel: Collapsible signals list with instant filter
+// - WaveformConsole: Tabbed Console & Problems with syntax styling
+// - 5 Resizable boundaries with Phase 3.2 ResizableDivider
+// - Real VCD timescale preservation, deterministic cursor navigation
 // ============================================================
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
-import {
-  Play, RotateCcw, ZoomIn, ZoomOut, Settings,
-  FolderOpen, FileCode, Clock, Upload,
-} from 'lucide-react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import MonacoEditor from '@monaco-editor/react';
 
 import { parseRawVCD } from '../services/vcdParser';
 import type { SimulationData, VCDSignal, VCDScope } from '../services/vcdParser';
 import { simulateSystemVerilog } from '../services/hardwareSimulator';
 
-import { InstanceTree } from '../components/Waveform/InstanceTree';
-import { ObjectsPanel } from '../components/Waveform/ObjectsPanel';
-import { SignalNamePanel } from '../components/Waveform/SignalNamePanel';
-import type { RenderableRow } from '../components/Waveform/SignalNamePanel';
-import { WaveformCanvas } from '../components/Waveform/WaveformCanvas';
-import type { WaveformMarker } from '../components/Waveform/WaveformCanvas';
-import { BASE_PIXELS_PER_UNIT, formatTime } from '../services/waveformRenderer';
+import { WaveformToolbar } from '../components/Waveform/WaveformToolbar';
+import { WaveformProjectPanel, type ProjectSlotFile } from '../components/Waveform/WaveformProjectPanel';
+import { WaveformObjectsPanel } from '../components/Waveform/WaveformObjectsPanel';
+import { WaveformConsole } from '../components/Waveform/WaveformConsole';
+import { SignalNamePanel, type RenderableRow } from '../components/Waveform/SignalNamePanel';
+import { WaveformCanvas, type WaveformMarker } from '../components/Waveform/WaveformCanvas';
+import { ResizableDivider } from '../components/DE2Workspace/ResizableDivider';
+import { BASE_PIXELS_PER_UNIT } from '../services/waveformRenderer';
+import { consumePendingHandoff, markWorkspaceOrigin, markWorkspaceDirty, markWorkspaceUser } from '../services/exampleHandoff';
+import { getExampleById } from '../examples/registry';
 
-// ─────────────────────────────────────────────────────────────
+// ── Layout Persistence Schema ────────────────────────────────
+const LAYOUT_STORAGE_KEY = 'wf_workspace_layout_v1';
+
+interface WaveformLayout {
+  projectWidth: number;      // px, default 220
+  objectsWidth: number;      // px, default 240
+  editorRatio: number;       // ratio of right area height, default 0.35
+  signalColumnWidth: number; // px, default 240
+  consoleHeight: number;     // px, default 160
+}
+
+const DEFAULT_LAYOUT: WaveformLayout = {
+  projectWidth: 220,
+  objectsWidth: 240,
+  editorRatio: 0.35,
+  signalColumnWidth: 240,
+  consoleHeight: 160,
+};
+
+function loadSavedLayout(): WaveformLayout {
+  try {
+    const raw = localStorage.getItem(LAYOUT_STORAGE_KEY);
+    if (!raw) return DEFAULT_LAYOUT;
+    const parsed = JSON.parse(raw);
+    return {
+      projectWidth: typeof parsed.projectWidth === 'number' ? Math.max(150, Math.min(380, parsed.projectWidth)) : DEFAULT_LAYOUT.projectWidth,
+      objectsWidth: typeof parsed.objectsWidth === 'number' ? Math.max(160, Math.min(420, parsed.objectsWidth)) : DEFAULT_LAYOUT.objectsWidth,
+      editorRatio: typeof parsed.editorRatio === 'number' ? Math.max(0.18, Math.min(0.72, parsed.editorRatio)) : DEFAULT_LAYOUT.editorRatio,
+      signalColumnWidth: typeof parsed.signalColumnWidth === 'number' ? Math.max(160, Math.min(480, parsed.signalColumnWidth)) : DEFAULT_LAYOUT.signalColumnWidth,
+      consoleHeight: typeof parsed.consoleHeight === 'number' ? Math.max(80, Math.min(400, parsed.consoleHeight)) : DEFAULT_LAYOUT.consoleHeight,
+    };
+  } catch {
+    return DEFAULT_LAYOUT;
+  }
+}
+
 export default function WaveformSimulator() {
+  // ── Layout State ──────────────────────────────────────────
+  const [layout, setLayout] = useState<WaveformLayout>(loadSavedLayout);
+  const layoutRef = useRef<WaveformLayout>(layout);
+  layoutRef.current = layout;
 
-  // ── Core simulation state ─────────────────────────────────
-  const [simulationData, setSimulationData] = useState<SimulationData | null>(null);
-  const [currentTime,    setCurrentTime]    = useState<number>(0);
-  const [zoomLevel,      setZoomLevel]      = useState<number>(1);
-  const [hoverTime,      setHoverTime]      = useState<number | null>(null);
-  const [cursorB,        setCursorB]        = useState<number | null>(null);   // F1.1
+  // Panel Collapsed States
+  const [isProjectOpen, setIsProjectOpen] = useState(true);
+  const [isObjectsOpen, setIsObjectsOpen] = useState(true);
+  const [isEditorOpen,  setIsEditorOpen]  = useState(true);
+  const [isConsoleOpen, setIsConsoleOpen] = useState(true);
 
-  // ── Hierarchy & signal selection ──────────────────────────
-  const [rootTree,       setRootTree]       = useState<VCDScope | null>(null); // full hierarchy — never changes after load
-  const [activeScope,    setActiveScope]    = useState<VCDScope | null>(null); // currently selected scope (highlight only)
+  // Center right area ref to measure height for editorRatio
+  const rightAreaRef = useRef<HTMLDivElement>(null);
+
+  // Save layout only on drag end / resize end
+  const persistLayout = useCallback((updated: WaveformLayout) => {
+    try {
+      localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(updated));
+    } catch (_) {}
+  }, []);
+
+  // ── File & Slot Management ────────────────────────────────
+  const [sourceFile,    setSourceFile]    = useState<ProjectSlotFile | null>(null);
+  const [testbenchFile, setTestbenchFile] = useState<ProjectSlotFile | null>(null);
+  const [vcdFile,       setVcdFile]       = useState<ProjectSlotFile | null>(null);
+  const [activeEditorSlot, setActiveEditorSlot] = useState<'source' | 'testbench'>('source');
+
+
+  // Input refs for file uploads
+  const sourceInputRef  = useRef<HTMLInputElement>(null);
+  const tbInputRef      = useRef<HTMLInputElement>(null);
+  const vcdInputRef     = useRef<HTMLInputElement>(null);
+  const generalInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Simulation Engine State ───────────────────────────────
+  const [simulationData,   setSimulationData]   = useState<SimulationData | null>(null);
+  const [currentTime,      setCurrentTime]      = useState<number>(0);
+  const [zoomLevel,        setZoomLevel]        = useState<number>(1);
+  const [hoverTime,        setHoverTime]        = useState<number | null>(null);
+  const [cursorB,          setCursorB]          = useState<number | null>(null);
+  const [rootTree,         setRootTree]         = useState<VCDScope | null>(null);
+  const [activeScope,      setActiveScope]      = useState<VCDScope | null>(null);
   const [waveSignalNames,  setWaveSignalNames]  = useState<string[]>([]);
   const [expandedBusses,   setExpandedBusses]   = useState<string[]>([]);
   const [selectedSignal,   setSelectedSignal]   = useState<string | null>(null);
   const [radixes,          setRadixes]          = useState<Record<string, 'hex' | 'dec' | 'bin'>>({});
+  const [markers,          setMarkers]          = useState<WaveformMarker[]>([]);
 
-  // ── EDA two-stage workflow ───────────────────────────────
   const [isSimRunning, setIsSimRunning] = useState<boolean>(false);
+  const [isPlaying,    setIsPlaying]    = useState<boolean>(false);
   const [isCompiling,  setIsCompiling]  = useState<boolean>(false);
+  const [compileStatus, setCompileStatus] = useState<'idle' | 'compiling' | 'success' | 'error'>('idle');
+  const [consoleLogs,  setConsoleLogs]  = useState<string[]>([
+    '[EDA Studio] Waveform Workspace initialized. Load HDL files to begin.',
+  ]);
 
-  // ── F2.4: Marker / Bookmark system ───────────────────────
-  const [markers, setMarkers] = useState<WaveformMarker[]>([]);
+  const simulationDataRef = useRef<SimulationData | null>(null);
+  const isSimRunningRef   = useRef<boolean>(false);
+  const isPlayingRef      = useRef<boolean>(false);
+  const currentTimeRef    = useRef<number>(0);
+  const zoomLevelRef      = useRef<number>(1);
 
-  const handleAddMarker = (mk: WaveformMarker) =>
-    setMarkers(prev => [...prev, mk]);
+  const waveformCanvasContainerRef = useRef<HTMLDivElement>(null);
+  const playbackAnimRef = useRef<number | null>(null);
 
-  const handleRemoveMarker = (id: string) =>
-    setMarkers(prev => prev.filter(m => m.id !== id));
+  // ── Explicit Intent Updaters ──────────────────────────────
+  const clearSimulationState = useCallback(() => {
+    setSimulationData(null);
+    simulationDataRef.current = null;
+    setRootTree(null);
+    setActiveScope(null);
+    setWaveSignalNames([]);
+    setCurrentTime(0);
+    currentTimeRef.current = 0;
+    setHoverTime(null);
+    setCursorB(null);
+    setMarkers([]);
+    setCompileStatus('idle');
+    setIsSimRunning(false);
+    isSimRunningRef.current = false;
+    setIsPlaying(false);
+    isPlayingRef.current = false;
+  }, []);
 
-  // ── Context menu ──────────────────────────────────────────
+  const loadSourceFile = useCallback((f: ProjectSlotFile | null) => {
+    setSourceFile(f);
+    clearSimulationState();
+  }, [clearSimulationState]);
+
+  const editSourceContent = useCallback((content: string) => {
+    setSourceFile(prev => prev ? { ...prev, content } : null);
+  }, []);
+
+  const loadTestbenchFile = useCallback((f: ProjectSlotFile | null) => {
+    setTestbenchFile(f);
+    clearSimulationState();
+  }, [clearSimulationState]);
+
+  const editTestbenchContent = useCallback((content: string) => {
+    setTestbenchFile(prev => prev ? { ...prev, content } : null);
+  }, []);
+
+  const loadVcdFile = useCallback((f: ProjectSlotFile | null) => {
+    setVcdFile(f);
+    clearSimulationState();
+  }, [clearSimulationState]);
+
+
+  // ── Context Menus ─────────────────────────────────────────
   const [contextMenu, setContextMenu] = useState<{
     x: number; y: number; signalName: string; type: 'radix' | 'remove';
   } | null>(null);
 
-  // ── File context menu (right-click delete) ───────────────────
-  const [fileContextMenu, setFileContextMenu] = useState<{
-    x: number; y: number; fileName: string;
-  } | null>(null);
-
-  const handleFileContextMenu = (e: React.MouseEvent, fileName: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setFileContextMenu({ x: e.clientX, y: e.clientY, fileName });
-  };
-
-  const deleteFile = (fileName: string) => {
-    setProjectFiles(prev => prev.filter(f => f.name !== fileName));
-    setOpenTabs(prev => prev.filter(t => t !== fileName));
-    if (activeTab === fileName) setActiveTab('waveform');
-    setFileContextMenu(null);
-  };
-
-  // ── Layout / resize ───────────────────────────────────────
-  const [leftWidth,    setLeftWidth]    = useState(20);
-  const [midWidth,     setMidWidth]     = useState(25);
-  const [bottomHeight, setBottomHeight] = useState(25);
-  const [isResizing,   setIsResizing]   = useState(false);
-
-  // ── File / tab management ─────────────────────────────────
-  const [projectFiles, setProjectFiles] = useState<{name: string; type: string; content: string}[]>([]);
-  const [openTabs,     setOpenTabs]     = useState<string[]>(['waveform']);
-  const [activeTab,    setActiveTab]    = useState<string>('waveform');
-
-  const transcriptRef = useRef<HTMLDivElement>(null);
-  const fileInputRef  = useRef<HTMLInputElement>(null);
-
-  // Auto-scroll transcript
   useEffect(() => {
-    if (transcriptRef.current) {
-      transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight;
-    }
-  }, [simulationData?.logs]);
-
-  // Click outside to close context menus
-  useEffect(() => {
-    const handleClick = () => {
-      setContextMenu(null);
-      setFileContextMenu(null);
-    };
+    const handleClick = () => setContextMenu(null);
     document.addEventListener('click', handleClick);
     return () => document.removeEventListener('click', handleClick);
   }, []);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Consume incoming example handoff (Phase 6)
+  useEffect(() => {
+    const handoff = consumePendingHandoff('waveform');
+    if (handoff) {
+      const ex = getExampleById(handoff.exampleId);
+      if (ex) {
+        loadSourceFile({ name: ex.source.filename, type: 'sv', content: ex.source.code });
+        loadTestbenchFile(
+          ex.testbench
+            ? { name: ex.testbench.filename, type: 'sv', content: ex.testbench.code }
+            : null
+        );
+        loadVcdFile(null);
+        setActiveEditorSlot('source');
+        setConsoleLogs((prev) => [
+          ...prev,
+          `[EDA Studio] Loaded example: ${ex.title} (${ex.source.filename})`,
+        ]);
+        markWorkspaceOrigin('waveform', 'example');
+      }
+    }
+  }, [loadSourceFile, loadTestbenchFile, loadVcdFile]);
+
+  // ── File Handlers (Explicit Import Wins) ───────────────────
+  const handleSourceUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const content = (ev.target?.result as string) || '';
+      loadSourceFile({ name: file.name, type: file.name.split('.').pop() || 'sv', content });
+      markWorkspaceUser('waveform');
+      setActiveEditorSlot('source');
+      setIsEditorOpen(true);
+      setConsoleLogs(prev => [...prev, `[Project] Loaded Source module: ${file.name}`]);
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleTbUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const content = (ev.target?.result as string) || '';
+      loadTestbenchFile({ name: file.name, type: file.name.split('.').pop() || 'sv', content });
+      markWorkspaceUser('waveform');
+      setActiveEditorSlot('testbench');
+      setIsEditorOpen(true);
+      setConsoleLogs(prev => [...prev, `[Project] Loaded Testbench: ${file.name}`]);
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleVcdUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const content = (ev.target?.result as string) || '';
+      loadVcdFile({ name: file.name, type: 'vcd', content });
+      setConsoleLogs(prev => [...prev, `[Project] Loaded VCD directly: ${file.name}`]);
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleGeneralUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files) return;
-    Array.from(files).forEach(file => {
+    if (!files || files.length === 0) return;
+
+    Array.from(files).forEach((file) => {
       const reader = new FileReader();
       reader.onload = (ev) => {
-        const text = ev.target?.result as string;
+        const content = (ev.target?.result as string) || '';
         const name = file.name;
-        const type = name.endsWith('.vcd') ? 'vcd' : name.split('.').pop() || 'txt';
-        setProjectFiles(prev => [...prev.filter(f => f.name !== name), { name, type, content: text }]);
-        if (!openTabs.includes(name)) setOpenTabs(prev => [...prev, name]);
-        setActiveTab(name);
+        const lower = name.toLowerCase();
+
+        if (lower.endsWith('.vcd')) {
+          loadVcdFile({ name, type: 'vcd', content });
+          setConsoleLogs(prev => [...prev, `[Project] Loaded VCD: ${name}`]);
+        } else if (lower.includes('_tb') || lower.includes('tb_') || lower.includes('testbench') || lower.includes('bench')) {
+          loadTestbenchFile({ name, type: name.split('.').pop() || 'sv', content });
+          markWorkspaceUser('waveform');
+          setActiveEditorSlot('testbench');
+          setIsEditorOpen(true);
+          setConsoleLogs(prev => [...prev, `[Project] Assigned to Testbench slot: ${name}`]);
+        } else {
+          loadSourceFile({ name, type: name.split('.').pop() || 'sv', content });
+          markWorkspaceUser('waveform');
+          setActiveEditorSlot('source');
+          setIsEditorOpen(true);
+          setConsoleLogs(prev => [...prev, `[Project] Assigned to Source slot: ${name}`]);
+        }
       };
       reader.readAsText(file);
     });
+    e.target.value = '';
   };
 
-  const handleCodeChange = (name: string, content: string) => {
-    setProjectFiles(prev => prev.map(f => f.name === name ? { ...f, content } : f));
+  const handleClearSlot = (slot: 'source' | 'testbench' | 'vcd') => {
+    if (slot === 'source') {
+      loadSourceFile(null);
+      setConsoleLogs(prev => [...prev, '[Project] Cleared Source slot.']);
+    } else if (slot === 'testbench') {
+      loadTestbenchFile(null);
+      setConsoleLogs(prev => [...prev, '[Project] Cleared Testbench slot.']);
+    } else {
+      loadVcdFile(null);
+      setConsoleLogs(prev => [...prev, '[Project] Cleared VCD slot.']);
+    }
   };
 
+  // ── Simulation Initialization ─────────────────────────────
   const initSimulationData = (data: SimulationData) => {
+    simulationDataRef.current = data;
     setSimulationData(data);
-    setRootTree(data.tree);   // ← kaydet, bir daha değişmez
-    setActiveScope(data.tree); // ← başlangıçta root seçili
-    setWaveSignalNames([]);
+    setRootTree(data.tree);
+
+    // Auto-select obvious top/testbench scope if available
+    const childKeys = Object.keys(data.tree.children || {});
+    let topScope: VCDScope = data.tree;
+    if (childKeys.length === 1) {
+      topScope = data.tree.children[childKeys[0]];
+    } else if (childKeys.length > 1) {
+      const tbKey = childKeys.find(k => k.toLowerCase().includes('tb') || k.toLowerCase().includes('test'));
+      if (tbKey && data.tree.children[tbKey]) {
+        topScope = data.tree.children[tbKey];
+      }
+    }
+    setActiveScope(topScope);
+
+    currentTimeRef.current = 0;
     setCurrentTime(0);
     setCursorB(null);
+    setMarkers([]);
+    setCompileStatus('success');
+    isSimRunningRef.current = false;
     setIsSimRunning(false);
-    setActiveTab('waveform');
-    if (!openTabs.includes('waveform')) setOpenTabs(prev => ['waveform', ...prev]);
+    isPlayingRef.current = false;
+    setIsPlaying(false);
+
+    // Auto-populate signals from selected top scope if present
+    const topScopeSignals = Object.values(topScope.signals).map(s => s.name);
+    if (topScopeSignals.length > 0) {
+      setWaveSignalNames(topScopeSignals);
+    } else if (data.signals.length > 0) {
+      setWaveSignalNames(data.signals.slice(0, 8).map(s => s.name));
+    } else {
+      setWaveSignalNames([]);
+    }
   };
 
+  // ── Compilation ───────────────────────────────────────────
   const compileSimulation = async () => {
-    setIsCompiling(true);
-    setIsSimRunning(false);
+    if (playbackAnimRef.current) {
+      cancelAnimationFrame(playbackAnimRef.current);
+      playbackAnimRef.current = null;
+    }
 
-    // PATH 1: Direct .vcd file load
-    const vcdFile = projectFiles.find(f => f.type === 'vcd');
-    if (vcdFile) {
-      const data = parseRawVCD(vcdFile.content);
-      initSimulationData(data);
+    setIsCompiling(true);
+    setCompileStatus('compiling');
+    isSimRunningRef.current = false;
+    setIsSimRunning(false);
+    isPlayingRef.current = false;
+    setIsPlaying(false);
+    setConsoleLogs(prev => [...prev, '[Compiler] Starting compilation pipeline...']);
+
+    const currentVcd = vcdFile;
+    const currentSrc = sourceFile;
+    const currentTb  = testbenchFile;
+
+    // PATH 1: Direct VCD mode
+    if (currentVcd) {
+      try {
+        const data = parseRawVCD(currentVcd.content);
+        initSimulationData(data);
+        setConsoleLogs(prev => [
+          ...prev,
+          `[VCD] Parsed direct VCD successfully (${data.signals.length} signals, maxTime=${data.maxTime}).`,
+        ]);
+      } catch (err) {
+        simulationDataRef.current = null;
+        setSimulationData(null);
+        setRootTree(null);
+        setActiveScope(null);
+        setCompileStatus('error');
+        setWaveSignalNames([]);
+        setCursorB(null);
+        setMarkers([]);
+        setIsConsoleOpen(true);
+        setConsoleLogs(prev => [...prev, `[HATA] VCD parse error: ${String(err)}`]);
+      }
       setIsCompiling(false);
       return;
     }
 
-    // PATH 2: Source files → Worker
-    const sourceFiles = projectFiles.filter(f => f.type !== 'vcd');
-    const activeName  = projectFiles.find(f => f.name === activeTab)?.name;
-    const result      = await simulateSystemVerilog(sourceFiles, activeName);
+    // PATH 2: HDL Source & Testbench mode
+    const filesToCompile: { name: string; type: string; content: string }[] = [];
+    if (currentSrc) filesToCompile.push(currentSrc);
+    if (currentTb)  filesToCompile.push(currentTb);
+
+    if (filesToCompile.length === 0) {
+      simulationDataRef.current = null;
+      setSimulationData(null);
+      setCompileStatus('error');
+      setWaveSignalNames([]);
+      setCursorB(null);
+      setMarkers([]);
+      setConsoleLogs(prev => [
+        ...prev,
+        '[HATA] No HDL files to compile. Please import a Source or Testbench file first.',
+      ]);
+      setIsCompiling(false);
+      return;
+    }
+
+    // Testbench file is always the top-level testbench for simulation
+    const activeName = currentTb ? currentTb.name : (currentSrc?.name || filesToCompile[0].name);
+    const result = await simulateSystemVerilog(filesToCompile, activeName);
+
+    if (result.logs && result.logs.length > 0) {
+      setConsoleLogs(prev => [...prev, ...result.logs]);
+    }
 
     if (result.status === 'ok' && result.simulationData) {
       const data = result.simulationData as SimulationData;
-      data.logs  = [...result.logs, ...(data.logs ?? [])];
+      data.logs = [...result.logs, ...(data.logs ?? [])];
       initSimulationData(data);
+      setConsoleLogs(prev => [
+        ...prev,
+        `[Compiler] Compilation succeeded. Loaded ${data.signals.length} signals, duration: ${data.maxTime} units. ✓`,
+      ]);
     } else {
-      setSimulationData({
-        maxTime: 0, signals: [], logs: result.logs,
-        tree: { name: 'Root', type: 'root', children: {}, signals: {} },
-        timescale: { magnitude: 1, unit: 'ps', toPsFactor: 1 },
-      });
+      simulationDataRef.current = null;
+      setSimulationData(null);
+      setRootTree(null);
+      setActiveScope(null);
+      setCompileStatus('error');
       setWaveSignalNames([]);
+      setCursorB(null);
+      setMarkers([]);
+      setIsConsoleOpen(true);
+      setConsoleLogs(prev => [...prev, '[HATA] Simulation failed to produce valid VCD.']);
     }
 
+    currentTimeRef.current = 0;
     setCurrentTime(0);
     setIsCompiling(false);
-    if (activeTab !== 'waveform') {
-      setActiveTab('waveform');
-      if (!openTabs.includes('waveform')) setOpenTabs(prev => ['waveform', ...prev]);
-    }
   };
 
+  // ── One-shot Playback Simulation ───────────────────────────
   const runSimulation = () => {
-    if (!simulationData) return;
+    const data = simulationDataRef.current || simulationData;
+    if (!data || data.maxTime === 0) return;
+
+    if (playbackAnimRef.current) {
+      cancelAnimationFrame(playbackAnimRef.current);
+      playbackAnimRef.current = null;
+    }
+
+    isSimRunningRef.current = true;
     setIsSimRunning(true);
+    isPlayingRef.current = true;
+    setIsPlaying(true);
+    currentTimeRef.current = 0;
+    setCurrentTime(0);
+
+    const maxT = data.maxTime;
+    const durationMs = 1200; // ~1.2s smooth playback duration
+    const startTime = performance.now();
+
+    const step = (now: number) => {
+      const elapsed = Math.max(0, now - startTime);
+      const progress = Math.min(1, elapsed / durationMs);
+      const newT = Math.max(0, Math.min(maxT, Math.round(progress * maxT)));
+
+      currentTimeRef.current = newT;
+      setCurrentTime(newT);
+
+      if (progress < 1) {
+        playbackAnimRef.current = requestAnimationFrame(step);
+      } else {
+        playbackAnimRef.current = null;
+        isPlayingRef.current = false;
+        setIsPlaying(false);
+        currentTimeRef.current = maxT;
+        setCurrentTime(maxT);
+      }
+    };
+
+    playbackAnimRef.current = requestAnimationFrame(step);
+  };
+
+  const restartSimulation = () => {
+    if (playbackAnimRef.current) {
+      cancelAnimationFrame(playbackAnimRef.current);
+      playbackAnimRef.current = null;
+    }
+    isPlayingRef.current = false;
+    setIsPlaying(false);
+    currentTimeRef.current = 0;
     setCurrentTime(0);
   };
 
-  const restartSimulation = () => setCurrentTime(0);
+  // Clean up animation frame on unmount
+  useEffect(() => {
+    return () => {
+      if (playbackAnimRef.current) cancelAnimationFrame(playbackAnimRef.current);
+    };
+  }, []);
 
-  // ── F2.6 Ruler ticks (Fixed scale ratio) ────────────────────
+  // ── Zoom Fit ──────────────────────────────────────────────
+  const handleZoomFit = useCallback(() => {
+    const data = simulationDataRef.current || simulationData;
+    if (!data || data.maxTime <= 0) return;
+    const container = waveformCanvasContainerRef.current;
+    if (!container) return;
+
+    const availableWidth = container.clientWidth;
+    if (availableWidth <= 0) return;
+
+    const neededWidth = data.maxTime * BASE_PIXELS_PER_UNIT;
+    if (neededWidth <= 0) return;
+
+    // Fit with 2% breathing room so waveform spans nearly full available width
+    const targetZoom = Math.max(0.0001, Math.min(20, (availableWidth * 0.98) / neededWidth));
+    zoomLevelRef.current = targetZoom;
+    setZoomLevel(targetZoom);
+    container.scrollLeft = 0;
+  }, [simulationData]);
+
+  // Automatically recompute Zoom Fit when panel visibility changes (e.g. Focus Mode)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (simulationDataRef.current && simulationDataRef.current.maxTime > 0) {
+        handleZoomFit();
+      }
+    }, 60);
+    return () => clearTimeout(timer);
+  }, [isProjectOpen, isObjectsOpen, isEditorOpen, isConsoleOpen, handleZoomFit]);
+
+  // ── Global Keyboard Shortcuts ─────────────────────────────
+  const compileSimulationRef = useRef(compileSimulation);
+  useEffect(() => {
+    compileSimulationRef.current = compileSimulation;
+  });
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't intercept when typing inside inputs
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+        return;
+      }
+
+      if (e.altKey) {
+        if (e.key === 'p' || e.key === 'P') {
+          e.preventDefault();
+          setIsProjectOpen(prev => !prev);
+        } else if (e.key === 'o' || e.key === 'O') {
+          e.preventDefault();
+          setIsObjectsOpen(prev => !prev);
+        } else if (e.key === 'e' || e.key === 'E') {
+          e.preventDefault();
+          setIsEditorOpen(prev => !prev);
+        } else if (e.key === 't' || e.key === 'T') {
+          e.preventDefault();
+          setIsConsoleOpen(prev => !prev);
+        } else if (e.key === 'f' || e.key === 'F') {
+          e.preventDefault();
+          handleZoomFit();
+        }
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        compileSimulationRef.current();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [simulationData]);
+
+  // ── Ruler Ticks Calculation ───────────────────────────────
   const rulerTicks = useMemo(() => {
     if (!simulationData || simulationData.maxTime === 0) return [];
-    
-    // Determine how many time units represent roughly 100 pixels at current zoom
     const targetUnits = 100 / (BASE_PIXELS_PER_UNIT * zoomLevel);
-    
-    // Find nearest nice order of magnitude (1, 10, 100, etc)
     const magnitude = Math.pow(10, Math.floor(Math.log10(targetUnits || 1)));
     const norm = targetUnits / magnitude;
-    
-    // Pick nice intervals: 1, 2, 5, 10
     let interval = norm > 5 ? 10 * magnitude : norm > 2 ? 5 * magnitude : norm > 1 ? 2 * magnitude : magnitude;
-    interval = Math.max(1, Math.round(interval)); // Enforce minimum tick of 1 unit
-    
+    interval = Math.max(1, Math.round(interval));
+
     const ticks: number[] = [];
     for (let t = 0; t <= simulationData.maxTime; t += interval) {
       ticks.push(t);
@@ -219,416 +587,508 @@ export default function WaveformSimulator() {
     return ticks;
   }, [simulationData, zoomLevel]);
 
-  // ── Visible signals & renderable rows ────────────────────
+  // ── Visible Signals & Renderable Rows ─────────────────────
   const visibleSignals = useMemo(() => {
     if (!simulationData) return [] as VCDSignal[];
-    return simulationData.signals.filter(s => waveSignalNames.includes(s.name));
+    const sigMap = new Map<string, VCDSignal>();
+    simulationData.signals.forEach(s => sigMap.set(s.name, s));
+    const result: VCDSignal[] = [];
+    waveSignalNames.forEach(name => {
+      const sig = sigMap.get(name);
+      if (sig && !result.includes(sig)) {
+        result.push(sig);
+      }
+    });
+    return result;
   }, [simulationData, waveSignalNames]);
 
   const renderableRows = useMemo<RenderableRow[]>(() => {
     const rows: RenderableRow[] = [];
     visibleSignals.forEach(sig => {
-      rows.push({ type: 'signal', id: sig.name, signal: sig,
-        displayName: sig.name.split('.').pop() || sig.name, indent: 0 });
+      const parts = sig.name.split('.');
+      const leaf = parts.pop() || sig.name;
+      const scope = parts.join('.');
+      rows.push({
+        type: 'signal',
+        id: sig.name,
+        signal: sig,
+        displayName: leaf,
+        scopePath: scope || undefined,
+        indent: 0,
+      });
       if (sig.width > 1 && expandedBusses.includes(sig.name)) {
         for (let i = sig.width - 1; i >= 0; i--) {
-          rows.push({ type: 'bit', id: `${sig.name}[${i}]`, signal: sig,
-            bitIndex: i, displayName: `[${i}]`, indent: 12, parentName: sig.name });
+          rows.push({
+            type: 'bit',
+            id: `${sig.name}[${i}]`,
+            signal: sig,
+            bitIndex: i,
+            displayName: `[${i}]`,
+            scopePath: scope || undefined,
+            indent: 12,
+            parentName: sig.name,
+          });
         }
       }
     });
     return rows;
   }, [visibleSignals, expandedBusses]);
 
-  const toggleBusExpand = (name: string) =>
+  const toggleBusExpand = (name: string) => {
     setExpandedBusses(prev => prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]);
+  };
 
-  // ── Context menu ──────────────────────────────────────────
   const handleContextMenu = (e: React.MouseEvent, signalName: string, type: 'radix' | 'remove') => {
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY, signalName, type });
   };
-  const closeContextMenu = () => setContextMenu(null);
 
-  // ── Layout drag ───────────────────────────────────────────
-  const handleDrag = (e: MouseEvent, setter: React.Dispatch<React.SetStateAction<number>>) => {
-    e.preventDefault();
-    setIsResizing(true);
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const isVertical = setter === setBottomHeight;
 
-    const onMouseMove = (moveEvent: MouseEvent) => {
-      if (isVertical) {
-        const delta = startY - moveEvent.clientY;
-        setter(prev => Math.max(10, Math.min(80, prev + (delta / window.innerHeight) * 100)));
-      } else {
-        const delta = moveEvent.clientX - startX;
-        setter(prev => Math.max(10, Math.min(50, prev + (delta / window.innerWidth) * 100)));
-      }
-    };
-    const onMouseUp = () => {
-      setIsResizing(false);
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-    };
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-  };
+  const activeEditorFile = activeEditorSlot === 'source' ? sourceFile : testbenchFile;
 
   return (
-    <div className={`flex flex-col h-full bg-[#1e1e1e] text-[#d4d4d4] font-sans overflow-hidden ${isResizing ? 'select-none' : 'selection:bg-[#3a3d41]'}`}>
+    <div
+      data-testid="waveform-workspace"
+      data-compile-status={compileStatus}
+      className="flex flex-col h-full w-full bg-[#0a1120] text-slate-200 font-sans overflow-hidden select-none"
+    >
+      {/* ── Hidden File Inputs ──────────────────────────────────── */}
+      <input
+        type="file"
+        ref={sourceInputRef}
+        onChange={handleSourceUpload}
+        className="hidden"
+        accept=".v,.sv,.txt"
+      />
+      <input
+        type="file"
+        ref={tbInputRef}
+        onChange={handleTbUpload}
+        className="hidden"
+        accept=".v,.sv,.txt"
+      />
+      <input
+        type="file"
+        ref={vcdInputRef}
+        onChange={handleVcdUpload}
+        className="hidden"
+        accept=".vcd"
+      />
+      <input
+        type="file"
+        ref={generalInputRef}
+        onChange={handleGeneralUpload}
+        multiple
+        className="hidden"
+        accept=".v,.sv,.txt,.vcd"
+      />
 
-      {/* ── TOOLBAR ─────────────────────────────────────────────────── */}
-      <div className="flex items-center px-4 h-12 bg-[#2d2d2d] border-b border-[#3c3c3c] shrink-0 shadow-sm z-20">
-        <div className="flex items-center gap-6 w-full">
-          {/* EDA Actions */}
-          <div className="flex items-center gap-2">
-            {/* Upload — Compile'in solunda */}
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium bg-[#3a3d41] hover:bg-[#4a4d51] transition-colors"
-              title="Upload .sv / .v / .vcd file"
-            >
-              <Upload size={16} />
-              Upload
-            </button>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileUpload}
-              className="hidden"
-              multiple
-              accept=".v,.sv,.txt,.vcd"
-            />
+      {/* ── TOP TOOLBAR ─────────────────────────────────────────── */}
+      <WaveformToolbar
+        isCompiled={compileStatus === 'success' && Boolean(simulationData && simulationData.maxTime > 0)}
+        isCompiling={isCompiling}
+        isSimRunning={isSimRunning}
+        isPlaying={isPlaying}
+        zoomLevel={zoomLevel}
+        currentTime={currentTime}
+        cursorB={cursorB}
+        timescale={simulationData?.timescale}
+        projectPanelOpen={isProjectOpen}
+        objectsPanelOpen={isObjectsOpen}
+        editorOpen={isEditorOpen}
+        consoleOpen={isConsoleOpen}
+        onToggleProjectPanel={() => setIsProjectOpen(prev => !prev)}
+        onToggleObjectsPanel={() => setIsObjectsOpen(prev => !prev)}
+        onToggleEditor={() => setIsEditorOpen(prev => !prev)}
+        onToggleConsole={() => setIsConsoleOpen(prev => !prev)}
+        onUpload={() => generalInputRef.current?.click()}
+        onCompile={compileSimulation}
+        onRun={runSimulation}
+        onRestart={restartSimulation}
+        onZoomIn={() => setZoomLevel(prev => Math.min(10, prev + 0.2))}
+        onZoomOut={() => setZoomLevel(prev => Math.max(0.1, prev - 0.2))}
+        onZoomFit={handleZoomFit}
+      />
 
-            <div className="w-px h-5 bg-[#555]" />
+      {/* ── MAIN WORKSPACE AREA ─────────────────────────────────── */}
+      <div className="flex-1 flex flex-col min-h-0 relative overflow-hidden">
+        <div className="flex-1 flex min-h-0 overflow-hidden relative">
 
-            <button
-              onClick={compileSimulation}
-              disabled={isCompiling}
-              className={`flex items-center gap-2 px-4 py-1.5 rounded text-sm font-medium transition-all ${
-                isCompiling
-                  ? 'bg-blue-600/50 text-blue-200 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-500 text-white shadow-md hover:shadow-lg'
-              }`}
-            >
-              {isCompiling ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : <Settings size={16} />}
-              {isCompiling ? 'Compiling...' : 'Compile & Load'}
-            </button>
-            <button
-              onClick={runSimulation}
-              disabled={!simulationData || isCompiling || isSimRunning}
-              className={`flex items-center gap-2 px-4 py-1.5 rounded text-sm font-medium transition-all ${
-                !simulationData || isCompiling || isSimRunning
-                  ? 'bg-green-700/50 text-green-300/50 cursor-not-allowed'
-                  : 'bg-green-600 hover:bg-green-500 text-white shadow-md hover:shadow-lg'
-              }`}
-            >
-              <Play size={16} />
-              Run
-            </button>
-            <button
-              onClick={restartSimulation}
-              disabled={!isSimRunning}
-              className="flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium hover:bg-[#3a3d41] transition-colors disabled:opacity-50"
-            >
-              <RotateCcw size={16} />
-            </button>
-          </div>
+          {/* ── Panel 1: Project Panel ───────────────────────────── */}
+          {isProjectOpen && (
+            <>
+              <WaveformProjectPanel
+                width={layout.projectWidth}
+                sourceFile={sourceFile}
+                testbenchFile={testbenchFile}
+                vcdFile={vcdFile}
+                activeEditorSlot={activeEditorSlot}
+                onSelectSlot={(slot) => {
+                  setActiveEditorSlot(slot);
+                  setIsEditorOpen(true);
+                }}
+                onImportSource={() => sourceInputRef.current?.click()}
+                onImportTestbench={() => tbInputRef.current?.click()}
+                onImportVcd={() => vcdInputRef.current?.click()}
+                onClearSlot={handleClearSlot}
+                rootTree={rootTree}
+                activeScope={activeScope}
+                onScopeSelect={setActiveScope}
+              />
 
-          <div className="w-px h-6 bg-[#444]" />
+              {/* Boundary 1: Project ↔ Rest */}
+              <ResizableDivider
+                orientation="vertical"
+                data-testid="splitter-wf-project"
+                aria-label="Resize Project Panel"
+                className="z-30"
+                valueNow={layout.projectWidth}
+                valueMin={150}
+                valueMax={380}
+                onResize={(delta) => {
+                  setLayout(prev => {
+                    const next = { ...prev, projectWidth: Math.max(150, Math.min(380, prev.projectWidth + delta)) };
+                    return next;
+                  });
+                }}
+                onResizeEnd={() => persistLayout(layoutRef.current)}
+                onReset={() => {
+                  setLayout(prev => ({ ...prev, projectWidth: DEFAULT_LAYOUT.projectWidth }));
+                  persistLayout({ ...layoutRef.current, projectWidth: DEFAULT_LAYOUT.projectWidth });
+                }}
+              />
+            </>
+          )}
 
-          {/* Zoom & Navigation */}
-          <div className="flex items-center gap-3 bg-[#1e1e1e] rounded-md px-3 py-1 border border-[#3c3c3c]">
-            <button onClick={() => setZoomLevel(prev => Math.max(0.1, prev - 0.2))}
-                    className="p-1 hover:bg-[#3a3d41] hover:text-white rounded text-gray-400">
-              <ZoomOut size={16} />
-            </button>
-            <div className="flex flex-col items-center min-w-[50px]">
-              <span className="text-[10px] text-gray-500 font-medium tracking-wider">ZOOM</span>
-              <span className="text-xs font-mono">{zoomLevel.toFixed(1)}x</span>
-            </div>
-            <button onClick={() => setZoomLevel(prev => Math.min(10, prev + 0.2))}
-                    className="p-1 hover:bg-[#3a3d41] hover:text-white rounded text-gray-400">
-              <ZoomIn size={16} />
-            </button>
-          </div>
-          
+          {/* ── Panel 2: Objects Panel ───────────────────────────── */}
+          {isObjectsOpen && (
+            <>
+              <WaveformObjectsPanel
+                width={layout.objectsWidth}
+                activeScope={activeScope}
+                currentTime={currentTime}
+                waveSignalNames={waveSignalNames}
+                isCompiled={compileStatus === 'success' && Boolean(simulationData && simulationData.maxTime > 0)}
+                hasSimulationData={Boolean(simulationData)}
+                onAddSignals={(names) => setWaveSignalNames(prev => Array.from(new Set([...prev, ...names])))}
+                onClose={() => setIsObjectsOpen(false)}
+              />
 
-          <div className="ml-auto flex items-center gap-3">
-             <div className="flex items-center gap-2 px-3 py-1 bg-[#1e1e1e] rounded border border-[#3c3c3c]">
-                <span className="text-[10px] text-gray-500 font-medium">TIME:</span>
-                <span className="text-xs font-mono text-[#00ff00] w-[60px] text-right">
-                  {formatTime(currentTime, simulationData?.timescale)}
-                </span>
-             </div>
-          </div>
-        </div>
-      </div>
+              {/* Boundary 2: Objects ↔ Right Area */}
+              <ResizableDivider
+                orientation="vertical"
+                data-testid="splitter-wf-objects"
+                aria-label="Resize Objects Panel"
+                className="z-30"
+                valueNow={layout.objectsWidth}
+                valueMin={160}
+                valueMax={420}
+                onResize={(delta) => {
+                  setLayout(prev => {
+                    const next = { ...prev, objectsWidth: Math.max(160, Math.min(420, prev.objectsWidth + delta)) };
+                    return next;
+                  });
+                }}
+                onResizeEnd={() => persistLayout(layoutRef.current)}
+                onReset={() => {
+                  setLayout(prev => ({ ...prev, objectsWidth: DEFAULT_LAYOUT.objectsWidth }));
+                  persistLayout({ ...layoutRef.current, objectsWidth: DEFAULT_LAYOUT.objectsWidth });
+                }}
+              />
+            </>
+          )}
 
-      {/* ── MAIN WORKSPACE ────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-h-0 bg-[#1e1e1e]">
-        <div className="flex-1 flex overflow-hidden">
-          
-          {/* LEFT PANEL: Project Explorer & Hardware Hierarchy */}
-          <div className="shrink-0 flex flex-col border-r border-[#333333] bg-[#252526]" style={{ width: `${leftWidth}%`, transition: isResizing ? 'none' : '' }}>
-            {/* Project Files */}
-            <div className="flex-1 min-h-[100px] flex flex-col overflow-hidden">
-              <div className="px-3 py-1.5 bg-[#2d2d2d] text-xs font-semibold uppercase tracking-wider text-gray-400 border-b border-[#333] flex items-center gap-2 shrink-0">
-                <FolderOpen size={14} /> Project Files
-              </div>
-              <div className="flex-1 overflow-y-auto py-1">
-                {projectFiles.length === 0 && (
-                  <div className="px-3 py-4 text-xs text-gray-500 italic text-center">
-                    No files. Upload a .sv/.v/.vcd file.
-                  </div>
-                )}
-                {projectFiles.map(file => (
-                  <div
-                    key={file.name}
-                    className="flex items-center gap-2 px-3 py-1 text-sm text-gray-300 hover:bg-[#37373d] hover:text-white cursor-pointer group"
-                    onClick={() => {
-                      if (!openTabs.includes(file.name)) setOpenTabs(prev => [...prev, file.name]);
-                      setActiveTab(file.name);
-                    }}
-                    onContextMenu={e => handleFileContextMenu(e, file.name)}
-                  >
-                    <FileCode size={14} className={file.name.endsWith('.sv') ? 'text-blue-400' : file.name.endsWith('.vcd') ? 'text-green-400' : 'text-gray-400'} />
-                    <span className="truncate flex-1">{file.name}</span>
-                    {/* Hover trash icon */}
-                    <button
-                      className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-red-500/20 hover:text-red-400 text-gray-500"
-                      onClick={e => { e.stopPropagation(); deleteFile(file.name); }}
-                      title="Delete file"
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
+          {/* ── Center Right Area: Editor + Waveform ─────────────── */}
+          <div ref={rightAreaRef} className="flex-1 flex flex-col min-w-0 bg-[#070c18] relative overflow-hidden isolate">
             
-            <div className="h-px bg-[#333] shrink-0" />
-
-            {/* Instance Tree (only populated during compilation) */}
-            <div className="flex-1 min-h-[100px] flex flex-col overflow-hidden">
-              <div className="px-3 py-1.5 bg-[#2d2d2d] text-xs font-semibold uppercase tracking-wider text-gray-400 border-b border-[#333] flex items-center gap-2 shrink-0">
-                <Settings size={14} /> Hardware Hierarchy
-              </div>
-              <div className="flex-1 overflow-y-auto">
-                <InstanceTree
-                  tree={rootTree}
-                  activeScope={activeScope}
-                  onScopeSelect={setActiveScope}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* SPLITTER */}
-          <div className="w-1 cursor-col-resize hover:bg-blue-500 active:bg-blue-600 z-10 shrink-0 transition-colors"
-               onMouseDown={e => handleDrag(e.nativeEvent, setLeftWidth)} />
-
-          {/* MIDDLE PANEL: Objects */}
-          <div className="shrink-0 flex flex-col border-r border-[#333333] bg-[#252526]" style={{ width: `${midWidth}%`, transition: isResizing ? 'none' : '' }}>
-            <ObjectsPanel
-              activeScope={activeScope}
-              currentTime={currentTime}
-              waveSignalNames={waveSignalNames}
-              onAddSignals={names => setWaveSignalNames(prev => Array.from(new Set([...prev, ...names])))}
-            />
-          </div>
-
-          {/* SPLITTER */}
-          <div className="w-1 cursor-col-resize hover:bg-blue-500 active:bg-blue-600 z-10 shrink-0 transition-colors"
-               onMouseDown={e => handleDrag(e.nativeEvent, setMidWidth)} />
-
-          {/* RIGHT PANEL: Editor & Waveform */}
-          <div className="flex-1 flex flex-col min-w-0 bg-[#1e1e1e] relative">
-            {/* Tab Bar */}
-            <div className="flex bg-[#2d2d2d] shrink-0 overflow-x-auto overflow-y-hidden border-b border-[#1e1e1e]">
-              {openTabs.map((tab, idx) => (
+            {/* ── Top Section: HDL Code Editor ───────────────────── */}
+            {isEditorOpen && (
+              <>
                 <div
-                  key={idx}
-                  onClick={() => setActiveTab(tab)}
-                  className={`flex items-center gap-2 px-4 py-2 text-sm border-r border-[#1e1e1e] cursor-pointer min-w-max transition-colors relative ${
-                    activeTab === tab
-                      ? 'bg-[#1e1e1e] text-blue-400'
-                      : 'bg-[#2d2d2d] text-gray-400 hover:bg-[#37373d]'
-                  }`}
+                  data-testid="wf-editor-container"
+                  className="flex flex-col min-h-[120px] bg-[#0c1322] border-b border-[#1e293b]"
+                  style={{
+                    height: rightAreaRef.current
+                      ? Math.round(rightAreaRef.current.clientHeight * layout.editorRatio)
+                      : '35%',
+                  }}
                 >
-                  {tab === 'waveform' ? <Clock size={14} /> : <FileCode size={14} />}
-                  <span>{tab === 'waveform' ? 'Wave - Default' : tab}</span>
-                  {activeTab === tab && (
-                    <div className="absolute top-0 left-0 right-0 h-[2px] bg-blue-500" />
-                  )}
-                  {tab !== 'waveform' && (
-                    <button
-                      className="ml-2 p-0.5 rounded-full hover:bg-gray-500/20 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setOpenTabs(prev => prev.filter(t => t !== tab));
-                        if (activeTab === tab) setActiveTab('waveform');
-                      }}
-                    >
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
+                  {/* Editor Tab Bar */}
+                  <div className="h-8 bg-[#090f1d] border-b border-[#1e293b] flex items-center justify-between px-2 shrink-0">
+                    <div className="flex items-center gap-1">
+                      <button
+                        data-testid="wf-editor-tab-source"
+                        onClick={() => setActiveEditorSlot('source')}
+                        className={`flex items-center gap-1.5 px-3 py-1 text-xs font-mono rounded transition-colors ${
+                          activeEditorSlot === 'source'
+                            ? 'bg-[#1e293b] text-blue-300 font-semibold border-b-2 border-blue-500'
+                            : 'text-slate-400 hover:bg-[#111c33] hover:text-slate-200'
+                        }`}
+                      >
+                        <span>{sourceFile ? sourceFile.name : 'source (empty)'}</span>
+                      </button>
 
-            {/* Tab Content */}
-            {activeTab === 'waveform' ? (
-              <div className="flex-1 flex overflow-hidden bg-black" style={{ pointerEvents: isResizing ? 'none' : 'auto' }}>
-                {/* Left: Signal Names Panel */}
-                <SignalNamePanel
-                  rows={renderableRows}
-                  currentTime={currentTime}
-                  selectedSignal={selectedSignal}
-                  radixes={radixes}
-                  onSelectSignal={setSelectedSignal}
-                  onSetCurrentTime={setCurrentTime}
-                  onContextMenu={handleContextMenu}
-                  onToggleBusExpand={toggleBusExpand}
-                  expandedBusses={expandedBusses}
-                />
-                
-                {/* Right: SVG Canvas */}
-                <WaveformCanvas
-                  simulationData={simulationData}
-                  isSimRunning={isSimRunning}
-                  rows={renderableRows}
-                  selectedSignal={selectedSignal}
-                  zoomLevel={zoomLevel}
-                  rulerTicks={rulerTicks}
-                  currentTime={currentTime}
-                  cursorB={cursorB}
-                  hoverTime={hoverTime}
-                  radixes={radixes}
-                  markers={markers}
-                  onTimeChange={setCurrentTime}
-                  onCursorBChange={setCursorB}
-                  onHoverChange={setHoverTime}
-                  onAddMarker={handleAddMarker}
-                  onRemoveMarker={handleRemoveMarker}
-                />
-              </div>
-            ) : (
-              <div className="flex-1 min-h-0 w-full h-full relative" style={{ pointerEvents: isResizing ? 'none' : 'auto' }}>
-                <MonacoEditor
-                  height="100%"
-                  language={activeTab.endsWith('.sv') || activeTab.endsWith('.v') ? 'systemverilog' : 'verilog'}
-                  theme="vs-dark"
-                  value={projectFiles.find(f => f.name === activeTab)?.content || ''}
-                  onChange={value => handleCodeChange(activeTab, value ?? '')}
-                  options={{
-                    minimap: { enabled: false },
-                    fontSize: 13,
-                    wordWrap: 'on',
-                    scrollBeyondLastLine: false,
-                    fontFamily: '"Cascadia Code", "Fira Code", Consolas, monospace',
-                    fontLigatures: true,
-                    lineNumbers: 'on',
-                    glyphMargin: false,
-                    folding: true,
-                    automaticLayout: true,
-                    padding: { top: 16 }
+                      <button
+                        data-testid="wf-editor-tab-tb"
+                        onClick={() => setActiveEditorSlot('testbench')}
+                        className={`flex items-center gap-1.5 px-3 py-1 text-xs font-mono rounded transition-colors ${
+                          activeEditorSlot === 'testbench'
+                            ? 'bg-[#1e293b] text-amber-300 font-semibold border-b-2 border-amber-500'
+                            : 'text-slate-400 hover:bg-[#111c33] hover:text-slate-200'
+                        }`}
+                      >
+                        <span>{testbenchFile ? testbenchFile.name : 'testbench (empty)'}</span>
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={() => setIsEditorOpen(false)}
+                      title="Collapse Editor (Alt+E)"
+                      className="text-slate-500 hover:text-slate-300 p-1 rounded transition-colors text-xs"
+                    >
+                      Hide Editor
+                    </button>
+                  </div>
+
+                  {/* Monaco or Empty Slot View */}
+                  <div className="flex-1 min-h-0 relative">
+                    {activeEditorFile ? (
+                      <MonacoEditor
+                        height="100%"
+                        language={activeEditorFile.name.endsWith('.v') ? 'verilog' : 'systemverilog'}
+                        theme="vs-dark"
+                        value={activeEditorFile.content}
+                        onChange={(val) => {
+                          const updated = val ?? '';
+                          if (activeEditorSlot === 'source') {
+                            if (sourceFile?.content !== updated) {
+                              markWorkspaceDirty('waveform');
+                              clearSimulationState();
+                              setCompileStatus('idle');
+                              editSourceContent(updated);
+                            }
+                          } else {
+                            if (testbenchFile?.content !== updated) {
+                              markWorkspaceDirty('waveform');
+                              clearSimulationState();
+                              setCompileStatus('idle');
+                              editTestbenchContent(updated);
+                            }
+                          }
+                        }}
+                        options={{
+                          minimap: { enabled: false },
+                          fontSize: 13,
+                          wordWrap: 'on',
+                          scrollBeyondLastLine: false,
+                          fontFamily: '"Cascadia Code", "Fira Code", Consolas, monospace',
+                          automaticLayout: true,
+                          padding: { top: 8 },
+                        }}
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-[#0a1120]">
+                        <div className="text-slate-400 text-sm font-medium mb-1">
+                          No {activeEditorSlot === 'source' ? 'Source Module' : 'Testbench'} Loaded
+                        </div>
+                        <div className="text-slate-500 text-xs font-mono max-w-sm mb-4">
+                          {activeEditorSlot === 'source'
+                            ? 'Import your Verilog / SystemVerilog DUT design module to begin simulation.'
+                            : 'Import your Verilog / SystemVerilog testbench ($dumpfile / $dumpvars) to drive simulation.'}
+                        </div>
+                        <button
+                          onClick={() => activeEditorSlot === 'source' ? sourceInputRef.current?.click() : tbInputRef.current?.click()}
+                          className="px-3 py-1.5 rounded text-xs font-medium bg-blue-600 hover:bg-blue-500 text-white shadow-sm"
+                        >
+                          Import {activeEditorSlot === 'source' ? 'Source File' : 'Testbench File'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Boundary 3: Editor ↔ Waveform */}
+                <ResizableDivider
+                  orientation="horizontal"
+                  data-testid="splitter-wf-editor-wave"
+                  aria-label="Resize Editor vs Waveform"
+                  valueNow={layout.editorRatio}
+                  valueMin={0.18}
+                  valueMax={0.72}
+                  onResize={(_, currentPos, stepMultiplier) => {
+                    if (stepMultiplier !== undefined) {
+                      setLayout(prev => ({
+                        ...prev,
+                        editorRatio: Math.max(0.18, Math.min(0.72, prev.editorRatio + stepMultiplier)),
+                      }));
+                      return;
+                    }
+                    if (rightAreaRef.current) {
+                      const rect = rightAreaRef.current.getBoundingClientRect();
+                      const relativeY = currentPos.clientY - rect.top;
+                      const newRatio = Math.max(0.18, Math.min(0.72, relativeY / rect.height));
+                      setLayout(prev => ({ ...prev, editorRatio: newRatio }));
+                    }
+                  }}
+                  onResizeEnd={() => persistLayout(layoutRef.current)}
+                  onReset={() => {
+                    setLayout(prev => ({ ...prev, editorRatio: DEFAULT_LAYOUT.editorRatio }));
+                    persistLayout({ ...layoutRef.current, editorRatio: DEFAULT_LAYOUT.editorRatio });
                   }}
                 />
-              </div>
+              </>
             )}
+
+            {/* ── Bottom Section: Waveform Workspace ─────────────── */}
+            <div className="flex-1 flex min-h-0 bg-black overflow-hidden relative">
+              {/* Left Column: Signal Names Panel */}
+              <SignalNamePanel
+                width={layout.signalColumnWidth}
+                rows={renderableRows}
+                currentTime={currentTime}
+                selectedSignal={selectedSignal}
+                radixes={radixes}
+                onSelectSignal={setSelectedSignal}
+                onSetCurrentTime={setCurrentTime}
+                onContextMenu={handleContextMenu}
+                onToggleBusExpand={toggleBusExpand}
+                expandedBusses={expandedBusses}
+              />
+
+              {/* Boundary 4: Signal Names ↔ Timeline Canvas */}
+              <ResizableDivider
+                orientation="vertical"
+                data-testid="splitter-wf-signal-col"
+                aria-label="Resize Signal Name Column"
+                valueNow={layout.signalColumnWidth}
+                valueMin={160}
+                valueMax={480}
+                onResize={(delta) => {
+                  setLayout(prev => {
+                    const next = { ...prev, signalColumnWidth: Math.max(160, Math.min(480, prev.signalColumnWidth + delta)) };
+                    return next;
+                  });
+                }}
+                onResizeEnd={() => persistLayout(layoutRef.current)}
+                onReset={() => {
+                  setLayout(prev => ({ ...prev, signalColumnWidth: DEFAULT_LAYOUT.signalColumnWidth }));
+                  persistLayout({ ...layoutRef.current, signalColumnWidth: DEFAULT_LAYOUT.signalColumnWidth });
+                }}
+              />
+
+              {/* Right Column: Waveform Canvas */}
+              <WaveformCanvas
+                containerRef={waveformCanvasContainerRef}
+                simulationData={simulationData}
+                compileStatus={compileStatus}
+                isSimRunning={isSimRunning}
+                rows={renderableRows}
+                selectedSignal={selectedSignal}
+                zoomLevel={zoomLevel}
+                rulerTicks={rulerTicks}
+                currentTime={currentTime}
+                cursorB={cursorB}
+                hoverTime={hoverTime}
+                radixes={radixes}
+                markers={markers}
+                onTimeChange={setCurrentTime}
+                onCursorBChange={setCursorB}
+                onHoverChange={setHoverTime}
+                onAddMarker={(mk) => setMarkers(prev => [...prev, mk])}
+                onRemoveMarker={(id) => setMarkers(prev => prev.filter(m => m.id !== id))}
+              />
+            </div>
+
           </div>
         </div>
 
-        {/* ── BOTTOM TRANSCRIPT PANEL ─────────────────────────────────── */}
-        <div className="shrink-0 flex flex-col bg-[#1e1e1e] border-t border-[#3c3c3c]" style={{ height: `${bottomHeight}%`, transition: isResizing ? 'none' : '' }}>
-          <div
-            className="h-1 cursor-row-resize hover:bg-blue-500 active:bg-blue-600 transition-colors shrink-0 -mt-[1px]"
-            onMouseDown={e => handleDrag(e.nativeEvent, setBottomHeight)}
-          />
-          <div className="px-4 py-1.5 bg-[#2d2d2d] text-xs font-semibold tracking-wider text-gray-300 flex justify-between items-center shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.3)] z-10">
-            <span>TRANSCRIPT</span>
-          </div>
-          <div ref={transcriptRef} className="flex-1 overflow-y-auto p-3 font-mono text-[11px] text-gray-300 leading-tight">
-            {simulationData?.logs && simulationData.logs.length > 0 ? (
-              simulationData.logs.map((log, i) => (
-                <div key={i} className={`whitespace-pre-wrap mb-1 ${log.includes('Error') || log.includes('error') ? 'text-red-400' : log.includes('Warning') ? 'text-yellow-400' : ''}`}>
-                  {log}
-                </div>
-              ))
-            ) : (
-              <div className="text-gray-500 italic">No output yet.</div>
-            )}
-          </div>
-        </div>
+        {/* ── Bottom Panel: Console & Problems ────────────────────── */}
+        {isConsoleOpen && (
+          <>
+            {/* Boundary 5: Workspace ↔ Console */}
+            <ResizableDivider
+              orientation="horizontal"
+              data-testid="splitter-wf-console"
+              aria-label="Resize Console Panel"
+              valueNow={layout.consoleHeight}
+              valueMin={80}
+              valueMax={400}
+              onResize={(delta) => {
+                setLayout(prev => {
+                  const next = { ...prev, consoleHeight: Math.max(80, Math.min(400, prev.consoleHeight - delta)) };
+                  return next;
+                });
+              }}
+              onResizeEnd={() => persistLayout(layoutRef.current)}
+              onReset={() => {
+                setLayout(prev => ({ ...prev, consoleHeight: DEFAULT_LAYOUT.consoleHeight }));
+                persistLayout({ ...layoutRef.current, consoleHeight: DEFAULT_LAYOUT.consoleHeight });
+              }}
+            />
 
+            <WaveformConsole
+              height={layout.consoleHeight}
+              logs={consoleLogs}
+              isCompiling={isCompiling}
+              onClearLogs={() => setConsoleLogs([])}
+              onClose={() => setIsConsoleOpen(false)}
+            />
+          </>
+        )}
       </div>
 
       {/* ── Context Menu (Portal/Absolute) ────────────────────────── */}
       {contextMenu && (
         <div
-          className="fixed z-50 bg-[#252526] border border-[#454545] shadow-xl py-1 rounded w-36"
+          className="fixed z-50 bg-[#0f172a] border border-[#334155] shadow-2xl py-1 rounded w-36 text-slate-200"
           style={{ top: contextMenu.y, left: contextMenu.x }}
         >
           {contextMenu.type === 'radix' && (
             <>
-              <div className="px-3 py-1 text-[10px] text-gray-400 border-b border-[#333] mb-1">Radix</div>
+              <div className="px-3 py-1 text-[10px] text-slate-400 border-b border-[#1e293b] mb-1 font-bold">
+                RADIX
+              </div>
               <button
-                className="w-full text-left px-3 py-1.5 text-xs text-[#cccccc] hover:bg-[#094771] hover:text-white"
+                className="w-full text-left px-3 py-1.5 text-xs hover:bg-blue-600 hover:text-white transition-colors"
                 onClick={() => {
                   setRadixes(prev => ({ ...prev, [contextMenu.signalName]: 'hex' }));
-                  closeContextMenu();
+                  setContextMenu(null);
                 }}
-              >Hexadecimal</button>
+              >
+                Hexadecimal
+              </button>
               <button
-                className="w-full text-left px-3 py-1.5 text-xs text-[#cccccc] hover:bg-[#094771] hover:text-white"
+                className="w-full text-left px-3 py-1.5 text-xs hover:bg-blue-600 hover:text-white transition-colors"
                 onClick={() => {
                   setRadixes(prev => ({ ...prev, [contextMenu.signalName]: 'dec' }));
-                  closeContextMenu();
+                  setContextMenu(null);
                 }}
-              >Decimal</button>
+              >
+                Decimal
+              </button>
               <button
-                className="w-full text-left px-3 py-1.5 text-xs text-[#cccccc] hover:bg-[#094771] hover:text-white"
+                className="w-full text-left px-3 py-1.5 text-xs hover:bg-blue-600 hover:text-white transition-colors"
                 onClick={() => {
                   setRadixes(prev => ({ ...prev, [contextMenu.signalName]: 'bin' }));
-                  closeContextMenu();
+                  setContextMenu(null);
                 }}
-              >Binary</button>
+              >
+                Binary
+              </button>
             </>
           )}
+
           {contextMenu.type === 'remove' && (
             <button
-              className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-[#5a1d1d] hover:text-white"
+              className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-red-950/40 hover:text-red-200 transition-colors"
               onClick={() => {
                 setWaveSignalNames(prev => prev.filter(n => n !== contextMenu.signalName));
-                closeContextMenu();
+                setContextMenu(null);
               }}
-            >Remove from Wave</button>
+            >
+              Remove from Wave
+            </button>
           )}
-        </div>
-      )}
-
-      {/* ── File Context Menu (right-click delete) ────────────────── */}
-      {fileContextMenu && (
-        <div
-          className="fixed z-50 bg-[#252526] border border-[#454545] shadow-xl py-1 rounded w-44"
-          style={{ top: fileContextMenu.y, left: fileContextMenu.x }}
-          onClick={e => e.stopPropagation()}
-        >
-          <div className="px-3 py-1 text-[10px] text-gray-400 border-b border-[#333] mb-1 truncate">
-            {fileContextMenu.fileName}
-          </div>
-          <button
-            className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-[#5a1d1d] hover:text-white flex items-center gap-2"
-            onClick={() => deleteFile(fileContextMenu.fileName)}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-            Delete File
-          </button>
         </div>
       )}
     </div>

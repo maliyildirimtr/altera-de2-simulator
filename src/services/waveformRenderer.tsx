@@ -33,17 +33,15 @@ export interface ViewportWindow {
 export function formatTime(rawTime: number, ts: VCDTimescale | undefined): string {
   if (!ts) return `${rawTime} ps`;
 
-  // Icarus Verilog often emits `$timescale 1s $end` even for ps-level sims.
-  // In that case toPsFactor = 1e12 → value = rawTime / 1e12 → 0.000... s (unreadable).
-  // Instead, treat raw ticks as the display value and show the unit as-is.
-  // The ruler / TIME panel will be readable (e.g. "10 ps" or "30 ns").
-  if (ts.unit === 's' || ts.toPsFactor >= 1e9) {
-    // Prefer to show ticks directly labelled as "ps" for clarity
+  // Icarus Verilog emits $timescale 1s $end if not specified, where toPsFactor = 1e12.
+  if (ts.unit === 's' && ts.toPsFactor >= 1e12) {
     const val = rawTime;
     return `${Number.isInteger(val) ? val : val.toFixed(2)} ps`;
   }
 
-  const value = rawTime / ts.toPsFactor;
+  // VCD timestamps in vcdParser are stored as simulation tick units.
+  // Each tick represents `magnitude` of `unit` (e.g. 1ns, 10ps, etc.).
+  const value = rawTime * (ts.magnitude || 1);
   return `${Number.isInteger(value) ? value : value.toFixed(2)} ${ts.unit}`;
 }
 

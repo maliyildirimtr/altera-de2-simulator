@@ -1,0 +1,373 @@
+/*
+ * ============================================================
+ *  EELab — Design Tokens
+ *  Platform: Electrical & Electronics Engineering Learning Lab
+ *
+ *  STATUS: DEFINED — not yet consumed by components.
+ *  Phase 2 will replace ad-hoc Tailwind classes with these tokens.
+ *
+ *  Layers:
+ *    1. Primitive palette   — raw colour values
+ *    2. Semantic aliases    — role-based (bg, text, border, accent)
+ *    3. Typography          — scale + families
+ *    4. Spacing             — scale tokens
+ *    5. Border radius       — consistent curves
+ *    6. Shadow              — elevation system
+ *    7. Transition          — motion tokens
+ *    8. Z-index             — stacking order
+ * ============================================================
+ */
+
+/* ── 1. Primitive Palette ───────────────────────────────────── */
+:root {
+  /* Landing Page Brand Tokens (Independent of app theme) */
+  --landing-bg: #F9F7F4;
+  --landing-surface: #FFFFFF;
+  --landing-surface-alt: #F3F0EA;
+  --landing-text: #0C1225;
+  --landing-text-secondary: #4B5563;
+  --landing-text-muted: #64748b;
+  --landing-border: #d4cfc9;
+  --landing-border-subtle: #e8e4dc;
+  --landing-navy: #0D1627;
+  --landing-navy-deep: #070B14;
+  --landing-accent: #2563EB;
+
+  /* Neutral (dark-first) */
+  --color-neutral-950: #050508;
+  --color-neutral-900: #0a0a0f;
+  --color-neutral-850: #0f0f16;
+  --color-neutral-800: #12121a;
+  --color-neutral-750: #16161f;
+  --color-neutral-700: #1a1a26;
+  --color-neutral-600: #252535;
+  --color-neutral-500: #3a3a55;
+  --color-neutral-400: #64648a;
+  --color-neutral-300: #9696b8;
+  --color-neutral-200: #c8c8d8;
+  --color-neutral-100: #e8e8f0;
+  --color-neutral-50:  #f4f4f8;
+  --color-neutral-0:   #ffffff;
+
+  /* Navy (deep dark surfaces) */
+  --color-navy-950: #07080f;
+  --color-navy-900: #0d1627;
+
+  /* Blue (primary accent) */
+  --color-blue-900: #0c1a3d;
+  --color-blue-800: #142251;
+  --color-blue-700: #1a3170;
+  --color-blue-600: #1e40af;
+  --color-blue-500: #2563eb;
+  --color-blue-400: #3b82f6;
+  --color-blue-300: #60a5fa;
+  --color-blue-200: #93c5fd;
+  --color-blue-100: #dbeafe;
+
+  /* Indigo (secondary accent) */
+  --color-indigo-600: #4f46e5;
+  --color-indigo-500: #6366f1;
+  --color-indigo-400: #818cf8;
+  --color-indigo-300: #a5b4fc;
+
+  /* Green (signal HIGH / success) */
+  --color-green-600: #16a34a;
+  --color-green-500: #22c55e;
+  --color-green-400: #4ade80;
+  --color-green-300: #86efac;
+
+  /* Red (signal LOW / error) */
+  --color-red-700: #b91c1c;
+  --color-red-600: #dc2626;
+  --color-red-500: #ef4444;
+  --color-red-400: #f87171;
+  --color-red-300: #fca5a5;
+
+  /* Amber (warning / clock) */
+  --color-amber-600: #d97706;
+  --color-amber-500: #f59e0b;
+  --color-amber-400: #fbbf24;
+
+  /* Emerald (waveform / active simulation) */
+  --color-emerald-600: #059669;
+  --color-emerald-500: #10b981;
+  --color-emerald-400: #34d399;
+
+  /* Teal (schematic accent) */
+  --color-teal-600: #0d9488;
+  --color-teal-500: #14b8a6;
+  --color-teal-400: #2dd4bf;
+
+  /* PCB board — kept for DE2 simulator fidelity */
+  --color-pcb-blue:      #0d3b66;
+  --color-pcb-mid:       #0f4880;
+  --color-pcb-dark:      #0a2d50;
+  --color-pcb-trace:     rgba(20, 80, 140, 0.5);
+  --color-pcb-highlight: rgba(30, 100, 180, 0.25);
+  --color-silkscreen:    #e8f0fe;
+  --color-silkscreen-ref:#f5c842;
+}
+
+/* ── 2. Semantic Aliases — Dark Theme (default) ─────────────── */
+[data-theme='dark'], :root {
+  /* Surfaces */
+  --surface-base:     var(--color-neutral-900);
+  --surface-raised:   var(--color-neutral-800);
+  --surface-overlay:  var(--color-neutral-750);
+  --surface-sunken:   var(--color-neutral-950);
+
+  /* Text */
+  --text-primary:     var(--color-neutral-0);
+  --text-secondary:   var(--color-neutral-300);
+  --text-muted:       var(--color-neutral-400);
+  --text-inverse:     var(--color-neutral-900);
+
+  /* Borders */
+  --border-subtle:    var(--color-neutral-700);
+  --border-default:   var(--color-neutral-600);
+  --border-strong:    var(--color-neutral-500);
+
+  /* Accent — Blue */
+  --accent-primary:         var(--color-blue-500);
+  --accent-primary-hover:   var(--color-blue-400);
+  --accent-primary-subtle:  rgba(37, 99, 235, 0.15);
+  --accent-primary-border:  rgba(37, 99, 235, 0.35);
+
+  /* Accent — secondary (indigo) */
+  --accent-secondary:       var(--color-indigo-500);
+  --accent-secondary-hover: var(--color-indigo-400);
+
+  /* Status */
+  --status-success:  var(--color-green-500);
+  --status-error:    var(--color-red-500);
+  --status-warning:  var(--color-amber-500);
+  --status-info:     var(--color-blue-400);
+
+  /* Tool-specific accents */
+  --tool-de2-accent:      var(--color-blue-400);
+  --tool-waveform-accent: var(--color-emerald-400);
+  --tool-schematic-accent:var(--color-teal-400);
+  --tool-examples-accent: var(--color-indigo-400);
+
+  /* Canvas */
+  --canvas-bg:    var(--color-neutral-950);
+  --canvas-grid:  rgba(255, 255, 255, 0.03);
+}
+
+/* ── 2b. Semantic Aliases — Light Theme ─────────────────────── */
+[data-theme='light'] {
+  --surface-page:       #f9f7f4;
+  --surface-primary:    #ffffff;
+  --surface-secondary:  #f3f0ea;
+  --surface-elevated:   #ffffff;
+  --surface-navy:       var(--color-navy-900);
+  --surface-navy-dark:  var(--color-navy-950);
+
+  --text-primary:     var(--color-neutral-950);
+  --text-secondary:   var(--color-neutral-500);
+  --text-muted:       var(--color-neutral-400);
+  --text-inverse:     var(--color-neutral-0);
+
+  --border-subtle:    #e8e4dc;
+  --border-default:   #d4cfc9;
+  --border-strong:    #b8b2aa;
+
+  --accent-primary:         var(--color-blue-500);
+  --accent-primary-hover:   var(--color-blue-600);
+  --accent-primary-subtle:  rgba(37, 99, 235, 0.08);
+  --accent-primary-border:  rgba(37, 99, 235, 0.25);
+
+  --accent-secondary:       var(--color-indigo-600);
+  --accent-secondary-hover: var(--color-indigo-500);
+
+  --status-success:  var(--color-green-600);
+  --status-error:    var(--color-red-600);
+  --status-warning:  var(--color-amber-600);
+  --status-info:     var(--color-blue-500);
+
+  --tool-de2-accent:      var(--color-blue-500);
+  --tool-waveform-accent: var(--color-emerald-600);
+  --tool-schematic-accent:var(--color-teal-600);
+  --tool-examples-accent: var(--color-indigo-600);
+
+  --canvas-bg:    var(--color-neutral-50);
+  --canvas-grid:  rgba(0, 0, 0, 0.05);
+}
+
+/* ── 3. Typography ──────────────────────────────────────────── */
+:root {
+  /* Families */
+  --font-sans:  'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono:  'JetBrains Mono', 'Fira Code', ui-monospace, 'Cascadia Code',
+                'Courier New', monospace;
+  --font-display: 'Inter', var(--font-sans);
+
+  /* Scale (rem, 16px base) */
+  --text-xs:   0.75rem;   /* 12px */
+  --text-sm:   0.8125rem; /* 13px */
+  --text-base: 0.875rem;  /* 14px  — default UI text */
+  --text-md:   1rem;      /* 16px */
+  --text-lg:   1.125rem;  /* 18px */
+  --text-xl:   1.25rem;   /* 20px */
+  --text-2xl:  1.5rem;    /* 24px */
+  --text-3xl:  1.875rem;  /* 30px */
+  --text-4xl:  2.25rem;   /* 36px */
+
+  /* Weight */
+  --font-normal:   400;
+  --font-medium:   500;
+  --font-semibold: 600;
+  --font-bold:     700;
+  --font-extrabold:800;
+
+  /* Line height */
+  --leading-tight:  1.25;
+  --leading-snug:   1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed:1.625;
+
+  /* Letter spacing */
+  --tracking-tight:  -0.025em;
+  --tracking-normal:  0;
+  --tracking-wide:    0.025em;
+  --tracking-wider:   0.05em;
+  --tracking-widest:  0.1em;
+}
+
+/* ── 4. Spacing ─────────────────────────────────────────────── */
+:root {
+  --space-0:   0;
+  --space-px:  1px;
+  --space-0-5: 0.125rem;  /* 2px  */
+  --space-1:   0.25rem;   /* 4px  */
+  --space-1-5: 0.375rem;  /* 6px  */
+  --space-2:   0.5rem;    /* 8px  */
+  --space-2-5: 0.625rem;  /* 10px */
+  --space-3:   0.75rem;   /* 12px */
+  --space-4:   1rem;      /* 16px */
+  --space-5:   1.25rem;   /* 20px */
+  --space-6:   1.5rem;    /* 24px */
+  --space-8:   2rem;      /* 32px */
+  --space-10:  2.5rem;    /* 40px */
+  --space-12:  3rem;      /* 48px */
+  --space-16:  4rem;      /* 64px */
+  --space-20:  5rem;      /* 80px */
+  --space-24:  6rem;      /* 96px */
+
+  /* Semantic spacing */
+  --space-nav-height:     4rem;    /* 64px — fixed navbar */
+  --space-panel-padding:  var(--space-4);
+  --space-card-padding:   var(--space-6);
+  --space-section-gap:    var(--space-8);
+}
+
+/* ── 5. Border Radius ───────────────────────────────────────── */
+:root {
+  --radius-none: 0;
+  --radius-sm:   0.25rem;  /* 4px  */
+  --radius-md:   0.375rem; /* 6px  */
+  --radius-lg:   0.5rem;   /* 8px  */
+  --radius-xl:   0.75rem;  /* 12px */
+  --radius-2xl:  1rem;     /* 16px */
+  --radius-full: 9999px;
+
+  /* Semantic */
+  --radius-btn:    var(--radius-md);
+  --radius-card:   var(--radius-xl);
+  --radius-panel:  var(--radius-lg);
+  --radius-badge:  var(--radius-full);
+  --radius-input:  var(--radius-md);
+}
+
+/* ── 6. Shadow / Elevation ──────────────────────────────────── */
+:root {
+  --shadow-xs:  0 1px 2px rgba(0,0,0,0.40);
+  --shadow-sm:  0 1px 4px rgba(0,0,0,0.50), 0 1px 2px rgba(0,0,0,0.30);
+  --shadow-md:  0 4px 12px rgba(0,0,0,0.55), 0 2px 4px rgba(0,0,0,0.40);
+  --shadow-lg:  0 10px 30px rgba(0,0,0,0.65), 0 4px 8px rgba(0,0,0,0.40);
+  --shadow-xl:  0 20px 60px rgba(0,0,0,0.75), 0 8px 16px rgba(0,0,0,0.50);
+
+  /* Glow (signal / accent) */
+  --glow-blue:    0 0 10px rgba(37, 99, 235, 0.50),
+                  0 0 30px rgba(37, 99, 235, 0.20);
+  --glow-green:   0 0 10px rgba(34, 197, 94, 0.60),
+                  0 0 25px rgba(34, 197, 94, 0.25);
+  --glow-red:     0 0 10px rgba(239, 68, 68, 0.60),
+                  0 0 25px rgba(239, 68, 68, 0.25);
+}
+
+/* ── 7. Transition / Motion ─────────────────────────────────── */
+:root {
+  --ease-default:   cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in:        cubic-bezier(0.4, 0, 1, 1);
+  --ease-out:       cubic-bezier(0, 0, 0.2, 1);
+  --ease-spring:    cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --duration-instant: 80ms;
+  --duration-fast:    150ms;
+  --duration-normal:  250ms;
+  --duration-slow:    400ms;
+  --duration-panel:   280ms;
+
+  /* Composed tokens */
+  --transition-colors:   color var(--duration-fast) var(--ease-default),
+                         background-color var(--duration-fast) var(--ease-default),
+                         border-color var(--duration-fast) var(--ease-default),
+                         box-shadow var(--duration-fast) var(--ease-default);
+  --transition-transform: transform var(--duration-normal) var(--ease-default);
+  --transition-panel:    width var(--duration-panel) var(--ease-default),
+                         opacity var(--duration-normal) var(--ease-default),
+                         min-width var(--duration-panel) var(--ease-default);
+}
+
+/* ── 8. Z-index ─────────────────────────────────────────────── */
+:root {
+  --z-base:    0;
+  --z-raised:  10;
+  --z-dropdown:200;
+  --z-sticky:  300;
+  --z-overlay: 400;
+  --z-modal:   500;
+  --z-toast:   600;
+  --z-tooltip: 700;
+
+  /* Named */
+  --z-navbar:  var(--z-sticky);     /* 300 */
+  --z-sidebar: var(--z-raised);     /* 10  */
+  --z-panel:   var(--z-raised);     /* 10  */
+}
+
+/* ── 9. Landing Page Explicit Surface & Text Classes ───────── */
+.landing-page {
+  background-color: var(--landing-bg) !important;
+  color: var(--landing-text) !important;
+}
+
+.landing-navbar {
+  background-color: var(--landing-navy) !important;
+}
+
+.landing-hero {
+  background-color: var(--landing-bg) !important;
+  color: var(--landing-text) !important;
+}
+
+.landing-tools {
+  background-color: var(--landing-surface) !important;
+  color: var(--landing-text) !important;
+}
+
+.landing-learning {
+  background-color: var(--landing-surface-alt) !important;
+  color: var(--landing-text) !important;
+}
+
+.landing-teaching {
+  background-color: var(--landing-navy) !important;
+  color: #f1f5f9 !important;
+}
+
+.landing-footer {
+  background-color: var(--landing-navy-deep) !important;
+  color: #f1f5f9 !important;
+}

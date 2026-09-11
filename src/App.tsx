@@ -24,6 +24,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/de2-simulator" element={<DE2Simulator />} />
+            <Route path="/examples" element={<Projects />} />
             <Route path="/projects" element={<Projects />} />
             <Route path="/schematic" element={<SchematicPage isDarkMode={isDarkMode} />} />
             <Route path="/waveform" element={<WaveformSimulator />} />

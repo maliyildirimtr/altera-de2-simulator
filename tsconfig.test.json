@@ -5,7 +5,9 @@
     "module": "nodenext",
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
-    "types": ["node"]
+    "types": ["node"],
+    "rootDir": "src/core/simulator",
+    "outDir": "dist_test"
   },
-  "include": ["test.ts"]
+  "include": ["src/core/simulator/**/*.ts"]
 }

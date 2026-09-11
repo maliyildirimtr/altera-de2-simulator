@@ -16,7 +16,11 @@ export const HexDisplay: React.FC<HexDisplayProps> = ({ index, label }) => {
   };
 
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div
+      data-testid={`de2-hex-${index}`}
+      data-segments={JSON.stringify(segments)}
+      className="flex flex-col items-center gap-1"
+    >
       <div className="hex-frame relative w-[44px] h-[60px] rounded-sm flex items-center justify-center shadow-inner">
         <div className="relative w-[40px] h-[56px] bg-[#111] rounded-[1px]">
           {/* Segment 0 (Top) */}

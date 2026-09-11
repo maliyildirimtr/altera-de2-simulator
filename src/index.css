@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./tokens/design-tokens.css";
 
 :root {
   /* Altera DE2 Cyclone II PCB authentic colors */
@@ -389,60 +390,97 @@ text {
   font-weight: bold !important;
 }
 
-/* Aktif (1) Sinyal Yolları ve Bağlantılar - Parlak Neon Yeşil */
+/* Aktif (1) Sinyal Yolları ve Bağlantılar - Parlak Mühendislik Yeşili */
 path[stroke="#03c03c"],
 line[stroke="#03c03c"],
 circle[stroke="#03c03c"],
-.connection[stroke="#03c03c"] { 
+.connection[stroke="#03c03c"],
+[data-logic-value="1"] > path,
+[data-logic-value="1"] > line { 
   stroke: #22c55e !important; 
   stroke-width: 3px !important;
-  filter: drop-shadow(0 0 5px rgba(34, 197, 94, 0.8));
+  filter: drop-shadow(0 0 5px rgba(34, 197, 94, 0.7));
 }
 circle[fill="#03c03c"] {
   fill: #22c55e !important;
 }
 
-/* Pasif (0) Sinyal Yolları ve Bağlantılar - Koyu Kırmızı */
+/* Pasif (0) Sinyal Yolları ve Bağlantılar - Muted Mühendislik Mavi-Gri (Point 9) */
 path[stroke="#fc7c68"],
 line[stroke="#fc7c68"],
 circle[stroke="#fc7c68"],
-.connection[stroke="#fc7c68"] { 
-  stroke: #ef4444 !important; 
+.connection[stroke="#fc7c68"],
+path[stroke="#38bdf8"],
+line[stroke="#38bdf8"],
+circle[stroke="#38bdf8"],
+.connection[stroke="#38bdf8"],
+path[stroke="#52789c"],
+line[stroke="#52789c"],
+circle[stroke="#52789c"],
+.connection[stroke="#52789c"],
+[data-logic-value="0"] > path,
+[data-logic-value="0"] > line { 
+  stroke: #52789c !important; 
   stroke-width: 2px !important;
-  filter: drop-shadow(0 0 5px rgba(239, 68, 68, 0.8));
+  filter: none !important;
 }
-circle[fill="#fc7c68"] {
-  fill: #ef4444 !important;
+circle[fill="#fc7c68"],
+circle[fill="#38bdf8"],
+circle[fill="#52789c"] {
+  fill: #52789c !important;
 }
 
-/* Tanımsız/Boş (X/Z) Sinyaller - Gri */
+/* Tanımsız / Unknown (X) Sinyaller - Amber */
 path[stroke="#999"],
 line[stroke="#999"],
-circle[stroke="#999"] { 
-  stroke: #64748b !important; 
+circle[stroke="#999"],
+.connection[stroke="#999"],
+path[stroke="#f59e0b"],
+line[stroke="#f59e0b"],
+circle[stroke="#f59e0b"],
+.connection[stroke="#f59e0b"],
+[data-logic-value="x"] > path,
+[data-logic-value="x"] > line { 
+  stroke: #f59e0b !important;
+  stroke-width: 2px !important;
+  filter: drop-shadow(0 0 3px rgba(245, 158, 11, 0.4));
+}
+
+/* High-Z (Z) Sinyaller - Muted Mor/Gri */
+path[stroke="#a855f7"],
+line[stroke="#a855f7"],
+circle[stroke="#a855f7"],
+.connection[stroke="#a855f7"],
+[data-logic-value="z"] > path,
+[data-logic-value="z"] > line {
+  stroke: #a855f7 !important;
+  stroke-width: 2px !important;
 }
 
 /* =========================================
    Giriş (Input) ve Çıkış (Output) Özel Tasarımı (Neon Glow)
    ========================================= */
 
-/* Input - 0 (Low) Durumu Kırmızı Glow (Her İki Temada) */
+/* Input / Output - 0 (Low) Durumu Muted Mavi (Engineering Blue-Gray) */
 .joint-element[data-type="digitaljs.Input"]:has(.btnface[fill="white"]) .body,
 .joint-element[data-type="digitaljs.Output"]:has(circle[fill="#fc7c68"]) .body,
-.joint-element[data-type="digitaljs.Output"]:has(circle[fill="#ef4444"]) .body {
-  stroke: #ef4444 !important;
-  stroke-width: 3px !important;
-  filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.6));
+.joint-element[data-type="digitaljs.Output"]:has(circle[fill="#38bdf8"]) .body,
+.joint-element[data-logic-value="0"] .body {
+  stroke: #38bdf8 !important;
+  stroke-width: 2.5px !important;
+  filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.4));
 }
-/* Input İç Kutusu - Artık şeffaf, sadece sayı görünecek */
+
+/* Input İç Kutusu - Şeffaf, sadece sayı görünecek */
 .joint-element[data-type="digitaljs.Input"] .btnface {
   fill: transparent !important;
   stroke: transparent !important;
 }
 
 /* Input Yazısı (0) */
-.joint-element[data-type="digitaljs.Input"]:has(.btnface[fill="white"]) text.value {
-  fill: #ef4444 !important;
+.joint-element[data-type="digitaljs.Input"]:has(.btnface[fill="white"]) text.value,
+.joint-element[data-logic-value="0"] text.value {
+  fill: #38bdf8 !important;
   font-size: 18px !important;
   font-weight: 900 !important;
 }
@@ -450,14 +488,16 @@ circle[stroke="#999"] {
 /* Input - 1 (High) Durumu Yeşil Glow */
 .joint-element[data-type="digitaljs.Input"]:has(.btnface[fill="black"]) .body,
 .joint-element[data-type="digitaljs.Output"]:has(circle[fill="#03c03c"]) .body,
-.joint-element[data-type="digitaljs.Output"]:has(circle[fill="#22c55e"]) .body {
+.joint-element[data-type="digitaljs.Output"]:has(circle[fill="#22c55e"]) .body,
+.joint-element[data-logic-value="1"] .body {
   stroke: #22c55e !important;
   stroke-width: 3px !important;
   filter: drop-shadow(0 0 8px rgba(34, 197, 94, 0.6));
 }
 
 /* Input Yazısı (1) */
-.joint-element[data-type="digitaljs.Input"]:has(.btnface[fill="black"]) text.value {
+.joint-element[data-type="digitaljs.Input"]:has(.btnface[fill="black"]) text.value,
+.joint-element[data-logic-value="1"] text.value {
   fill: #22c55e !important;
   font-size: 18px !important;
   font-weight: 900 !important;
@@ -471,25 +511,27 @@ circle[stroke="#999"] {
 
 /* Output Yazısı - 0 Durumu */
 .joint-element[data-type="digitaljs.Output"]:has(circle[fill="#fc7c68"]) text.value,
-.joint-element[data-type="digitaljs.Output"]:has(circle[fill="#ef4444"]) text.value {
-  fill: #ef4444 !important;
+.joint-element[data-type="digitaljs.Output"]:has(circle[fill="#38bdf8"]) text.value,
+.joint-element[data-type="digitaljs.Output"][data-logic-value="0"] text.value {
+  fill: #38bdf8 !important;
   font-size: 18px !important;
   font-weight: 900 !important;
 }
 
 /* Output Yazısı - 1 Durumu */
 .joint-element[data-type="digitaljs.Output"]:has(circle[fill="#03c03c"]) text.value,
-.joint-element[data-type="digitaljs.Output"]:has(circle[fill="#22c55e"]) text.value {
+.joint-element[data-type="digitaljs.Output"]:has(circle[fill="#22c55e"]) text.value,
+.joint-element[data-type="digitaljs.Output"][data-logic-value="1"] text.value {
   fill: #22c55e !important;
   font-size: 18px !important;
   font-weight: 900 !important;
 }
 
-/* Portlar (Bağlantı Yuvaları) da glow'a uysun */
+/* Portlar (Bağlantı Yuvaları) da renklere uysun */
 .joint-element[data-type="digitaljs.Input"]:has(.btnface[fill="white"]) .port,
 .joint-element[data-type="digitaljs.Output"]:has(circle[fill="#fc7c68"]) .port,
-.joint-element[data-type="digitaljs.Output"]:has(circle[fill="#ef4444"]) .port {
-  stroke: #ef4444 !important;
+.joint-element[data-type="digitaljs.Output"]:has(circle[fill="#38bdf8"]) .port {
+  stroke: #38bdf8 !important;
   stroke-width: 2px !important;
 }
 .joint-element[data-type="digitaljs.Input"]:has(.btnface[fill="black"]) .port,
@@ -497,6 +539,14 @@ circle[stroke="#999"] {
 .joint-element[data-type="digitaljs.Output"]:has(circle[fill="#22c55e"]) .port {
   stroke: #22c55e !important;
   stroke-width: 2px !important;
+}
+
+/* Seçili Eleman (Component Selection) Vurgusu - Engineering Blue Accent (Point 8) */
+.joint-element.cell-selected .body,
+.joint-cell.cell-selected .body {
+  stroke: #38bdf8 !important;
+  stroke-width: 3.5px !important;
+  filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.8)) !important;
 }
 
 /* Kapı İsimleri (A, B, Cin) Input'ların alt/üst yazıları */
@@ -525,3 +575,56 @@ circle[stroke="#999"] {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5) !important;
   border-radius: 4px !important;
 }
+
+/* ── Landing hero animations ──────────────────────────────────
+ * Scoped with .hero- prefix — safe from simulator overrides.
+ * All disabled via prefers-reduced-motion.
+ * ──────────────────────────────────────────────────────────── */
+@keyframes heroBoardIn {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+@keyframes heroPanelIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+@keyframes heroLedBlink {
+  0%, 100% { opacity: 1;    box-shadow: var(--led-glow); }
+  50%       { opacity: 0.25; box-shadow: none;            }
+}
+@keyframes heroWfDraw {
+  from { stroke-dashoffset: 360; }
+  to   { stroke-dashoffset: 0;   }
+}
+
+.hero-board-anim {
+  animation: heroBoardIn 0.65s cubic-bezier(0.34, 1.05, 0.64, 1) 0.05s both;
+}
+.hero-panel-code-anim {
+  animation: heroPanelIn 0.55s cubic-bezier(0.34, 1.05, 0.64, 1) 0.30s both;
+}
+.hero-panel-wave-anim {
+  animation: heroPanelIn 0.55s cubic-bezier(0.34, 1.05, 0.64, 1) 0.45s both;
+}
+.hero-led-blink {
+  animation: heroLedBlink 2.4s ease-in-out 1.2s infinite;
+}
+.hero-wf-path {
+  stroke-dasharray: 360;
+  stroke-dashoffset: 360;
+  animation: heroWfDraw 1.4s ease-out 0.7s forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-board-anim,
+  .hero-panel-code-anim,
+  .hero-panel-wave-anim,
+  .hero-led-blink {
+    animation: none !important;
+  }
+  .hero-wf-path {
+    animation: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+}
+

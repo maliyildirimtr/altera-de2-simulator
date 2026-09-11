@@ -6,7 +6,7 @@ import { HexDisplay } from '../Indicators/HexDisplay';
 
 export const Board: React.FC = () => {
   return (
-    <div className="pcb-board relative w-[1200px] h-[750px] shrink-0 overflow-hidden shadow-2xl">
+    <div data-testid="de2-board" className="pcb-board relative w-[1200px] h-[750px] shrink-0 overflow-hidden shadow-2xl">
 
       {/* PCB horizontal trace bus lines — authentic DE2 routing layer */}
       <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden" style={{ opacity: 0.18 }}>

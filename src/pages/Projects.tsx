@@ -1,106 +1,210 @@
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Cpu, Play } from 'lucide-react';
-import { useBoardStore } from '../store/boardStore';
-
-interface Project {
-  id: string;
-  title: string;
-  description: string;
-  code: string;
-}
-
-const SAMPLE_PROJECTS: Project[] = [
-  {
-    id: 'half_adder',
-    title: 'Half Adder (Yarım Toplayıcı)',
-    description: 'İki adet 1 bitlik sayıyı toplayarak Toplam (S) ve Elde (C) çıkışı üreten temel kombinezonsal mantık devresi.',
-    code: `module half_adder (
-    input A, B,
-    output C, S
-);
-    assign S = A ^ B;
-    assign C = A & B;
-endmodule`
-  },
-  {
-    id: 'full_adder',
-    title: 'Full Adder (Tam Toplayıcı)',
-    description: 'Üç biti (A, B ve önceki elden gelen Cin) toplayan, modern CPU ALU birimlerinin temel taşı olan toplayıcı devre.',
-    code: `module full_adder (
-    input A, B, Cin,
-    output Cout, S
-);
-    assign S = A ^ B ^ Cin;
-    assign Cout = (A & B) | (Cin & (A ^ B));
-endmodule`
-  },
-  {
-    id: 'd_flip_flop',
-    title: 'D Flip-Flop (Ardışıl)',
-    description: 'Saat (clock) sinyalinin yükselen kenarında veri girişini (D) çıkışa (Q) aktaran temel hafıza elemanı.',
-    code: `module d_flip_flop (
-    input clk, D,
-    output Q
-);
-    reg Q;
-    always @(posedge clk) begin
-        Q = D;
-    end
-endmodule`
-  }
-];
+import { BookOpen } from 'lucide-react';
+import { EXAMPLES_LIST } from '../examples/registry';
+import type { LearningExample } from '../examples/types';
+import { ExampleFilterBar, type ExampleFilterKey } from '../components/Examples/ExampleFilterBar';
+import { ExampleCard } from '../components/Examples/ExampleCard';
+import { SourcePreviewModal } from '../components/Examples/SourcePreviewModal';
+import { OverwriteConfirmModal } from '../components/Examples/OverwriteConfirmModal';
+import {
+  setPendingHandoff,
+  checkTargetToolHasUnsavedWork,
+  type TargetTool,
+} from '../services/exampleHandoff';
 
 export default function Projects() {
   const navigate = useNavigate();
-  const setHdlCode = useBoardStore((state) => state.setHdlCode);
 
-  const handleOpenProject = (code: string) => {
-    setHdlCode(code);
-    navigate('/de2-simulator');
+  const [selectedCategory, setSelectedCategory] = useState<ExampleFilterKey>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Modals state
+  const [previewExample, setPreviewExample] = useState<LearningExample | null>(null);
+  const [overwriteTarget, setOverwriteTarget] = useState<{
+    example: LearningExample;
+    tool: TargetTool;
+  } | null>(null);
+
+  // Category and capability counts dynamically derived from canonical registry
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      all: EXAMPLES_LIST.length,
+      combinational: 0,
+      sequential: 0,
+      arithmetic: 0,
+      routing: 0,
+      de2: 0,
+    };
+    for (const ex of EXAMPLES_LIST) {
+      if (counts[ex.category] !== undefined) {
+        counts[ex.category]++;
+      }
+      if (ex.tools.de2) {
+        counts.de2++;
+      }
+    }
+    return counts;
+  }, []);
+
+  // Filtered examples
+  const filteredExamples = useMemo(() => {
+    return EXAMPLES_LIST.filter((ex) => {
+      const matchesCategory =
+        selectedCategory === 'all'
+          ? true
+          : selectedCategory === 'de2'
+          ? ex.tools.de2 === true
+          : ex.category === selectedCategory;
+
+      if (!matchesCategory) return false;
+
+      if (!searchQuery.trim()) return true;
+
+      const q = searchQuery.toLowerCase().trim();
+      const inTitle = ex.title.toLowerCase().includes(q);
+      const inDesc = ex.description.toLowerCase().includes(q);
+      const inTopics = ex.topics.some((t) => t.toLowerCase().includes(q));
+      const inModule = ex.topModule.toLowerCase().includes(q);
+
+      return inTitle || inDesc || inTopics || inModule;
+    });
+  }, [selectedCategory, searchQuery]);
+
+  // Execute handoff navigation
+  const executeHandoff = (example: LearningExample, tool: TargetTool) => {
+    setPendingHandoff(example.id, tool);
+    const routes: Record<TargetTool, string> = {
+      schematic: '/schematic',
+      waveform: '/waveform',
+      de2: '/de2-simulator',
+    };
+    navigate(routes[tool]);
+  };
+
+  // Tool button clicked on card
+  const handleOpenTool = (example: LearningExample, tool: TargetTool) => {
+    const hasUnsavedWork = checkTargetToolHasUnsavedWork(tool);
+    if (hasUnsavedWork) {
+      setOverwriteTarget({ example, tool });
+    } else {
+      executeHandoff(example, tool);
+    }
+  };
+
+  const handleConfirmOverwrite = () => {
+    if (overwriteTarget) {
+      const { example, tool } = overwriteTarget;
+      setOverwriteTarget(null);
+      executeHandoff(example, tool);
+    }
+  };
+
+  const handleCancelOverwrite = () => {
+    setOverwriteTarget(null);
   };
 
   return (
-    <div className="flex-1 w-full bg-[#111] p-8 overflow-auto">
-      <div className="max-w-5xl mx-auto">
-        <div className="mb-10 border-b border-gray-800 pb-6">
-          <h1 className="text-3xl font-bold text-white mb-2">Örnek Proje Galerisi</h1>
-          <p className="text-gray-400">
-            Hazır donanım mimarilerini inceleyin ve tek tıkla DE2 simülatöründe çalıştırın.
-          </p>
+    <div
+      data-testid="examples-page"
+      className="flex-1 w-full bg-[#070b14] text-slate-200 overflow-y-auto font-sans"
+    >
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Page Header */}
+        <div className="mb-8 border-b border-slate-800/80 pb-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2.5 mb-2">
+              <div className="p-1.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+                <BookOpen size={18} />
+              </div>
+              <span className="text-xs font-mono font-semibold uppercase tracking-wider text-indigo-400">
+                Digital Logic Learning Library
+              </span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-100 tracking-tight">
+              SystemVerilog Reference Examples
+            </h1>
+            <p className="text-sm text-slate-400 mt-1 max-w-2xl">
+              Curated hardware designs with clean SystemVerilog source code, automated testbenches, and interactive simulation support.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span
+              data-testid="examples-count"
+              className="text-xs font-mono px-3 py-1.5 rounded-md bg-slate-900 border border-slate-800 text-slate-400"
+            >
+              Showing <strong className="text-slate-200">{filteredExamples.length}</strong> of{' '}
+              {EXAMPLES_LIST.length} examples
+            </span>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {SAMPLE_PROJECTS.map((project) => (
-            <div key={project.id} className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden hover:border-gray-700 transition-colors flex flex-col">
-              <div className="p-6 flex-1">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
-                    <Cpu size={20} />
-                  </div>
-                  <h3 className="text-xl font-bold text-white">{project.title}</h3>
-                </div>
-                <p className="text-gray-400 text-sm mb-6 leading-relaxed">
-                  {project.description}
-                </p>
-                <div className="bg-[#0a0a0a] rounded-lg p-4 border border-gray-800">
-                  <pre className="text-emerald-400 text-xs overflow-x-auto font-mono">
-                    {project.code}
-                  </pre>
-                </div>
-              </div>
-              <div className="p-4 bg-gray-900/50 border-t border-gray-800 flex justify-end">
-                <button 
-                  onClick={() => handleOpenProject(project.code)}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-md text-sm font-medium transition-colors flex items-center gap-2"
-                >
-                  <Play size={16} />
-                  <span>DE2 Kartında Aç</span>
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+        {/* Filter and Search Bar */}
+        <ExampleFilterBar
+          selectedCategory={selectedCategory}
+          onSelectCategory={setSelectedCategory}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          categoryCounts={categoryCounts}
+        />
+
+        {/* Examples Grid */}
+        {filteredExamples.length > 0 ? (
+          <div
+            data-testid="examples-grid"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
+          >
+            {filteredExamples.map((example) => (
+              <ExampleCard
+                key={example.id}
+                example={example}
+                onOpenTool={handleOpenTool}
+                onViewSource={setPreviewExample}
+              />
+            ))}
+          </div>
+        ) : (
+          <div
+            data-testid="examples-empty-state"
+            className="flex flex-col items-center justify-center p-12 text-center border border-dashed border-slate-800 rounded-xl bg-slate-900/30"
+          >
+            <p className="text-sm text-slate-400 mb-3">
+              No examples match your filter criteria{' '}
+              {searchQuery && (
+                <>
+                  for <strong className="text-slate-200">"{searchQuery}"</strong>
+                </>
+              )}
+              .
+            </p>
+            <button
+              onClick={() => {
+                setSelectedCategory('all');
+                setSearchQuery('');
+              }}
+              className="px-3.5 py-1.5 text-xs font-medium rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
+            >
+              Clear Filters
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Source Preview Modal */}
+      <SourcePreviewModal
+        example={previewExample}
+        onClose={() => setPreviewExample(null)}
+      />
+
+      {/* Overwrite Confirmation Modal */}
+      <OverwriteConfirmModal
+        isOpen={Boolean(overwriteTarget)}
+        example={overwriteTarget?.example || null}
+        targetTool={overwriteTarget?.tool || null}
+        onConfirm={handleConfirmOverwrite}
+        onCancel={handleCancelOverwrite}
+      />
     </div>
   );
 }

@@ -1,13 +1,19 @@
 {
-  "name": "tmp",
+  "name": "engineering-lab",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "typecheck": "tsc -b --noEmit",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:security": "node scripts/regression/security.mjs",
+    "test:waveform": "node scripts/regression/waveform.mjs",
+    "test:dirty-state": "node scripts/regression/dirty-state.mjs",
+    "test:dependencies": "node scripts/regression/dependencies.mjs",
+    "test:release": "npm run typecheck && npm run test:security && npm run build"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
@@ -16,8 +22,10 @@
     "digitaljs": "^0.14.2",
     "framer-motion": "^13.1.1",
     "jquery": "^3.7.1",
+    "jquery-ui-dist": "^1.13.3",
     "lucide-react": "^1.33.0",
     "memfs": "^4.68.1",
+    "monaco-editor": "^0.56.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.2",

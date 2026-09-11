@@ -17,7 +17,12 @@ export const Led: React.FC<LedProps> = ({ index, type, label }) => {
   const inactiveClass = type === 'red' ? 'led-red-off' : 'led-green-off';
 
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div
+      data-testid={type === 'red' ? `de2-ledr-${index}` : `de2-ledg-${index}`}
+      data-active={isOn ? 'true' : 'false'}
+      aria-label={label}
+      className="flex flex-col items-center gap-1"
+    >
       <div
         className={`w-3 h-5 rounded-[2px] transition-all duration-75 ${isOn ? activeClass : inactiveClass}`}
       />

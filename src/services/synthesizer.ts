@@ -147,10 +147,20 @@ export async function synthesizeVerilog(
       }
     }
     
+    // Metadata for workspace diagnostics and inspection
+    (digitalJsData as any)._topModule = topModule;
+    (digitalJsData as any)._stdout = stdoutLog;
+    (digitalJsData as any)._stderr = stderrLog;
+    (digitalJsData as any)._rawYosysJson = rawYosysJson;
+
     return digitalJsData;
   }
 
-  throw new Error(stderrLog || 'Yosys sentezleme çıktısı üretemedi.');
+  const errorDetails = (stderrLog.trim() || stdoutLog.trim() || 'Yosys synthesis failed to generate circuit output.');
+  const err = new Error(errorDetails);
+  (err as any).stdout = stdoutLog;
+  (err as any).stderr = stderrLog;
+  throw err;
 }
 
 

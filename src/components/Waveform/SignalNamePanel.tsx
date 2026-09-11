@@ -16,6 +16,7 @@ export interface RenderableRow {
   id: string;
   signal: VCDSignal;
   displayName: string;
+  scopePath?: string;
   indent: number;
   bitIndex?: number;
   parentName?: string;
@@ -31,6 +32,7 @@ export interface SignalNamePanelProps {
   onToggleBusExpand: (name: string) => void;
   expandedBusses: string[];
   radixes?: Record<string, 'hex' | 'dec' | 'bin'>;
+  width?: number;
 }
 
 export function SignalNamePanel({
@@ -43,52 +45,68 @@ export function SignalNamePanel({
   onToggleBusExpand,
   expandedBusses,
   radixes = {},
+  width,
 }: SignalNamePanelProps) {
 
   // ── Resizable columns: [Name, Value] widths in px ─────────────
-  const { widths, getHandleProps } = useResizableColumns([180, 120]);
+  const { widths, getHandleProps } = useResizableColumns([140, 75]);
   const [nameW, valW] = widths;
 
-  const handleEdgeSearch = (e: ReactMouseEvent, row: RenderableRow, direction: 'prev' | 'next') => {
-    e.stopPropagation();
-    const sig = row.type === 'bit' ? extractBitSignal(row.signal, row.bitIndex!) : row.signal;
-    const newTime = findEdge(sig, currentTime, direction);
-    if (newTime !== null) onSetCurrentTime(newTime);
+  const renderValue = (row: RenderableRow) => {
+    if (row.type === 'bit') {
+      const bitSig = extractBitSignal(row.signal, row.bitIndex!);
+      const val = getSignalValueAtTime(bitSig, currentTime);
+      return (
+        <span className={val === '1' ? 'text-green-400' : val === '0' ? 'text-blue-400' : 'text-red-400'}>
+          {val}
+        </span>
+      );
+    }
+    const val = getSignalValueAtTime(row.signal, currentTime);
+    if (row.signal.width === 1) {
+      return (
+        <span className={val === '1' ? 'text-green-400' : val === '0' ? 'text-blue-400' : 'text-red-400'}>
+          {val}
+        </span>
+      );
+    }
+    const r = radixes[row.signal.name] || 'hex';
+    let formatted = String(val);
+    const strVal = String(val);
+    if (r === 'hex') {
+      const num = typeof val === 'number' ? val : parseInt(strVal, 2);
+      formatted = isNaN(num) ? 'h' + strVal : 'h' + num.toString(16).toUpperCase();
+    } else if (r === 'dec') {
+      const num = typeof val === 'number' ? val : parseInt(strVal, 2);
+      formatted = isNaN(num) ? 'd' + strVal : 'd' + num.toString(10);
+    } else {
+      formatted = 'b' + strVal;
+    }
+    return <span className="text-yellow-400 font-semibold">{formatted}</span>;
   };
 
-  const renderValue = (row: RenderableRow) => {
-    const val = getSignalValueAtTime(row.signal, currentTime);
-    if (row.type === 'bit' && row.bitIndex !== undefined) {
-      const strVal = String(val);
-      const padded = strVal.padStart(row.signal.width, '0');
-      const char   = padded[padded.length - 1 - row.bitIndex];
-      return <span className={char === 'x' || char === 'X' ? 'text-red-400' : 'text-yellow-400'}>{char}</span>;
-    }
-    const rdx = radixes[row.signal.name] || 'hex';
-    let displayVal = String(val);
-    const isX = displayVal.toLowerCase().includes('x');
-    if (!isX && /^[01xz]+$/i.test(displayVal)) {
-      if (rdx === 'hex')      displayVal = 'h' + parseInt(displayVal, 2).toString(16).toUpperCase();
-      else if (rdx === 'dec') displayVal = parseInt(displayVal, 2).toString(10);
-      else                    displayVal = 'b' + displayVal;
-    }
-    return <span className={isX ? 'text-red-400' : 'text-yellow-400'}>{displayVal}</span>;
+  const handleEdgeSearch = (e: ReactMouseEvent, row: RenderableRow, dir: 'prev' | 'next') => {
+    e.stopPropagation();
+    const sig = row.type === 'bit' ? extractBitSignal(row.signal, row.bitIndex!) : row.signal;
+    const edgeTime = findEdge(sig, currentTime, dir);
+    if (edgeTime !== null) onSetCurrentTime(edgeTime);
   };
 
   return (
-    <div className="shrink-0 border-r border-[#222222] bg-[#1e1e1e] flex flex-col z-30 shadow-[2px_0_5px_rgba(0,0,0,0.5)]" style={{ width: nameW + 3 + valW }}>
+    <div
+      data-testid="wf-signal-name-panel"
+      className="shrink-0 border-r border-[#222222] bg-[#1e1e1e] flex flex-col z-10 shadow-[2px_0_5px_rgba(0,0,0,0.5)]"
+      style={{ width: width !== undefined ? width : nameW + 3 + valW }}
+    >
 
-      {/* ── Column Header row ── */}
-      <div className="h-6 shrink-0 bg-[#2d2d2d] border-b border-[#222222] flex items-center shadow-sm select-none">
+      {/* ── Column Headers (Resizable) ── */}
+      <div className="h-6 shrink-0 bg-[#16171d] border-b border-[#222222] flex text-[11px] font-semibold text-gray-400 select-none relative">
         {/* Name header */}
-        <div
-          className="h-full flex items-center px-3 text-[10px] font-bold tracking-wider text-gray-400 uppercase overflow-hidden"
-          style={{ width: nameW }}
-        >
-          Name
+        <div className="flex items-center px-3 text-[10px] font-bold tracking-wider text-gray-400 uppercase shrink-0" style={{ width: nameW }}>
+          Signal
         </div>
 
-        {/* Splitter */}
+        {/* Drag handle */}
         <div
           className="w-[3px] h-full shrink-0 cursor-col-resize hover:bg-blue-500 active:bg-blue-600 bg-[#333] z-10 transition-colors"
           {...getHandleProps(0)}
@@ -101,8 +119,8 @@ export function SignalNamePanel({
       </div>
 
       {/* ── Scrollable Rows ── */}
-      <div className="flex-1 overflow-hidden pt-1 relative">
-        <div className="absolute inset-0 right-[-20px] overflow-y-scroll pr-[20px]">
+      <div className="flex-1 overflow-hidden relative">
+        <div className="absolute inset-0 right-[-20px] overflow-y-scroll pr-[20px] pt-1">
           {rows.map((row, idx) => {
             const isSelected = selectedSignal === row.id;
             const isBus = row.type === 'signal' && row.signal.width > 1;
@@ -111,6 +129,8 @@ export function SignalNamePanel({
             return (
               <div
                 key={idx}
+                data-testid="wf-name-row"
+                data-signal-id={row.id}
                 className={`h-[40px] flex group border-b border-[#222222]/50 cursor-pointer transition-colors
                   ${isSelected ? 'bg-[#1e3a5f]/40' : 'hover:bg-[#2a2d3e]/30'}`}
                 onClick={() => onSelectSignal(row.id)}
@@ -120,6 +140,7 @@ export function SignalNamePanel({
                 <div
                   className="shrink-0 border-r border-[#222222] flex items-center px-2 overflow-hidden"
                   style={{ width: nameW, paddingLeft: `${row.indent + 8}px` }}
+                  title={row.signal.name}
                 >
                   <div className="flex items-center gap-1.5 w-full min-w-0">
                     {isBus ? (
@@ -133,9 +154,23 @@ export function SignalNamePanel({
                       <div className="w-[18px] shrink-0" />
                     )}
                     <Binary size={12} className={`shrink-0 ${row.type === 'bit' ? 'text-gray-500' : 'text-blue-400'}`} />
-                    <span className={`text-[11px] font-mono truncate select-none ${row.type === 'bit' ? 'text-gray-400' : 'text-gray-200 font-semibold'}`}>
-                      {row.displayName}
-                    </span>
+                    <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
+                      <div className="flex items-center gap-1 min-w-0 leading-tight">
+                        <span className={`text-[11px] font-mono truncate select-none ${row.type === 'bit' ? 'text-gray-400' : 'text-gray-200 font-semibold'}`}>
+                          {row.displayName}
+                        </span>
+                        {row.type === 'signal' && row.signal.width > 1 && (
+                          <span className="text-[10px] text-gray-500 font-mono shrink-0">
+                            [{row.signal.width - 1}:0]
+                          </span>
+                        )}
+                      </div>
+                      {row.type === 'signal' && row.scopePath && (
+                        <span className="text-[9px] font-mono text-slate-500 truncate leading-tight select-none">
+                          {row.scopePath}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 

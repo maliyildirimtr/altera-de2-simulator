@@ -1,3 +1,7 @@
+import { Parser } from './expression/parser';
+import { evaluateStmt, createSafeState, isEdgeActive, commitNextState } from './expression/evaluator';
+import type { EvalContext } from './expression/evaluator';
+
 export interface VerilogModule {
   modules?: Record<string, any>;
   topModule?: string;
@@ -188,6 +192,8 @@ export function elaborateEngine(modules: Record<string, any>, topModule: string)
   const allRegs = new Set<string>(topMod.regs || []);
   let combinedAssignLogic = "";
   let combinedAlwaysLogic = "";
+  let combinedRawAssignLogic = "";
+  let combinedRawAlwaysLogic = "";
 
   const submoduleMirrors: { internal: string; external: string }[] = [];
 
@@ -254,9 +260,15 @@ export function elaborateEngine(modules: Record<string, any>, topModule: string)
     if (mod.assignLogic) {
       combinedAssignLogic += `// --- Flattened ${modName} ${instPrefix} ---\n`;
       combinedAssignLogic += applyDict(mod.assignLogic) + '\n';
+      if (mod.rawAssignLogic) {
+        combinedRawAssignLogic += applyDict(mod.rawAssignLogic) + '\n';
+      }
     }
     if (mod.alwaysLogic) {
       combinedAlwaysLogic += applyDict(mod.alwaysLogic) + '\n';
+      if (mod.rawAlwaysLogic) {
+        combinedRawAlwaysLogic += applyDict(mod.rawAlwaysLogic) + '\n';
+      }
     }
 
     // Recursively flatten sub-instances
@@ -272,71 +284,65 @@ export function elaborateEngine(modules: Record<string, any>, topModule: string)
 
   flatten(topModule, '', null);
 
-  // Scan combined logic to ensure ALL referenced identifiers are declared in the JS function scope
-  const declaredVars = new Set<string>([...topInputs, ...topOutputs, ...allWires, ...allRegs]);
-  const jsKeywords = new Set([
-    'let', 'var', 'const', 'if', 'else', 'for', 'while', 'return', 'state', 'inputs', 
-    'iter', 'Math', 'true', 'false', 'null', 'undefined', 'break', 'continue', 'switch', 'case', 'default',
-    'function', 'class', 'delete', 'typeof', 'instanceof', 'void', 'new', 'this', 'super', 
-    'import', 'export', 'try', 'catch', 'finally', 'throw', 'do', 'in', 'of', 'debugger', 'with', 'yield', 'await', 'async'
-  ]);
-
-  const identifierRegex = /\b[a-zA-Z_][a-zA-Z0-9_]*\b/g;
-  let identMatch;
-  const scannedText = `${combinedAssignLogic}\n${combinedAlwaysLogic}`.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
-  while ((identMatch = identifierRegex.exec(scannedText)) !== null) {
-    const ident = identMatch[0];
-    if (!declaredVars.has(ident) && !jsKeywords.has(ident) && isNaN(Number(ident))) {
-      allWires.add(ident);
-      declaredVars.add(ident);
-    }
-  }
-
-  // Deduplicate all internal signals (excluding topInputs which are declared from inputs map)
-  const inputSet = new Set(topInputs);
-  const internalSignalSet = new Set<string>();
-  for (const sig of [...topOutputs, ...allWires, ...allRegs]) {
-    if (!inputSet.has(sig)) {
-      internalSignalSet.add(sig);
-    }
-  }
-  const internalSignals: string[] = Array.from(internalSignalSet);
-
-  const fnBody = `
-    try {
-      // Inputs (prefer inputs map, fallback to preserved state value)
-      ${topInputs.map((i: string) => `let ${i} = inputs['${i}'] !== undefined ? inputs['${i}'] : (state['${i}'] ?? 0);`).join('\n      ')}
-      
-      // Outputs & Internal State
-      ${internalSignals.map((s: string) => `let ${s} = state['${s}'] || 0;`).join('\n      ')}
-      
-      // Propagation Loop
-      for (let iter = 0; iter < 3; iter++) {
-${combinedAssignLogic}
-${combinedAlwaysLogic}
-      }
-      
-      // Write back state
-      ${topInputs.map((i: string) => `state['${i}'] = ${i};`).join('\n      ')}
-      ${internalSignals.map((s: string) => `state['${s}'] = ${s};`).join('\n      ')}
-      ${submoduleMirrors.map(m => `state['${m.internal}'] = ${m.external === '0' ? '0' : `(state['${m.external}'] ?? ${m.external} ?? 0)`};`).join('\n      ')}
-      
-      // Save previous inputs
-      ${topInputs.map((i: string) => `state['__prev_${i}'] = ${i};`).join('\n      ')}
-      
-      return state;
-    } catch (evalErr) {
-      console.warn("[evaluate runtime error]", evalErr);
-      return state;
-    }
-  `;
-
   try {
-    const evaluate = new Function('inputs', 'state', fnBody) as any;
+    const parser = new Parser(`${combinedRawAssignLogic}\n${combinedRawAlwaysLogic}`);
+    const moduleAST = parser.parseModuleBody();
+
+    const evaluate = (inputs: Record<string, number>, st: Record<string, number>) => {
+      const state = createSafeState(st);
+
+      // Inputs
+      for (const i of topInputs) {
+        state[i] = inputs[i] !== undefined ? inputs[i] : (state[i] ?? 0);
+      }
+
+      const ctx: EvalContext = { state, nextState: Object.create(null) };
+
+      // 1. Sequential Logic (executes exactly once per clock edge)
+      for (const block of moduleAST.alwaysBlocks) {
+        if (block.edge === 'posedge' || block.edge === 'negedge') {
+          if (isEdgeActive(block, state)) {
+            evaluateStmt(block.body, ctx);
+          }
+        }
+      }
+      commitNextState(ctx);
+
+      // 2. Combinational Logic Propagation Loop
+      for (let iter = 0; iter < 3; iter++) {
+        for (const assign of moduleAST.continuousAssigns) {
+          evaluateStmt(assign, ctx);
+        }
+        for (const block of moduleAST.alwaysBlocks) {
+          if (block.edge !== 'posedge' && block.edge !== 'negedge') {
+            if (isEdgeActive(block, state)) {
+              evaluateStmt(block.body, ctx);
+            }
+          }
+        }
+        commitNextState(ctx);
+      }
+
+      // Sub-module mirrors mapping
+      for (const m of submoduleMirrors) {
+        if (m.external === '0') {
+          state[m.internal] = 0;
+        } else {
+          state[m.internal] = state[m.external] ?? Number(m.external) ?? 0;
+        }
+      }
+
+      // Save previous inputs for edge detection
+      for (const i of topInputs) {
+        state[`__prev_${i}`] = state[i];
+      }
+
+      return state;
+    };
+
     return { inputs: topInputs, outputs: topOutputs, evaluate, modules, topModule };
   } catch (err) {
     console.error("Transpilation Error:", err);
-    console.error("Generated Code:", fnBody);
     const fallbackEvaluate = (_inputs: Record<string, number>, state: Record<string, number>) => state;
     return { inputs: topInputs, outputs: topOutputs, evaluate: fallbackEvaluate, modules, topModule };
   }
@@ -472,6 +478,7 @@ export interface InternalModuleDef {
   assignLogic: string;
   rawAssignLogic: string;
   alwaysLogic: string;
+  rawAlwaysLogic?: string;
   instances: { 
     type: string; 
     name: string; 
@@ -506,6 +513,7 @@ export function compileVerilog(code: string): VerilogModule {
     let assignLogic = "";
     let rawAssignLogic = "";
     let alwaysLogic = "";
+    let rawAlwaysLogic = "";
 
     const portWidths: Record<string, number> = {};
 
@@ -577,7 +585,7 @@ export function compileVerilog(code: string): VerilogModule {
     }
 
     // Always blocks (always_comb, always_ff, always @*, always @(...))
-    const startRegex = /(always_comb|always_ff|always(?:\s*@\s*(?:\(.*?\)|[*]|\w+))?)\s*/g;
+    const startRegex = /(always_comb|always_ff(?:\s*@\s*(?:\(.*?\)|[*]|\w+))?|always(?:\s*@\s*(?:\(.*?\)|[*]|\w+))?)\s*/g;
     let aMatch;
     while ((aMatch = startRegex.exec(bodyStr)) !== null) {
       const header = aMatch[1] || '';
@@ -615,6 +623,9 @@ export function compileVerilog(code: string): VerilogModule {
       }
 
       if (blockBody) {
+        const fullBlock = header + " " + blockBody;
+        rawAlwaysLogic += fullBlock + '\n';
+        
         const transpiledBlock = transpileVerilogCodeBlock(blockBody);
         if (header.includes('posedge')) {
           const clkName = header.split('posedge')[1]?.replace(/[\(\)\s*]/g, '').trim();
@@ -720,7 +731,8 @@ export function compileVerilog(code: string): VerilogModule {
       portWidths,
       assignLogic, 
       rawAssignLogic, 
-      alwaysLogic, 
+      alwaysLogic,
+      rawAlwaysLogic,
       instances 
     };
   }

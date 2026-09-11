@@ -1,4 +1,7 @@
 import type { GraphNode, GraphEdge } from '../../utils/parser/graphBuilder';
+import { Parser } from './expression/parser';
+import { evaluateStmt, createSafeState, commitNextState, isEdgeActive } from './expression/evaluator';
+import type { EvalContext } from './expression/evaluator';
 
 export interface GraphSimulationResult {
   nodeOutputs: Record<string, Record<string, number>>; // nodeId -> { portName: value }
@@ -158,16 +161,52 @@ export function evaluateGraphTopological(
           if (subMod && (subMod.alwaysLogic || subMod.assignLogic)) {
             try {
               if (!subMod._compiledEvaluate) {
-                subMod._compiledEvaluate = new Function('inputs', 'st', `
-                  let state = st || {};
-                  ${subMod.inputs.map((p: string) => `let ${p} = inputs['${p}'] ?? 0;`).join('\n')}
-                  ${subMod.outputs.map((p: string) => `let ${p} = 0;`).join('\n')}
-                  ${subMod.wires?.map((p: string) => `let ${p} = 0;`).join('\n') || ''}
-                  ${subMod.assignLogic || ''}
-                  ${subMod.alwaysLogic || ''}
-                  ${subMod.outputs.map((p: string) => `state['${p}'] = ${p};`).join('\n')}
-                  return state;
-                `);
+                try {
+                  const parser = new Parser(`${subMod.rawAssignLogic || ''}\n${subMod.rawAlwaysLogic || ''}`);
+                  const moduleAST = parser.parseModuleBody();
+                  
+                  subMod._compiledEvaluate = (inputs: Record<string, number>, st: Record<string, number>) => {
+                    const state = createSafeState(st);
+                    
+                    for (const p of subMod.inputs) {
+                      state[p] = inputs[p] ?? 0;
+                    }
+                    
+                    const ctx: EvalContext = { state, nextState: Object.create(null) };
+                    
+                    for (const block of moduleAST.alwaysBlocks) {
+                      if (block.edge === 'posedge' || block.edge === 'negedge') {
+                        if (isEdgeActive(block, state)) {
+                          evaluateStmt(block.body, ctx);
+                        }
+                      }
+                    }
+                    commitNextState(ctx);
+                    
+                    for (let iter = 0; iter < 3; iter++) {
+                      for (const assign of moduleAST.continuousAssigns) {
+                        evaluateStmt(assign, ctx);
+                      }
+                      for (const block of moduleAST.alwaysBlocks) {
+                        if (block.edge !== 'posedge' && block.edge !== 'negedge') {
+                          if (isEdgeActive(block, state)) {
+                            evaluateStmt(block.body, ctx);
+                          }
+                        }
+                      }
+                      commitNextState(ctx);
+                    }
+                    
+                    for (const p of subMod.inputs) {
+                      state[`__prev_${p}`] = state[p];
+                    }
+                    
+                    return state;
+                  };
+                } catch (parseErr) {
+                  console.warn(`[graphEvaluator] Error parsing module ${node.label}:`, parseErr);
+                  subMod._compiledEvaluate = (_inputs: Record<string, number>, st: Record<string, number>) => st;
+                }
               }
               const res = subMod._compiledEvaluate(subInputs, {});
               for (const outPort of node.outputs) {

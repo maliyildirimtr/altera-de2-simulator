@@ -1,4 +1,12 @@
-# Logs
+# ── Build outputs ──────────────────────────────────────────────
+dist
+dist-ssr
+dist_test
+
+# ── Dependencies ───────────────────────────────────────────────
+node_modules
+
+# ── Logs ───────────────────────────────────────────────────────
 logs
 *.log
 npm-debug.log*
@@ -7,21 +15,57 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# ── Local environment ─────────────────────────────────────────
 *.local
+.env
+.env.*
+!.env.example
 
-# Editor directories and files
+# ── Editor ───────────────────────────────────────────────────
 .vscode/*
 !.vscode/extensions.json
+!.vscode/settings.json
 .idea
-.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# ── OS ───────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Type check cache ──────────────────────────────────────────
+*.tsbuildinfo
+
+# ── Test & coverage ───────────────────────────────────────────
+coverage
+.nyc_output
+playwright-report
+test-results
+.regression-artifacts
+.screenshots/
+
+# ── Agent / AI tools (not source code) ───────────────────────
 .agent/
+
+# ── Repo-internal docs (kept local, not published) ───────────
 PROJECT_IMPROVEMENT_PLAN.md
-örnek site/
+örnek\ site/
+
+# ── Scratch / generated regression artefacts ──────────────────
+scratch/
+
+# ── Legacy root-level scratch names ───────────────────────────
+test.js
+test.ts
+test.sv
+test_djs.mjs
+test_input.mjs
+test_sim.js
+generate_truth_table.js
+run_y2d.cjs
+run_y2d.mjs
+vscode_output.json
+full_adder_mux.sv

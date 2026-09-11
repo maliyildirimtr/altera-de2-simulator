@@ -15,6 +15,11 @@ export const Switch: React.FC<SwitchProps> = ({ index, label }) => {
   return (
     <div className="flex flex-col items-center gap-1">
       <div 
+        data-testid={`de2-switch-${index}`}
+        data-active={isOn ? 'true' : 'false'}
+        role="switch"
+        aria-checked={isOn}
+        aria-label={`Switch ${index}`}
         className="switch-base relative w-6 h-12 rounded-sm cursor-pointer flex flex-col justify-between p-0.5"
         onClick={() => toggleSwitch(index)}
       >
