@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Board } from '../Board/Board';
 import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 
@@ -6,98 +6,380 @@ interface BoardViewportProps {
   isSplitView?: boolean;
 }
 
+const BOARD_WIDTH = 1200;
+const BOARD_HEIGHT = 750;
+const MIN_SCALE = 0.25;
+const MAX_SCALE = 2.5;
+const MIN_VISIBLE_MARGIN = 120; // Ensure at least 120px of board remains visible within viewport
+
+/**
+ * Computes viewport-aware pan bounds so the board cannot be permanently lost offscreen,
+ * while ensuring all corners (including bottom switches) can be inspected at high zoom.
+ */
+function clampPan(
+  panX: number,
+  panY: number,
+  scale: number,
+  viewportW: number,
+  viewportH: number
+): { panX: number; panY: number } {
+  const scaledW = BOARD_WIDTH * scale;
+  const scaledH = BOARD_HEIGHT * scale;
+
+  // When board is smaller than viewport, allow panning within margins around center
+  // When board is larger, allow panning from margin to viewport - margin
+  const minPanX = Math.min(MIN_VISIBLE_MARGIN - scaledW, (viewportW - scaledW) / 2);
+  const maxPanX = Math.max(viewportW - MIN_VISIBLE_MARGIN, (viewportW - scaledW) / 2);
+
+  const minPanY = Math.min(MIN_VISIBLE_MARGIN - scaledH, (viewportH - scaledH) / 2);
+  const maxPanY = Math.max(viewportH - MIN_VISIBLE_MARGIN, (viewportH - scaledH) / 2);
+
+  return {
+    panX: Math.max(minPanX, Math.min(maxPanX, panX)),
+    panY: Math.max(minPanY, Math.min(maxPanY, panY)),
+  };
+}
+
+/**
+ * Computes fit-to-screen scale and centered pan offsets
+ */
+function calculateFit(width: number, height: number): { scale: number; panX: number; panY: number } {
+  const paddingX = 32;
+  const paddingY = 32;
+  const availW = Math.max(100, width - paddingX);
+  const availH = Math.max(100, height - paddingY);
+
+  const scaleX = availW / BOARD_WIDTH;
+  const scaleY = availH / BOARD_HEIGHT;
+  const fitScale = Math.min(1.15, Math.max(MIN_SCALE, Math.min(scaleX, scaleY)));
+
+  const scaledW = BOARD_WIDTH * fitScale;
+  const scaledH = BOARD_HEIGHT * fitScale;
+  const centeredX = Math.round((width - scaledW) / 2);
+  const centeredY = Math.round((height - scaledH) / 2);
+
+  return {
+    scale: +(fitScale.toFixed(3)),
+    panX: centeredX,
+    panY: centeredY,
+  };
+}
+
+/**
+ * Checks whether the pointer target originates from an interactive control
+ * (switches, buttons, inputs, toolbar buttons, canvas controls).
+ */
+function isInteractiveTarget(el: HTMLElement | null): boolean {
+  if (!el) return false;
+  return Boolean(
+    el.closest(
+      'button, input, select, textarea, [role="button"], [role="switch"], .switch-base, .btn-metallic, [data-testid^="de2-switch-"], [data-testid^="de2-key-"], .canvas-controls, [data-testid^="de2-toolbar-"]'
+    )
+  );
+}
+
 export const BoardViewport: React.FC<BoardViewportProps> = ({ isSplitView }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [autoScale, setAutoScale] = useState<number>(0.85);
-  const [manualZoom, setManualZoom] = useState<number>(1);
 
-  // Compute responsive auto-scale to keep board large and fully visible
+  const [scale, setScale] = useState<number>(0.85);
+  const [panX, setPanX] = useState<number>(0);
+  const [panY, setPanY] = useState<number>(0);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [isUserTransformed, setIsUserTransformed] = useState<boolean>(false);
+
+  // Active refs to eliminate stale closure bugs during high-frequency pointer / wheel events
+  const scaleRef = useRef(scale);
+  scaleRef.current = scale;
+  const panXRef = useRef(panX);
+  panXRef.current = panX;
+  const panYRef = useRef(panY);
+  panYRef.current = panY;
+  const isDraggingRef = useRef(isDragging);
+  isDraggingRef.current = isDragging;
+  const isUserTransformedRef = useRef(isUserTransformed);
+  isUserTransformedRef.current = isUserTransformed;
+
+  const dragStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const panStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // Fit to screen handler
+  const handleFitToScreen = useCallback(() => {
+    if (!containerRef.current) return;
+    const { clientWidth, clientHeight } = containerRef.current;
+    if (clientWidth <= 0 || clientHeight <= 0) return;
+
+    const fit = calculateFit(clientWidth, clientHeight);
+    setScale(fit.scale);
+    setPanX(fit.panX);
+    setPanY(fit.panY);
+    setIsUserTransformed(false);
+  }, []);
+
+  // Zoom step handler (+/- buttons) centered on the current viewport
+  const handleZoomStep = useCallback((direction: 'in' | 'out') => {
+    if (!containerRef.current) return;
+    const { clientWidth, clientHeight } = containerRef.current;
+    const centerX = clientWidth / 2;
+    const centerY = clientHeight / 2;
+
+    const factor = direction === 'in' ? 1.15 : 1 / 1.15;
+    const oldScale = scaleRef.current;
+    const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, +(oldScale * factor).toFixed(3)));
+    if (newScale === oldScale) return;
+
+    const ratio = newScale / oldScale;
+    const newPanX = centerX - (centerX - panXRef.current) * ratio;
+    const newPanY = centerY - (centerY - panYRef.current) * ratio;
+
+    const clamped = clampPan(newPanX, newPanY, newScale, clientWidth, clientHeight);
+    setScale(newScale);
+    setPanX(clamped.panX);
+    setPanY(clamped.panY);
+    setIsUserTransformed(true);
+  }, []);
+
+  // ResizeObserver for responsive fit and viewport bounds preservation
   useEffect(() => {
-    const updateScale = () => {
+    const updateViewport = () => {
       if (!containerRef.current) return;
       const { clientWidth, clientHeight } = containerRef.current;
       if (clientWidth <= 0 || clientHeight <= 0) return;
 
-      const paddingX = 16;
-      const paddingY = 24;
-      const availableW = Math.max(100, clientWidth - paddingX);
-      const availableH = Math.max(100, clientHeight - paddingY);
-
-      // Board native size is 1200 × 750
-      const scaleX = availableW / 1200;
-      const scaleY = availableH / 750;
-      const computed = Math.min(scaleX, scaleY);
-
-      // Clamp scale to fit perfectly without overflow
-      const clamped = Math.min(1.05, Math.max(0.25, computed));
-      setAutoScale(clamped);
+      if (!isUserTransformedRef.current) {
+        // Automatically fit and center board when not manually transformed
+        const fit = calculateFit(clientWidth, clientHeight);
+        setScale(fit.scale);
+        setPanX(fit.panX);
+        setPanY(fit.panY);
+      } else {
+        // Keep user's zoom scale, but clamp pan to guarantee the board is never lost
+        const clamped = clampPan(
+          panXRef.current,
+          panYRef.current,
+          scaleRef.current,
+          clientWidth,
+          clientHeight
+        );
+        setPanX(clamped.panX);
+        setPanY(clamped.panY);
+      }
     };
 
-    updateScale();
-    const observer = new ResizeObserver(updateScale);
+    updateViewport();
+    const observer = new ResizeObserver(updateViewport);
     if (containerRef.current) observer.observe(containerRef.current);
-    window.addEventListener('resize', updateScale);
+    window.addEventListener('resize', updateViewport);
 
     return () => {
       observer.disconnect();
-      window.removeEventListener('resize', updateScale);
+      window.removeEventListener('resize', updateViewport);
     };
   }, [isSplitView]);
 
-  const effectiveScale = autoScale * manualZoom;
+  // Cursor-relative wheel zoom with non-passive listener to prevent page scroll
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
 
-  const handleResetZoom = () => setManualZoom(1);
-  const handleZoomIn = () => setManualZoom(prev => Math.min(1.8, +(prev + 0.1).toFixed(1)));
-  const handleZoomOut = () => setManualZoom(prev => Math.max(0.6, +(prev - 0.1).toFixed(1)));
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const rect = container.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      const oldScale = scaleRef.current;
+      const zoomFactor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+      const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, +(oldScale * zoomFactor).toFixed(3)));
+      if (newScale === oldScale) return;
+
+      const ratio = newScale / oldScale;
+      const newPanX = mouseX - (mouseX - panXRef.current) * ratio;
+      const newPanY = mouseY - (mouseY - panYRef.current) * ratio;
+
+      const clamped = clampPan(newPanX, newPanY, newScale, rect.width, rect.height);
+      setScale(newScale);
+      setPanX(clamped.panX);
+      setPanY(clamped.panY);
+      setIsUserTransformed(true);
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+    };
+  }, []);
+
+  // Pointer dragging events
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+
+    // Isolate interactive board controls: do NOT start panning on switches, buttons, or controls
+    const target = e.target as HTMLElement | null;
+    if (isInteractiveTarget(target)) {
+      return;
+    }
+
+    setIsDragging(true);
+    dragStartRef.current = { x: e.clientX, y: e.clientY };
+    panStartRef.current = { x: panXRef.current, y: panYRef.current };
+    setIsUserTransformed(true);
+
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingRef.current || !containerRef.current) return;
+
+    const dx = e.clientX - dragStartRef.current.x;
+    const dy = e.clientY - dragStartRef.current.y;
+
+    const newPanX = panStartRef.current.x + dx;
+    const newPanY = panStartRef.current.y + dy;
+
+    const { clientWidth, clientHeight } = containerRef.current;
+    const clamped = clampPan(newPanX, newPanY, scaleRef.current, clientWidth, clientHeight);
+
+    setPanX(clamped.panX);
+    setPanY(clamped.panY);
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isDraggingRef.current) {
+      setIsDragging(false);
+      try {
+        if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+          e.currentTarget.releasePointerCapture(e.pointerId);
+        }
+      } catch {
+        // ignore
+      }
+    }
+  };
+
+  const handlePointerCancel = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isDraggingRef.current) {
+      setIsDragging(false);
+      try {
+        if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+          e.currentTarget.releasePointerCapture(e.pointerId);
+        }
+      } catch {
+        // ignore
+      }
+    }
+  };
 
   return (
     <div
       ref={containerRef}
-      className="relative flex-1 h-full w-full bg-[#0a0f18] dot-grid flex items-center justify-center overflow-hidden select-none"
+      data-testid="de2-board-viewport"
+      className="relative flex-1 h-full w-full overflow-hidden select-none dot-grid"
       style={{
-        '--canvas-bg': '#0a0f18',
-        '--grid-color': 'rgba(255, 255, 255, 0.035)',
-      } as React.CSSProperties}
+        backgroundColor: 'var(--bg-canvas, #0a0f18)',
+        cursor: isDragging ? 'grabbing' : 'grab',
+        touchAction: 'none',
+      }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
     >
-      {/* 3D Readiness Layer: encapsulated Board component centered with transformOrigin center */}
+      {/* Canvas Transform Layer: Canonical translate(panX, panY) scale(scale) with origin 0 0 */}
       <div
-        className="transition-transform duration-150 ease-out shrink-0"
+        data-testid="de2-board-transform"
+        data-scale={scale}
+        data-pan-x={panX}
+        data-pan-y={panY}
+        className="shrink-0"
         style={{
-          width: 1200,
-          height: 750,
-          transform: `scale(${effectiveScale})`,
-          transformOrigin: 'center center',
+          width: BOARD_WIDTH,
+          height: BOARD_HEIGHT,
+          transform: `translate3d(${panX}px, ${panY}px, 0) scale(${scale})`,
+          transformOrigin: '0 0',
+          willChange: isDragging ? 'transform' : 'auto',
+          transition: isDragging ? 'none' : 'transform 60ms ease-out',
         }}
       >
         <Board />
       </div>
 
       {/* Floating Canvas Controls (bottom-right) */}
-      <div className="absolute bottom-3 right-3 flex items-center gap-1.5 bg-[#0d1627]/90 backdrop-blur-sm border border-white/10 rounded-md px-2 py-1 shadow-lg z-20">
-        <span className="text-[11px] font-mono text-slate-400 mr-1.5">
-          {Math.round(effectiveScale * 100)}%
+      <div
+        className="canvas-controls absolute bottom-3 right-3 flex items-center gap-1.5 backdrop-blur-md rounded-md px-2.5 py-1.5 shadow-lg z-20 border"
+        style={{
+          backgroundColor: 'var(--bg-surface, #0d1627)',
+          borderColor: 'var(--border-subtle, rgba(255, 255, 255, 0.1))',
+          color: 'var(--text-secondary, #94a3b8)',
+        }}
+      >
+        <span
+          data-testid="de2-zoom-label"
+          className="text-[11px] font-mono select-none mr-1"
+          style={{ color: 'var(--text-secondary, #94a3b8)' }}
+        >
+          {Math.round(scale * 100)}%
         </span>
         <button
-          onClick={handleZoomOut}
+          onClick={() => handleZoomStep('out')}
           title="Zoom Out"
-          className="p-1 rounded text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+          className="p-1 rounded transition-colors"
+          style={{
+            color: 'var(--text-secondary, #94a3b8)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = 'var(--text-primary, #ffffff)';
+            e.currentTarget.style.backgroundColor = 'var(--bg-hover, rgba(255, 255, 255, 0.1))';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = 'var(--text-secondary, #94a3b8)';
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }}
           aria-label="Zoom Out"
+          data-testid="de2-zoom-out"
         >
           <ZoomOut size={14} />
         </button>
         <button
-          onClick={handleResetZoom}
+          onClick={handleFitToScreen}
           title="Fit to Screen"
-          className="p-1 rounded text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+          className="p-1 rounded transition-colors"
+          style={{
+            color: 'var(--text-secondary, #94a3b8)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = 'var(--text-primary, #ffffff)';
+            e.currentTarget.style.backgroundColor = 'var(--bg-hover, rgba(255, 255, 255, 0.1))';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = 'var(--text-secondary, #94a3b8)';
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }}
           aria-label="Fit to Screen"
+          data-testid="de2-fit-view"
         >
           <Maximize2 size={14} />
         </button>
         <button
-          onClick={handleZoomIn}
+          onClick={() => handleZoomStep('in')}
           title="Zoom In"
-          className="p-1 rounded text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+          className="p-1 rounded transition-colors"
+          style={{
+            color: 'var(--text-secondary, #94a3b8)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = 'var(--text-primary, #ffffff)';
+            e.currentTarget.style.backgroundColor = 'var(--bg-hover, rgba(255, 255, 255, 0.1))';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = 'var(--text-secondary, #94a3b8)';
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }}
           aria-label="Zoom In"
+          data-testid="de2-zoom-in"
         >
           <ZoomIn size={14} />
         </button>

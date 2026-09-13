@@ -16,12 +16,15 @@ import { getExampleById } from '../examples/registry';
 
 const STORAGE_KEY = 'de2_workspace_layout_v1';
 
+export type DE2ViewMode = 'board' | 'split' | 'code';
+
 interface WorkspaceLayout {
   projectWidth: number;
   inspectorWidth: number;
   editorRatio: number;
   consoleHeight: number;
   pinMappingHeight: number;
+  activeView: DE2ViewMode;
 }
 
 const DEFAULT_LAYOUT: WorkspaceLayout = {
@@ -30,6 +33,7 @@ const DEFAULT_LAYOUT: WorkspaceLayout = {
   editorRatio: 0.38,
   consoleHeight: 190,
   pinMappingHeight: 220,
+  activeView: 'board',
 };
 
 function loadSavedLayout(): WorkspaceLayout {
@@ -48,6 +52,9 @@ function loadSavedLayout(): WorkspaceLayout {
         ? parsed.consoleHeight : DEFAULT_LAYOUT.consoleHeight,
       pinMappingHeight: typeof parsed.pinMappingHeight === 'number' && parsed.pinMappingHeight >= 120 && parsed.pinMappingHeight <= 480
         ? parsed.pinMappingHeight : DEFAULT_LAYOUT.pinMappingHeight,
+      activeView: (parsed.activeView === 'board' || parsed.activeView === 'split' || parsed.activeView === 'code')
+        ? parsed.activeView
+        : 'board',
     };
   } catch {
     return DEFAULT_LAYOUT;
@@ -67,16 +74,16 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
     setUploaderOpen,
   } = useBoardStore();
 
-  // Layout UI state - Split view is primary desktop experience
-  const [activeView, setActiveView] = useState<'board' | 'split' | 'code'>('split');
-  const [isProjectOpen, setIsProjectOpen] = useState(true);
-  const [isInspectorOpen, setIsInspectorOpen] = useState(true);
-  const [isConsoleOpen, setIsConsoleOpen] = useState(false);
-
   // Persistent panel dimensions & ratio state
   const [layout, setLayout] = useState<WorkspaceLayout>(loadSavedLayout);
   const centerRef = useRef<HTMLElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+
+  // Layout UI state - Default to board mode in fresh workspace
+  const [activeView, setActiveView] = useState<DE2ViewMode>(() => layout.activeView || 'board');
+  const [isProjectOpen, setIsProjectOpen] = useState(true);
+  const [isInspectorOpen, setIsInspectorOpen] = useState(true);
+  const [isConsoleOpen, setIsConsoleOpen] = useState(false);
 
   const persistLayout = useCallback((updates?: Partial<WorkspaceLayout>) => {
     setLayout(prev => {
@@ -88,13 +95,30 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
     });
   }, []);
 
-  // Responsive: collapse side panels only on mobile viewports (< 768px)
+  const handleSelectView = useCallback((view: DE2ViewMode) => {
+    setActiveView(view);
+    persistLayout({ activeView: view });
+  }, [persistLayout]);
+
+  const handleResetWorkspaceLayout = useCallback(() => {
+    setLayout(DEFAULT_LAYOUT);
+    setActiveView(DEFAULT_LAYOUT.activeView);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_LAYOUT));
+    } catch (_) {}
+  }, []);
+
+  // Responsive: collapse side panels on mobile/tablet viewports (<= 768px)
   useEffect(() => {
-    if (window.innerWidth < 768) {
-      setIsProjectOpen(false);
-      setIsInspectorOpen(false);
-      setActiveView('board');
-    }
+    const handleResize = () => {
+      if (window.innerWidth <= 768) {
+        setIsProjectOpen(false);
+        setIsInspectorOpen(false);
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   // Compiler / Console state
@@ -137,9 +161,12 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
         resetBoard();
         addLog('info', `Loaded example into DE2: ${ex.title} (${ex.de2.filename})`);
         markWorkspaceOrigin('de2', 'example');
+        // Example handoff defaults to Board mode
+        setActiveView('board');
+        persistLayout({ activeView: 'board' });
       }
     }
-  }, [setHdlCode, setPinMappings, setEngine, resetBoard, addLog]);
+  }, [setHdlCode, setPinMappings, setEngine, resetBoard, addLog, persistLayout]);
 
   // Exact existing compilation engine flow
   const handleCompile = useCallback(() => {
@@ -198,12 +225,16 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
     <div
       data-testid="de2-workspace"
       data-compile-status={compileStatus}
-      className="flex-1 flex flex-col h-full w-full bg-[#070b14] text-slate-200 overflow-hidden font-sans"
+      className="flex-1 flex flex-col h-full w-full overflow-hidden font-sans"
+      style={{
+        backgroundColor: 'var(--bg-app)',
+        color: 'var(--text-primary)',
+      }}
     >
       {/* ── Top Toolbar ── */}
       <DE2Toolbar
         activeView={activeView}
-        onSelectView={setActiveView}
+        onSelectView={handleSelectView}
         onOpenImport={() => setUploaderOpen(true)}
         onCompile={handleCompile}
         isCompiling={isCompiling}
@@ -213,6 +244,7 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
         onToggleInspector={() => setIsInspectorOpen(prev => !prev)}
         consoleOpen={isConsoleOpen}
         onToggleConsole={() => setIsConsoleOpen(prev => !prev)}
+        onResetLayout={handleResetWorkspaceLayout}
       />
 
       {/* ── Main Workspace Body ── */}
@@ -225,7 +257,7 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
           onOpenImport={() => setUploaderOpen(true)}
           activeView={activeView}
           onSelectFile={() => {
-            if (activeView === 'board') setActiveView('split');
+            if (activeView === 'board') handleSelectView('split');
           }}
         />
 

@@ -101,6 +101,7 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
         <div className="flex items-center gap-2 ml-auto lg:ml-0">
           {/* Theme toggle */}
           <button
+            data-testid="theme-toggle"
             onClick={() => setIsDarkMode(!isDarkMode)}
             className="w-8 h-8 flex items-center justify-center rounded-md border border-transparent hover:border-[var(--border-subtle)] transition-colors"
             style={{
