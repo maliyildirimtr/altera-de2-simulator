@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import { Vector3vl } from '3vl';
+import { AlertTriangle, Cpu, Upload, Play, FileCode } from 'lucide-react';
 import type { SelectedItemInfo } from './SchematicInspector';
 import { LogicLegend } from './LogicLegend';
 import { TruthTableDrawer } from './TruthTableDrawer';
 import type { TruthTableRow } from './TruthTableDrawer';
+import { ResizableDivider } from '../DE2Workspace/ResizableDivider';
 
 export interface SchematicViewportHandle {
   zoomIn: () => void;
@@ -25,8 +27,16 @@ interface SchematicViewportProps {
   onSelectItem: (item: SelectedItemInfo | null) => void;
   onOpenProblems?: () => void;
   onImportHDL?: () => void;
+  onCreateModule?: () => void;
+  onBrowseExamples?: () => void;
+  onSynthesize?: () => void;
   onTruthTableChange?: (isOpen: boolean) => void;
   onAlert?: (msg: string) => void;
+  truthTableWidth?: number;
+  onTruthTableResize?: (width: number) => void;
+  onTruthTableResizeEnd?: () => void;
+  isDarkMode?: boolean;
+  hasFiles?: boolean;
 }
 
 export const SchematicViewport = forwardRef<SchematicViewportHandle, SchematicViewportProps>(
@@ -39,8 +49,16 @@ export const SchematicViewport = forwardRef<SchematicViewportHandle, SchematicVi
       onSelectItem,
       onOpenProblems,
       onImportHDL,
+      onCreateModule,
+      onBrowseExamples,
+      onSynthesize,
       onTruthTableChange,
       onAlert,
+      truthTableWidth = 340,
+      onTruthTableResize,
+      onTruthTableResizeEnd,
+      isDarkMode = true,
+      hasFiles = false,
     },
     ref
   ) => {
@@ -66,6 +84,17 @@ export const SchematicViewport = forwardRef<SchematicViewportHandle, SchematicVi
     const [activeRowIndex, setActiveRowIndex] = useState<number | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [totalInputBits, setTotalInputBits] = useState(0);
+
+    // Responsive mobile detection (<768px)
+    const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+
+    useEffect(() => {
+      const handleResize = () => {
+        setIsMobile(window.innerWidth < 768);
+      };
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // Semantic attribute synchronizer
     const syncSemanticAttributes = () => {
@@ -299,7 +328,7 @@ export const SchematicViewport = forwardRef<SchematicViewportHandle, SchematicVi
                       refDy: -15,
                       textAnchor: 'middle',
                       fontSize: '9pt',
-                      fill: '#38bdf8',
+                      fill: isDarkMode ? '#38bdf8' : '#0369a1',
                       fontWeight: 'bold',
                     });
                   }
@@ -716,7 +745,9 @@ export const SchematicViewport = forwardRef<SchematicViewportHandle, SchematicVi
                 zIndex: 30,
               }}
             >
-              <div style={{ fontSize: '2rem', marginBottom: '8px' }}>⚠️</div>
+              <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'center' }}>
+                <AlertTriangle size={32} className="text-red-500" />
+              </div>
               <h3 style={{ margin: '0 0 8px 0', color: '#ef4444', fontSize: '1.1rem' }}>
                 Synthesis Error
               </h3>
@@ -771,8 +802,8 @@ export const SchematicViewport = forwardRef<SchematicViewportHandle, SchematicVi
             </div>
           )}
 
-          {/* Empty State (Point 10) */}
-          {!circuitData && status !== 'error' && status !== 'synthesizing' && (
+          {/* Deliberate Empty State (No source files loaded) */}
+          {!hasFiles && !circuitData && status !== 'error' && status !== 'synthesizing' && (
             <div
               data-testid="schematic-empty-state"
               style={{
@@ -783,32 +814,185 @@ export const SchematicViewport = forwardRef<SchematicViewportHandle, SchematicVi
                 textAlign: 'center',
                 color: 'var(--text-secondary)',
                 zIndex: 5,
+                maxWidth: '380px',
+                width: '90%',
+                padding: '28px 24px',
+                backgroundColor: 'var(--bg-panel)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: '12px',
+                boxShadow: '0 12px 32px rgba(0,0,0,0.35)',
               }}
             >
-              <div style={{ fontSize: '2.5rem', marginBottom: '10px', opacity: 0.6 }}>📐</div>
-              <div style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '6px' }}>
-                No Schematic Synthesized
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '52px',
+                  height: '52px',
+                  borderRadius: '10px',
+                  backgroundColor: 'var(--accent-subtle)',
+                  border: '1px solid var(--accent-border)',
+                  color: 'var(--accent-primary)',
+                  marginBottom: '14px',
+                }}
+              >
+                <Cpu size={26} />
               </div>
-              <div style={{ fontSize: '0.85rem', marginBottom: '14px', maxWidth: '300px' }}>
-                Write or load Verilog/SystemVerilog code, then click Synthesize to inspect the logic
-                circuit.
+              <div
+                style={{
+                  fontWeight: 600,
+                  fontSize: '1.05rem',
+                  marginBottom: '6px',
+                  color: 'var(--text-primary)',
+                }}
+              >
+                No schematic loaded
               </div>
-              {onImportHDL && (
+              <div
+                style={{
+                  fontSize: '0.82rem',
+                  marginBottom: '20px',
+                  color: 'var(--text-secondary)',
+                  lineHeight: 1.5,
+                }}
+              >
+                Create or import an HDL module, then synthesize it to inspect the generated logic schematic.
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {onCreateModule && (
+                  <button
+                    data-testid="empty-create-module-btn"
+                    onClick={onCreateModule}
+                    style={{
+                      width: '100%',
+                      padding: '8px 16px',
+                      background: 'var(--accent-primary)',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      fontSize: '0.82rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      transition: 'background 0.15s ease',
+                    }}
+                  >
+                    <FileCode size={14} />
+                    <span>Create HDL Module</span>
+                  </button>
+                )}
+                {onImportHDL && (
+                  <button
+                    data-testid="empty-import-hdl-btn"
+                    onClick={onImportHDL}
+                    style={{
+                      width: '100%',
+                      padding: '7px 16px',
+                      background: 'var(--bg-surface)',
+                      color: 'var(--text-primary)',
+                      border: '1px solid var(--border-strong)',
+                      borderRadius: '6px',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      fontSize: '0.82rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <Upload size={14} />
+                    <span>Import Verilog</span>
+                  </button>
+                )}
                 <button
-                  data-testid="empty-import-hdl-btn"
-                  onClick={onImportHDL}
+                  data-testid="empty-browse-examples-btn"
+                  onClick={onBrowseExamples || (() => { window.location.hash = '#/projects'; })}
                   style={{
-                    padding: '6px 16px',
-                    background: 'var(--accent-color)',
+                    background: 'transparent',
+                    color: 'var(--text-muted)',
+                    border: 'none',
+                    padding: '4px',
+                    fontSize: '0.78rem',
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    textUnderlineOffset: '3px',
+                    marginTop: '4px',
+                  }}
+                >
+                  Browse Examples
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Ready to Synthesize State (HDL files loaded, not yet synthesized) */}
+          {hasFiles && !circuitData && status !== 'error' && status !== 'synthesizing' && (
+            <div
+              data-testid="schematic-ready-state"
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                textAlign: 'center',
+                color: 'var(--text-secondary)',
+                zIndex: 5,
+                maxWidth: '340px',
+                padding: '24px',
+                backgroundColor: 'var(--bg-panel)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: '10px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '8px',
+                  backgroundColor: 'rgba(34, 197, 94, 0.12)',
+                  color: '#22c55e',
+                  marginBottom: '10px',
+                }}
+              >
+                <Play size={20} />
+              </div>
+              <div style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '4px', color: 'var(--text-primary)' }}>
+                Ready to Synthesize
+              </div>
+              <div style={{ fontSize: '0.8rem', marginBottom: '16px', color: 'var(--text-secondary)' }}>
+                HDL source code is loaded. Click Synthesize in the toolbar to inspect the logic circuit.
+              </div>
+              {onSynthesize && (
+                <button
+                  data-testid="empty-synthesize-btn"
+                  onClick={onSynthesize}
+                  style={{
+                    padding: '7px 18px',
+                    background: 'var(--accent-primary)',
                     color: '#fff',
                     border: 'none',
                     borderRadius: '6px',
                     fontWeight: 600,
                     cursor: 'pointer',
-                    fontSize: '0.85rem',
+                    fontSize: '0.82rem',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
                   }}
                 >
-                  Import HDL
+                  <Cpu size={14} />
+                  <span>Synthesize Design</span>
                 </button>
               )}
             </div>
@@ -837,6 +1021,27 @@ export const SchematicViewport = forwardRef<SchematicViewportHandle, SchematicVi
           {circuitData && status !== 'error' && <LogicLegend />}
         </div>
 
+        {/* Resizable Divider for Desktop Truth Table */}
+        {isTruthTableOpen && !isMobile && (
+          <ResizableDivider
+            orientation="vertical"
+            data-testid="splitter-truth-table"
+            aria-label="Resize Truth Table"
+            valueMin={260}
+            valueMax={600}
+            valueNow={truthTableWidth || 340}
+            onResize={(delta) => {
+              const nextWidth = Math.max(260, Math.min(600, (truthTableWidth || 340) - delta));
+              onTruthTableResize?.(nextWidth);
+            }}
+            onResizeEnd={onTruthTableResizeEnd}
+            onReset={() => {
+              onTruthTableResize?.(340);
+              onTruthTableResizeEnd?.();
+            }}
+          />
+        )}
+
         {/* Dockable / Collapsible Truth Table Drawer (Point 3, 4 & 14) */}
         <TruthTableDrawer
           isOpen={isTruthTableOpen}
@@ -850,8 +1055,11 @@ export const SchematicViewport = forwardRef<SchematicViewportHandle, SchematicVi
           onRowClick={handleTruthTableRowClick}
           isGenerating={isGenerating}
           totalBits={totalInputBits}
+          width={truthTableWidth || 340}
+          isMobile={isMobile}
         />
       </div>
     );
   }
+
 );

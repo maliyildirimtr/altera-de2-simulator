@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface SchematicConsoleProps {
   isOpen: boolean;
@@ -18,6 +18,12 @@ export const SchematicConsole: React.FC<SchematicConsoleProps> = ({
   onClear,
 }) => {
   const [activeTab, setActiveTab] = useState<'console' | 'problems'>(error ? 'problems' : 'console');
+
+  useEffect(() => {
+    if (error) {
+      setActiveTab('problems');
+    }
+  }, [error]);
 
   if (!isOpen) return null;
 
