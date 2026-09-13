@@ -859,7 +859,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
         onChange={handleSourceUpload}
         multiple
         className="hidden"
-        accept=".v,.sv,.txt"
+        accept=".v,.sv"
       />
       <input
         type="file"
@@ -867,7 +867,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
         ref={tbInputRef}
         onChange={handleTbUpload}
         className="hidden"
-        accept=".v,.sv,.txt"
+        accept=".v,.sv"
       />
       <input
         type="file"
@@ -884,7 +884,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
         onChange={handleGeneralUpload}
         multiple
         className="hidden"
-        accept=".v,.sv,.txt,.vcd"
+        accept=".v,.sv,.vcd"
       />
 
       {/* ── TOP TOOLBAR ─────────────────────────────────────────── */}

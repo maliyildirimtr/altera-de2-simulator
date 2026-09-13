@@ -92,6 +92,12 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ isOpen, onOpenImport, is
             editor.onDidChangeModelContent(() => {
               markWorkspaceDirty('de2');
             });
+            const model = editor.getModel();
+            if (model) {
+              model.onDidChangeContent(() => {
+                markWorkspaceDirty('de2');
+              });
+            }
           }}
           onChange={handleEditorChange}
           options={{

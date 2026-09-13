@@ -99,7 +99,7 @@ export const ProjectPanel: React.FC<ProjectPanelProps> = ({
                   Import HDL
                 </button>
                 <button
-                  onClick={() => navigate('/projects')}
+                  onClick={() => navigate('/examples')}
                   className="w-full flex items-center justify-center gap-1.5 py-1 px-2 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors"
                 >
                   <BookOpen size={12} />

@@ -418,8 +418,9 @@ function CodePanel() {
           <div style={{ padding: '2px 8px', background: '#1e2d40', borderRadius: 4, color: '#4a6080', fontSize: 10, fontFamily: 'monospace' }}>
             Compile
           </div>
-          <div style={{ padding: '2px 8px', background: '#1e3a8a', borderRadius: 4, color: '#93c5fd', fontSize: 10, fontFamily: 'monospace' }}>
-            ▶ Run
+          <div style={{ padding: '2px 8px', background: '#1e3a8a', borderRadius: 4, color: '#93c5fd', fontSize: 10, fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Play size={9} className="fill-current" />
+            <span>Run</span>
           </div>
         </div>
       </div>

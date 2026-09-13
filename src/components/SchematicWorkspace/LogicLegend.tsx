@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Zap, ChevronDown, ChevronUp } from 'lucide-react';
 
 export const LogicLegend: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -40,9 +41,11 @@ export const LogicLegend: React.FC = () => {
           fontWeight: 600,
         }}
       >
-        <span style={{ fontSize: '0.85rem' }}>⚡</span>
+        <Zap size={13} className="text-amber-400" />
         <span>Logic Colors</span>
-        <span style={{ fontSize: '0.7rem' }}>{isExpanded ? '▼' : '▲'}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+          {isExpanded ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
+        </span>
       </div>
 
       {isExpanded ? (

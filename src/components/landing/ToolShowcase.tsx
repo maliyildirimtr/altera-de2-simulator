@@ -180,7 +180,7 @@ const TOOLS = [
   },
   {
     name: 'Examples',
-    to: '/projects',
+    to: '/examples',
     badge: 'Ready to Run',
     accent: 'var(--accent-primary)',
     description:

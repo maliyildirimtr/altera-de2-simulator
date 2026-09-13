@@ -1,4 +1,5 @@
 import React from 'react';
+import { Search, X, Lightbulb, AlertTriangle, CircuitBoard } from 'lucide-react';
 
 export interface SelectedItemInfo {
   id: string;
@@ -101,23 +102,27 @@ export const SchematicInspector: React.FC<SchematicInspectorProps> = ({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
-          <span>🔍</span>
+          <Search size={14} className="text-slate-400" />
           <span>Inspector</span>
         </div>
         {onClose && (
           <button
             onClick={onClose}
             title="Close Inspector"
+            aria-label="Close Inspector"
             style={{
               background: 'transparent',
               border: 'none',
               color: 'var(--text-secondary)',
               cursor: 'pointer',
-              fontSize: '1rem',
-              lineHeight: 1,
+              padding: '2px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '4px',
             }}
           >
-            ×
+            <X size={14} />
           </button>
         )}
       </div>
@@ -301,7 +306,7 @@ export const SchematicInspector: React.FC<SchematicInspectorProps> = ({
                     gap: '4px',
                   }}
                 >
-                  <span>💡</span>
+                  <Lightbulb size={13} className="text-amber-400 shrink-0" />
                   <span>Component Principle</span>
                 </div>
                 <div style={{ color: 'var(--text-primary)' }}>
@@ -346,7 +351,9 @@ export const SchematicInspector: React.FC<SchematicInspectorProps> = ({
                 textAlign: 'center',
               }}
             >
-              <div style={{ fontSize: '1.5rem' }}>⚠️</div>
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <AlertTriangle size={24} className="text-red-400" />
+              </div>
               <div
                 data-testid="inspector-unavailable-title"
                 style={{ fontWeight: 700, color: '#f87171', fontSize: '0.9rem' }}
@@ -374,7 +381,9 @@ export const SchematicInspector: React.FC<SchematicInspectorProps> = ({
                 textAlign: 'center',
               }}
             >
-              <div style={{ fontSize: '1.5rem' }}>📐</div>
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <CircuitBoard size={24} className="text-sky-400" />
+              </div>
               <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.9rem' }}>
                 NO CURRENT SCHEMATIC
               </div>

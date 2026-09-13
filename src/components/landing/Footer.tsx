@@ -6,7 +6,7 @@ const PRODUCT_LINKS = [
   { label: 'DE2 Simulator', to: '/de2-simulator' },
   { label: 'Waveform',      to: '/waveform' },
   { label: 'Schematic',     to: '/schematic' },
-  { label: 'Examples',      to: '/projects' },
+  { label: 'Examples',      to: '/examples' },
 ];
 
 export function Footer() {

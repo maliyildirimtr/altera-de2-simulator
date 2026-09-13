@@ -5,7 +5,20 @@ import fs from 'node:fs';
 async function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 async function main() {
-  const baseUrl = (process.env.APP_BASE_URL || 'http://127.0.0.1:5173').replace(/\/$/, '');
+  let baseUrl = process.env.APP_BASE_URL;
+  if (!baseUrl) {
+    for (const port of [5173, 5174, 5175]) {
+      try {
+        const res = await fetch(`http://127.0.0.1:${port}`);
+        const text = await res.text();
+        if (text.includes('Engineering Lab')) {
+          baseUrl = `http://127.0.0.1:${port}`;
+          break;
+        }
+      } catch (_) {}
+    }
+  }
+  baseUrl = (baseUrl || 'http://127.0.0.1:5173').replace(/\/$/, '');
   const chrome = spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', [
     '--headless=new',
     '--remote-debugging-port=9246',

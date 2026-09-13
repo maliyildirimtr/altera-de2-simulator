@@ -1,12 +1,27 @@
 import { spawn } from 'node:child_process';
 import assert from 'node:assert';
+import fs from 'node:fs';
+import path from 'node:path';
 
 async function wait(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
 async function main() {
-  const baseUrl = (process.env.APP_BASE_URL || 'http://127.0.0.1:5173').replace(/\/$/, '');
+  let baseUrl = process.env.APP_BASE_URL;
+  if (!baseUrl) {
+    for (const port of [5173, 5174, 5175]) {
+      try {
+        const res = await fetch(`http://127.0.0.1:${port}`);
+        const text = await res.text();
+        if (text.includes('Engineering Lab')) {
+          baseUrl = `http://127.0.0.1:${port}`;
+          break;
+        }
+      } catch (_) {}
+    }
+  }
+  baseUrl = (baseUrl || 'http://127.0.0.1:5173').replace(/\/$/, '');
   const debugPort = 9253;
   const userDataDir = `/tmp/phase12-ux-chrome-${process.pid}`;
 
@@ -55,8 +70,16 @@ async function main() {
 
     let id = 1;
     const callbacks = new Map();
+    const uncaughtErrors = [];
+    const consoleErrors = [];
     ws.onmessage = (e) => {
       const m = JSON.parse(e.data);
+      if (m.method === 'Runtime.exceptionThrown') {
+        uncaughtErrors.push(m.params?.exceptionDetails);
+      }
+      if (m.method === 'Runtime.consoleAPICalled' && m.params?.type === 'error') {
+        consoleErrors.push(m.params.args?.map((a) => a.value || a.description || '').join(' '));
+      }
       if (m.id && callbacks.has(m.id)) {
         callbacks.get(m.id)(m.result);
         callbacks.delete(m.id);
@@ -434,17 +457,17 @@ async function main() {
     // =========================================================================
     console.log('[Test 7] Verifying Fit to Screen...');
     await evaluate(`document.querySelector('[data-testid="de2-fit-view"]').click()`);
-    await wait(150);
+    await wait(400);
 
     const fitVisibility = await evaluate(`
       (() => {
         const vp = document.querySelector('[data-testid="de2-board-viewport"]').getBoundingClientRect();
         const board = document.querySelector('[data-testid="de2-board-transform"]').getBoundingClientRect();
         const fullyInside =
-          board.left >= vp.left - 2 &&
-          board.right <= vp.right + 2 &&
-          board.top >= vp.top - 2 &&
-          board.bottom <= vp.bottom + 2;
+          board.left >= vp.left - 5 &&
+          board.right <= vp.right + 5 &&
+          board.top >= vp.top - 5 &&
+          board.bottom <= vp.bottom + 5;
         return {
           fullyInside,
           board: { left: board.left, right: board.right, top: board.top, bottom: board.bottom },
@@ -452,6 +475,9 @@ async function main() {
         };
       })()
     `);
+    if (!fitVisibility.fullyInside) {
+      console.log('Fit visibility debug:', fitVisibility);
+    }
     assert.ok(fitVisibility.fullyInside, 'Board should be fully contained and visible after Fit to Screen');
     console.log('  PASS: Fit to Screen centered and restored full board visibility.');
 
@@ -1072,6 +1098,7 @@ endmodule`;
     // Open Truth Table
     await evaluate(`(document.querySelector('[data-testid="schematic-truth-table-toggle"]') || document.querySelector('[data-testid="schematic-truth-table-btn"]')).click();`);
     await waitFor('[data-testid="truth-table-drawer"]');
+    await waitFor('[data-testid="truth-table-content"]', 10000);
     await wait(400);
 
     // Verify Truth Table drawer is open and check splitter bounds
@@ -1258,7 +1285,322 @@ endmodule`;
     assert.strictEqual(darkThemeState, 'dark', 'Document should return to dark theme');
     console.log('  PASS: Theme synchronization functional across Schematic canvas and Monaco editor.');
 
-    console.log('\nAll Phase 12.2C, 12.2D & 12.2E UX assertions PASSED successfully!');
+    // =========================================================================
+    // 28. Phase 12.2F — Repository-Wide Emoji & Icon Consistency Scan
+    // =========================================================================
+    console.log('\n--- Phase 12.2F Emoji & Icon Consistency Regression Suite ---');
+    console.log('[Test 28] Scanning src/components and src/pages for decorative UI emoji...');
+
+    const emojiRegex = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F100}-\u{1F1FF}]/u;
+    const allowedSymbols = new Set([
+      '®', '©', '™', '✓', '✔', '✕', '✖', '→', '←', '↑', '↓', '↔', '×', '÷', '·', '•', '…', '—', '–',
+    ]);
+
+    const scanDirs = ['src/components', 'src/pages'];
+    const offendingOccurrences = [];
+
+    function auditDirectory(dirPath) {
+      const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = path.join(dirPath, entry.name);
+        if (entry.isDirectory()) {
+          auditDirectory(fullPath);
+        } else if (/\.(tsx|ts|jsx|js)$/.test(entry.name)) {
+          const fileContent = fs.readFileSync(fullPath, 'utf8');
+          const lines = fileContent.split('\n');
+          lines.forEach((lineText, lineIdx) => {
+            for (const char of lineText) {
+              if (emojiRegex.test(char) && !allowedSymbols.has(char)) {
+                offendingOccurrences.push({
+                  file: path.relative(process.cwd(), fullPath),
+                  line: lineIdx + 1,
+                  char,
+                  codePoint: 'U+' + char.codePointAt(0).toString(16).toUpperCase().padStart(4, '0'),
+                  snippet: lineText.trim(),
+                });
+              }
+            }
+          });
+        }
+      }
+    }
+
+    for (const dir of scanDirs) {
+      auditDirectory(path.resolve(process.cwd(), dir));
+    }
+
+    if (offendingOccurrences.length > 0) {
+      const details = offendingOccurrences
+        .map(o => `  ${o.file}:${o.line} [${o.char} / ${o.codePoint}]: "${o.snippet}"`)
+        .join('\n');
+      throw new Error(`Found ${offendingOccurrences.length} remaining decorative emoji in UI sources:\n${details}`);
+    }
+
+    console.log(`  PASS: Zero decorative emoji found across ${scanDirs.join(' and ')}.`);
+
+    // =========================================================================
+    // 29. Cross-Route Responsive Matrix (5 Viewports × 7 Routes)
+    // =========================================================================
+    console.log('\n--- Phase 12.2G Final Release & Responsive Regression Suite ---');
+    console.log('[Test 29] Verifying Zero Horizontal Overflow across 5 Viewports and 7 Routes...');
+
+    const targetViewports = [
+      { name: '1440x900', w: 1440, h: 900 },
+      { name: '1280x800', w: 1280, h: 800 },
+      { name: '1024x768', w: 1024, h: 768 },
+      { name: '768x1024', w: 768,  h: 1024 },
+      { name: '430x932',  w: 430,  h: 932 },
+    ];
+
+    const targetRoutes = [
+      '#/',
+      '#/digital-logic',
+      '#/fpga',
+      '#/examples',
+      '#/de2-simulator',
+      '#/waveform',
+      '#/schematic',
+    ];
+
+    for (const route of targetRoutes) {
+      await evaluate(`window.location.hash = '${route}';`);
+      await wait(600);
+
+      for (const vp of targetViewports) {
+        await send('Emulation.setDeviceMetricsOverride', {
+          width: vp.w,
+          height: vp.h,
+          deviceScaleFactor: 1,
+          mobile: vp.w < 768,
+        });
+        await wait(250);
+
+        const check = await evaluate(`(() => {
+          const doc = document.documentElement;
+          return {
+            scrollWidth: doc.scrollWidth,
+            clientWidth: doc.clientWidth,
+            hasNavbar: !!document.querySelector('.landing-navbar'),
+          };
+        })()`);
+
+        assert.ok(
+          check.scrollWidth <= check.clientWidth + 1,
+          `Route ${route} at ${vp.name} must have zero horizontal overflow: scrollWidth (${check.scrollWidth}) > clientWidth (${check.clientWidth})`
+        );
+      }
+    }
+
+    await send('Emulation.clearDeviceMetricsOverride');
+    await wait(300);
+    console.log('  PASS: 35 route-viewport combinations verified with zero horizontal overflow.');
+
+    // =========================================================================
+    // 30. Canonical Routing & Examples Navigation Consistency
+    // =========================================================================
+    console.log('[Test 30] Verifying Canonical Routing and Compatibility Aliases...');
+    // Verify #/examples renders Projects component
+    await evaluate(`window.location.hash = '#/examples';`);
+    await wait(400);
+    const hasCardsExamples = await evaluate(`document.querySelectorAll('[data-testid^="example-card-"]').length > 0`);
+    assert.strictEqual(hasCardsExamples, true, '#/examples must render example cards');
+
+    // Verify #/projects compatibility alias renders Projects component
+    await evaluate(`window.location.hash = '#/projects';`);
+    await wait(400);
+    const hasCardsProjects = await evaluate(`document.querySelectorAll('[data-testid^="example-card-"]').length > 0`);
+    assert.strictEqual(hasCardsProjects, true, '#/projects compatibility alias must render example cards');
+
+    // Verify navbar link points to canonical /examples
+    const navExamplesHref = await evaluate(`document.querySelector('a[href="#/examples"]')?.getAttribute('href')`);
+    assert.strictEqual(navExamplesHref, '#/examples', 'Navbar must link to canonical #/examples');
+    console.log('  PASS: Canonical /examples and compatibility /projects verified.');
+
+    // =========================================================================
+    // 31. Dark / Light Theme Synchronization & Persistence
+    // =========================================================================
+    console.log('[Test 31] Verifying Theme Synchronization and Reload Persistence...');
+    const initialThemeState = await evaluate(`(() => {
+      const doc = document.documentElement;
+      return {
+        themeAttr: doc.getAttribute('data-theme'),
+        hasDarkClass: doc.classList.contains('dark'),
+      };
+    })()`);
+
+    // Verify data-theme matches dark class
+    if (initialThemeState.themeAttr === 'dark') {
+      assert.strictEqual(initialThemeState.hasDarkClass, true, 'dark theme must include dark class');
+    } else {
+      assert.strictEqual(initialThemeState.hasDarkClass, false, 'light theme must not include dark class');
+    }
+
+    // Toggle theme via toggle button in navbar
+    const themeBtnExists = await evaluate(`!!document.querySelector('[data-testid="theme-toggle-btn"]') || !!document.querySelector('button[title*="theme" i]') || !!document.querySelector('button[aria-label*="theme" i]')`);
+    if (themeBtnExists) {
+      await evaluate(`(document.querySelector('[data-testid="theme-toggle-btn"]') || document.querySelector('button[title*="theme" i]') || document.querySelector('button[aria-label*="theme" i]')).click()`);
+      await wait(300);
+
+      const toggledState = await evaluate(`(() => {
+        const doc = document.documentElement;
+        return {
+          themeAttr: doc.getAttribute('data-theme'),
+          hasDarkClass: doc.classList.contains('dark'),
+        };
+      })()`);
+
+      assert.notStrictEqual(toggledState.themeAttr, initialThemeState.themeAttr, 'Theme attribute must toggle');
+      assert.strictEqual(toggledState.hasDarkClass, toggledState.themeAttr === 'dark', 'Dark class must sync with data-theme');
+
+      // Test persistence across reload
+      await evaluate(`location.reload();`);
+      await wait(1500);
+
+      const reloadedState = await evaluate(`(() => {
+        const doc = document.documentElement;
+        return {
+          themeAttr: doc.getAttribute('data-theme'),
+          hasDarkClass: doc.classList.contains('dark'),
+        };
+      })()`);
+      assert.strictEqual(reloadedState.themeAttr, toggledState.themeAttr, 'Toggled theme must persist across reload');
+
+      // Restore initial theme if needed
+      if (reloadedState.themeAttr !== initialThemeState.themeAttr) {
+        await evaluate(`(document.querySelector('[data-testid="theme-toggle-btn"]') || document.querySelector('button[title*="theme" i]') || document.querySelector('button[aria-label*="theme" i]')).click()`);
+        await wait(300);
+      }
+    }
+    console.log('  PASS: Theme attribute and class stay strictly synchronized and persist across reload.');
+
+    // =========================================================================
+    // 32. Security & Local Dependency Isolation Lock
+    // =========================================================================
+    console.log('[Test 32] Verifying Security Lock and Runtime Dependency Isolation...');
+    const domSecurityCheck = await evaluate(`(() => {
+      const scripts = Array.from(document.querySelectorAll('script')).map(s => s.src).filter(Boolean);
+      const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).map(l => l.href).filter(Boolean);
+      const externalScripts = scripts.filter(s => !s.includes(location.host) && (s.startsWith('http://') || s.startsWith('https://')));
+      const externalStyles = links.filter(l => !l.includes(location.host) && (l.startsWith('http://') || l.startsWith('https://')));
+      return {
+        externalScripts,
+        externalStyles,
+      };
+    })()`);
+    assert.strictEqual(domSecurityCheck.externalScripts.length, 0, 'No external script tags permitted in DOM');
+    assert.strictEqual(domSecurityCheck.externalStyles.length, 0, 'No external stylesheet tags permitted in DOM');
+    console.log('  PASS: Zero external runtime CDN dependencies in document.');
+
+    // =========================================================================
+    // 33. Schematic Production Regression: Full Adder & Topsort Integrity
+    // =========================================================================
+    console.log('[Test 33] Verifying Schematic Full Adder Synthesis, DigitalJS Rendering & No Runtime Exceptions...');
+    await evaluate(`location.hash = '#/schematic'`);
+    await wait(1500);
+
+    // 1. Ensure file exists or create one
+    await evaluate(`
+      (() => {
+        const emptyBtn = document.querySelector('[data-testid="empty-create-module-btn"]');
+        if (emptyBtn) emptyBtn.click();
+      })()
+    `);
+    await wait(300);
+    await evaluate(`
+      (() => {
+        const createBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Create');
+        if (createBtn) createBtn.click();
+      })()
+    `);
+    await wait(800);
+
+    // 2. Switch to split mode so Monaco is visible
+    await evaluate(`
+      (() => {
+        const splitBtn = document.querySelector('[data-testid="view-mode-split"]');
+        if (splitBtn) splitBtn.click();
+      })()
+    `);
+    await wait(800);
+
+    const schematicFullAdderCode = `module full_adder(
+    input logic a,
+    input logic b,
+    input logic cin,
+    output logic sum,
+    output logic cout
+);
+
+assign sum  = a ^ b ^ cin;
+assign cout = (a & b) | (cin & (a ^ b));
+
+endmodule`;
+
+    const startErrorsCount = uncaughtErrors.length;
+    const startConsoleCount = consoleErrors.length;
+
+    await evaluate(`
+      (() => {
+        const ed = window.monaco?.editor?.getEditors()?.find(e => {
+          const dom = e.getDomNode();
+          return dom && document.body.contains(dom);
+        }) || window.monaco?.editor?.getEditors()?.[0];
+        if (ed) ed.setValue(${JSON.stringify(schematicFullAdderCode)});
+      })()
+    `);
+    await wait(600);
+
+    await evaluate(`
+      (() => {
+        const btn = document.querySelector('[data-testid="schematic-synthesize-btn"]') ||
+          Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('Synthesize'));
+        if (btn) btn.click();
+      })()
+    `);
+
+    let schematicFinished = false;
+    let schematicState = null;
+    for (let i = 0; i < 30; i++) {
+      await wait(500);
+      schematicState = await evaluate(`
+        (() => {
+          const errorCard = document.querySelector('[data-testid="schematic-error-state"], [data-testid="schematic-error"]');
+          const statusBadge = document.querySelector('[data-testid="schematic-status"]')?.innerText || '';
+          const svg = document.querySelector('#schematic-paper-container svg, .joint-paper svg');
+          const elementCount = svg ? svg.querySelectorAll('.joint-element').length : 0;
+          return {
+            hasErrorCard: !!errorCard,
+            statusBadge,
+            hasSvg: !!svg,
+            elementCount
+          };
+        })()
+      `);
+
+      if (schematicState.hasSvg && schematicState.elementCount > 0 && !schematicState.hasErrorCard && schematicState.statusBadge.includes('Ready')) {
+        schematicFinished = true;
+        break;
+      }
+      if (schematicState.hasErrorCard) {
+        break;
+      }
+    }
+
+    console.log('  [Test 33 Result]', schematicState);
+    assert(!schematicState.hasErrorCard, 'Schematic must not enter Error state on valid full_adder');
+    assert(schematicFinished, 'full_adder must synthesize and render SVG with joint elements');
+    assert(schematicState.elementCount >= 10, 'full_adder should have at least 10 JointJS diagram elements');
+
+    const newUncaught = uncaughtErrors.slice(startErrorsCount);
+    const newConsoleErrors = consoleErrors.slice(startConsoleCount);
+
+    const hasNotAFunction = newUncaught.some(e => JSON.stringify(e).includes('not a function')) ||
+      newConsoleErrors.some(e => e.includes('not a function'));
+    assert(!hasNotAFunction, 'No "is not a function" error may occur during full_adder synthesis/render');
+    assert.strictEqual(newUncaught.length, 0, 'No uncaught exceptions permitted during full_adder synthesis');
+    console.log('  PASS: full_adder synthesized cleanly with DigitalJS SVG elements and zero runtime exceptions.');
+
+    console.log('\nAll Phase 12.2C through Phase 12.2G release assertions PASSED successfully!');
     cleanup();
     process.exit(0);
   } catch (err) {

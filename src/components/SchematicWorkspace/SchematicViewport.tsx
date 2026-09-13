@@ -35,6 +35,8 @@ interface SchematicViewportProps {
   truthTableWidth?: number;
   onTruthTableResize?: (width: number) => void;
   onTruthTableResizeEnd?: () => void;
+  errorKind?: 'hdl' | 'internal' | null;
+  onRenderError?: (error: any) => void;
   isDarkMode?: boolean;
   hasFiles?: boolean;
 }
@@ -46,6 +48,8 @@ export const SchematicViewport = forwardRef<SchematicViewportHandle, SchematicVi
       simplify = true,
       status,
       errorMessage,
+      errorKind = 'hdl',
+      onRenderError,
       onSelectItem,
       onOpenProblems,
       onImportHDL,
@@ -529,6 +533,7 @@ export const SchematicViewport = forwardRef<SchematicViewportHandle, SchematicVi
         })
         .catch((err) => {
           console.error('DigitalJS render error:', err);
+          onRenderError?.(err);
         });
 
       return () => {
@@ -749,7 +754,7 @@ export const SchematicViewport = forwardRef<SchematicViewportHandle, SchematicVi
                 <AlertTriangle size={32} className="text-red-500" />
               </div>
               <h3 style={{ margin: '0 0 8px 0', color: '#ef4444', fontSize: '1.1rem' }}>
-                Synthesis Error
+                {errorKind === 'internal' ? 'Internal Schematic Processing Error' : 'Synthesis Error'}
               </h3>
               <p
                 style={{
@@ -759,8 +764,9 @@ export const SchematicViewport = forwardRef<SchematicViewportHandle, SchematicVi
                   marginBottom: '16px',
                 }}
               >
-                The HDL code contains syntax or semantic errors. Previous schematic graph has been
-                invalidated. Check the Problems tab for detailed compiler diagnostics.
+                {errorKind === 'internal'
+                  ? 'An internal error occurred while processing or generating the schematic diagram. Your HDL code does not contain syntax errors. Check the Problems tab for technical diagnostics.'
+                  : 'The HDL code contains syntax or semantic errors. Previous schematic graph has been invalidated. Check the Problems tab for detailed compiler diagnostics.'}
               </p>
               {errorMessage && (
                 <div
@@ -796,7 +802,7 @@ export const SchematicViewport = forwardRef<SchematicViewportHandle, SchematicVi
                     fontSize: '0.85rem',
                   }}
                 >
-                  View Problems & Log
+                  {errorKind === 'internal' ? 'View Technical Diagnostics' : 'View Problems & Log'}
                 </button>
               )}
             </div>
@@ -913,7 +919,7 @@ export const SchematicViewport = forwardRef<SchematicViewportHandle, SchematicVi
                 )}
                 <button
                   data-testid="empty-browse-examples-btn"
-                  onClick={onBrowseExamples || (() => { window.location.hash = '#/projects'; })}
+                  onClick={onBrowseExamples || (() => { window.location.hash = '#/examples'; })}
                   style={{
                     background: 'transparent',
                     color: 'var(--text-muted)',
