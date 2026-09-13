@@ -70,24 +70,24 @@ export const ExampleFilterBar: React.FC<ExampleFilterBarProps> = ({
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
                 backgroundColor: isSelected
-                  ? 'rgba(56, 189, 248, 0.15)'
-                  : 'rgba(255, 255, 255, 0.04)',
-                color: isSelected ? '#38bdf8' : 'var(--text-secondary)',
+                  ? 'var(--accent-subtle)'
+                  : 'var(--bg-panel)',
+                color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
                 border: isSelected
-                  ? '1px solid rgba(56, 189, 248, 0.35)'
-                  : '1px solid var(--border-color)',
+                  ? '1px solid var(--accent-border)'
+                  : '1px solid var(--border-subtle)',
               }}
             >
               <span>{cat.label}</span>
               <span
                 style={{
                   fontSize: '0.72rem',
-                  padding: '1px 5px',
+                  padding: '1px 6px',
                   borderRadius: '10px',
                   backgroundColor: isSelected
-                    ? 'rgba(56, 189, 248, 0.25)'
-                    : 'rgba(255, 255, 255, 0.08)',
-                  color: isSelected ? '#38bdf8' : 'var(--text-secondary)',
+                    ? 'var(--accent-subtle)'
+                    : 'var(--bg-surface)',
+                  color: isSelected ? 'var(--accent-primary)' : 'var(--text-muted)',
                 }}
               >
                 {count}
@@ -126,8 +126,8 @@ export const ExampleFilterBar: React.FC<ExampleFilterBarProps> = ({
           style={{
             width: '100%',
             padding: '8px 12px 8px 36px',
-            background: 'var(--bg-secondary)',
-            border: '1px solid var(--border-color)',
+            background: 'var(--bg-input)',
+            border: '1px solid var(--border-subtle)',
             borderRadius: '6px',
             color: 'var(--text-primary)',
             fontSize: '0.85rem',

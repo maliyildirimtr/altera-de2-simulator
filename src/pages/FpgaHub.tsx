@@ -15,38 +15,94 @@ export default function FpgaHub() {
   ];
 
   return (
-    <div className="flex-1 w-full bg-[#070b14] text-slate-200 overflow-y-auto font-sans p-6 lg:p-12">
+    <div
+      className="flex-1 w-full overflow-y-auto font-sans p-6 lg:p-12"
+      style={{
+        backgroundColor: 'var(--bg-app)',
+        color: 'var(--text-primary)',
+      }}
+    >
       <div className="max-w-5xl mx-auto">
-        <div className="mb-12 border-b border-slate-800/80 pb-10">
+        <div
+          className="mb-12 border-b pb-10"
+          style={{ borderColor: 'var(--border-subtle)' }}
+        >
           <div className="flex items-center gap-2.5 mb-4">
-            <div className="p-1.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+            <div
+              className="p-1.5 rounded-md border"
+              style={{
+                backgroundColor: 'var(--accent-subtle)',
+                borderColor: 'var(--accent-border)',
+                color: 'var(--accent-primary)',
+              }}
+            >
               <Grid size={18} />
             </div>
-            <span className="text-xs font-mono font-semibold uppercase tracking-wider text-indigo-400">
+            <span
+              className="text-xs font-mono font-semibold uppercase tracking-wider"
+              style={{ color: 'var(--accent-primary)' }}
+            >
               Engineering Area
             </span>
           </div>
-          <h1 className="text-4xl sm:text-5xl font-bold text-slate-100 tracking-tight mb-4">
+          <h1
+            className="text-4xl sm:text-5xl font-bold tracking-tight mb-4"
+            style={{ color: 'var(--text-primary)' }}
+          >
             Field-Programmable Gate Arrays (FPGA)
           </h1>
-          <p className="text-lg text-slate-400 max-w-3xl">
+          <p
+            className="text-lg max-w-3xl"
+            style={{ color: 'var(--text-secondary)' }}
+          >
             Learn the end-to-end workflow for designing, verifying, and testing digital systems on a virtual FPGA platform. Experience the hardware design lifecycle entirely in your browser.
           </p>
         </div>
 
         <div className="mb-16">
-          <h2 className="text-2xl font-bold text-slate-100 mb-6">Learning Workflow</h2>
+          <h2 className="text-2xl font-bold mb-6" style={{ color: 'var(--text-primary)' }}>
+            Learning Workflow
+          </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 relative">
             {workflowSteps.map((step, index) => {
               const Icon = step.icon;
               return (
-                <div key={index} className="p-5 rounded-xl border border-slate-800 bg-slate-900/30 flex flex-col items-start relative z-10">
-                  <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-indigo-500/10 text-indigo-400 mb-4 border border-indigo-500/20">
+                <div
+                  key={index}
+                  className="p-5 rounded-xl border flex flex-col items-start relative z-10"
+                  style={{
+                    backgroundColor: 'var(--bg-panel)',
+                    borderColor: 'var(--border-subtle)',
+                  }}
+                >
+                  <div
+                    className="flex items-center justify-center w-10 h-10 rounded-lg mb-4 border"
+                    style={{
+                      backgroundColor: 'var(--accent-subtle)',
+                      borderColor: 'var(--accent-border)',
+                      color: 'var(--accent-primary)',
+                    }}
+                  >
                     <Icon size={20} />
                   </div>
-                  <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Step {index + 1}</div>
-                  <h3 className="text-lg font-bold text-slate-200 mb-2">{step.title}</h3>
-                  <p className="text-sm text-slate-400 leading-relaxed">{step.desc}</p>
+                  <div
+                    className="text-xs font-bold uppercase tracking-widest mb-1"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    Step {index + 1}
+                  </div>
+                  <h3
+                    className="text-lg font-bold mb-2"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    {step.title}
+                  </h3>
+                  <p
+                    className="text-sm leading-relaxed"
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    {step.desc}
+                  </p>
                 </div>
               );
             })}
@@ -56,10 +112,26 @@ export default function FpgaHub() {
         <div>
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-2xl font-bold text-slate-100">Board-Ready Examples</h2>
-              <p className="text-slate-400 mt-1 text-sm">Examples pre-configured for the virtual DE2 board.</p>
+              <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                Board-Ready Examples
+              </h2>
+              <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                Examples pre-configured for the virtual DE2 board.
+              </p>
             </div>
-            <Link to="/de2-simulator" className="hidden sm:flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-semibold transition-colors">
+            <Link
+              to="/de2-simulator"
+              className="hidden sm:flex items-center gap-2 px-4 py-2 text-white rounded-lg text-sm font-semibold transition-colors"
+              style={{
+                backgroundColor: 'var(--accent-primary)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--accent-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--accent-primary)';
+              }}
+            >
               <Cpu size={16} /> Open DE2 Simulator
             </Link>
           </div>
@@ -69,22 +141,38 @@ export default function FpgaHub() {
               <Link
                 key={ex.id}
                 to="/examples"
-                className="block p-4 rounded-xl border border-slate-800 bg-slate-900/50 hover:bg-slate-800/50 hover:border-slate-700 transition-colors group"
+                className="block p-4 rounded-xl border transition-colors group"
+                style={{
+                  backgroundColor: 'var(--bg-panel)',
+                  borderColor: 'var(--border-subtle)',
+                }}
               >
-                <h3 className="text-sm font-bold text-slate-200 mb-2 group-hover:text-indigo-300 transition-colors">
+                <h3
+                  className="text-sm font-bold mb-2 group-hover:text-[var(--accent-primary)] transition-colors"
+                  style={{ color: 'var(--text-primary)' }}
+                >
                   {ex.title}
                 </h3>
-                <p className="text-xs text-slate-400 line-clamp-2">
+                <p className="text-xs line-clamp-2" style={{ color: 'var(--text-secondary)' }}>
                   {ex.description}
                 </p>
-                <div className="mt-4 flex items-center text-xs font-semibold text-indigo-400 group-hover:text-indigo-300">
+                <div
+                  className="mt-4 flex items-center text-xs font-semibold group-hover:translate-x-0.5 transition-transform"
+                  style={{ color: 'var(--accent-primary)' }}
+                >
                   View Example <ArrowRight size={14} className="ml-1" />
                 </div>
               </Link>
             ))}
           </div>
           
-          <Link to="/de2-simulator" className="sm:hidden mt-6 flex items-center justify-center gap-2 w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-semibold transition-colors">
+          <Link
+            to="/de2-simulator"
+            className="sm:hidden mt-6 flex items-center justify-center gap-2 w-full py-3 text-white rounded-lg text-sm font-semibold transition-colors"
+            style={{
+              backgroundColor: 'var(--accent-primary)',
+            }}
+          >
             <Cpu size={16} /> Open DE2 Simulator
           </Link>
         </div>

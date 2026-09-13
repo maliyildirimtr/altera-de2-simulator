@@ -69,16 +69,36 @@ export const SourcePreviewModal: React.FC<SourcePreviewModalProps> = ({ example,
       onClick={onClose}
     >
       <div
-        className="relative flex flex-col w-full max-w-4xl max-h-[88vh] bg-[#0c1322] border border-slate-700/80 rounded-xl shadow-2xl overflow-hidden font-sans"
+        className="relative flex flex-col w-full max-w-4xl max-h-[88vh] border rounded-xl shadow-2xl overflow-hidden font-sans"
+        style={{
+          backgroundColor: 'var(--bg-surface)',
+          borderColor: 'var(--border-subtle)',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-[#090f1c]">
+        <div
+          className="flex items-center justify-between px-6 py-4 border-b"
+          style={{
+            backgroundColor: 'var(--bg-panel-header)',
+            borderColor: 'var(--border-subtle)',
+          }}
+        >
           <div className="flex items-center gap-3">
-            <h3 className="text-base font-semibold text-slate-100 tracking-tight">
+            <h3
+              className="text-base font-semibold tracking-tight"
+              style={{ color: 'var(--text-primary)' }}
+            >
               {example.title}
             </h3>
-            <span className="text-xs px-2 py-0.5 rounded bg-slate-800/80 text-slate-400 font-mono">
+            <span
+              className="text-xs px-2 py-0.5 rounded font-mono border"
+              style={{
+                backgroundColor: 'var(--bg-panel)',
+                borderColor: 'var(--border-subtle)',
+                color: 'var(--text-secondary)',
+              }}
+            >
               {currentTab.filename}
             </span>
           </div>
@@ -87,19 +107,24 @@ export const SourcePreviewModal: React.FC<SourcePreviewModalProps> = ({ example,
             <button
               data-testid="source-preview-copy-btn"
               onClick={handleCopy}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border transition-colors"
+              style={{
+                backgroundColor: 'var(--bg-panel)',
+                borderColor: 'var(--border-subtle)',
+                color: 'var(--text-primary)',
+              }}
               title="Copy code to clipboard"
             >
               {copied ? (
                 <>
-                  <svg className="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-emerald-400">Copied!</span>
+                  <span className="text-emerald-500 font-semibold">Copied!</span>
                 </>
               ) : (
                 <>
-                  <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-3.5 h-3.5" style={{ color: 'var(--text-secondary)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                   </svg>
                   <span>Copy Code</span>
@@ -110,7 +135,8 @@ export const SourcePreviewModal: React.FC<SourcePreviewModalProps> = ({ example,
             <button
               data-testid="source-preview-close-btn"
               onClick={onClose}
-              className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded transition-colors"
+              className="p-1 rounded transition-colors"
+              style={{ color: 'var(--text-secondary)' }}
               title="Close Preview"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -121,7 +147,13 @@ export const SourcePreviewModal: React.FC<SourcePreviewModalProps> = ({ example,
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex items-center gap-1 px-6 pt-2 border-b border-slate-800/80 bg-[#090f1c]/60">
+        <div
+          className="flex items-center gap-1 px-6 pt-2 border-b"
+          style={{
+            backgroundColor: 'var(--bg-panel-header)',
+            borderColor: 'var(--border-subtle)',
+          }}
+        >
           {tabs.map((tab) => {
             const isActive = tab.id === activeTab;
             return (
@@ -131,23 +163,32 @@ export const SourcePreviewModal: React.FC<SourcePreviewModalProps> = ({ example,
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-3 py-2 text-xs font-mono font-medium border-b-2 transition-colors ${
                   isActive
-                    ? 'border-indigo-500 text-indigo-300 bg-indigo-950/20'
-                    : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                    ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] bg-[var(--accent-subtle)]'
+                    : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--accent-subtle)]'
                 }`}
               >
                 <span>{tab.label}</span>
-                <span className="text-[10px] text-slate-500 font-normal">({tab.filename})</span>
+                <span className="text-[10px] opacity-75 font-normal">({tab.filename})</span>
               </button>
             );
           })}
         </div>
 
         {/* Code Content Area */}
-        <div className="flex-1 overflow-auto bg-[#070b14] p-4 font-mono text-xs text-slate-300 leading-relaxed select-text">
+        <div
+          className="flex-1 overflow-auto p-4 font-mono text-xs leading-relaxed select-text"
+          style={{
+            backgroundColor: 'var(--bg-app)',
+            color: 'var(--text-primary)',
+          }}
+        >
           <div className="min-w-full inline-block">
             {lines.map((line, idx) => (
-              <div key={idx} className="flex hover:bg-slate-800/20 px-2 rounded">
-                <span className="w-10 text-right pr-4 text-slate-600 select-none font-mono text-[11px]">
+              <div key={idx} className="flex hover:bg-[var(--accent-subtle)] px-2 rounded">
+                <span
+                  className="w-10 text-right pr-4 select-none font-mono text-[11px]"
+                  style={{ color: 'var(--text-muted)' }}
+                >
                   {idx + 1}
                 </span>
                 <span className="flex-1 whitespace-pre">{line || ' '}</span>
@@ -157,13 +198,20 @@ export const SourcePreviewModal: React.FC<SourcePreviewModalProps> = ({ example,
         </div>
 
         {/* Footer info */}
-        <div className="flex items-center justify-between px-6 py-2.5 bg-[#090f1c] border-t border-slate-800 text-[11px] text-slate-400">
+        <div
+          className="flex items-center justify-between px-6 py-2.5 border-t text-[11px]"
+          style={{
+            backgroundColor: 'var(--bg-panel-header)',
+            borderColor: 'var(--border-subtle)',
+            color: 'var(--text-secondary)',
+          }}
+        >
           <div className="flex items-center gap-4">
-            <span>Module: <strong className="text-slate-200 font-mono">{example.topModule}</strong></span>
-            <span>Lines: <strong className="text-slate-200 font-mono">{lines.length}</strong></span>
-            <span className="capitalize">Category: <strong className="text-slate-200">{example.category}</strong></span>
+            <span>Module: <strong className="font-mono" style={{ color: 'var(--text-primary)' }}>{example.topModule}</strong></span>
+            <span>Lines: <strong className="font-mono" style={{ color: 'var(--text-primary)' }}>{lines.length}</strong></span>
+            <span className="capitalize">Category: <strong style={{ color: 'var(--text-primary)' }}>{example.category}</strong></span>
           </div>
-          <div className="text-slate-500">
+          <div style={{ color: 'var(--text-muted)' }}>
             SystemVerilog 2012
           </div>
         </div>
