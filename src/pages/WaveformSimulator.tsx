@@ -64,7 +64,7 @@ function loadSavedLayout(): WaveformLayout {
   }
 }
 
-export default function WaveformSimulator() {
+export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: boolean }) {
   // ── Layout State ──────────────────────────────────────────
   const [layout, setLayout] = useState<WaveformLayout>(loadSavedLayout);
   const layoutRef = useRef<WaveformLayout>(layout);
@@ -856,7 +856,7 @@ export default function WaveformSimulator() {
                       <MonacoEditor
                         height="100%"
                         language={activeEditorFile.name.endsWith('.v') ? 'verilog' : 'systemverilog'}
-                        theme="vs-dark"
+                        theme={isDarkMode ? 'vs-dark' : 'vs-light'}
                         value={activeEditorFile.content}
                         onChange={(val) => {
                           const updated = val ?? '';

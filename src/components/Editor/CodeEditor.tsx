@@ -9,9 +9,10 @@ import { FileCode, Upload, BookOpen } from 'lucide-react';
 interface CodeEditorProps {
   isOpen: boolean;
   onOpenImport?: () => void;
+  isDarkMode?: boolean;
 }
 
-export const CodeEditor: React.FC<CodeEditorProps> = ({ isOpen, onOpenImport }) => {
+export const CodeEditor: React.FC<CodeEditorProps> = ({ isOpen, onOpenImport, isDarkMode = true }) => {
   const navigate = useNavigate();
   const { hdlCode, setHdlCode, setEngine } = useBoardStore();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -85,7 +86,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ isOpen, onOpenImport }) 
         <Editor
           height="100%"
           defaultLanguage="verilog"
-          theme="vs-dark"
+          theme={isDarkMode ? 'vs-dark' : 'vs-light'}
           value={hdlCode}
           onChange={handleEditorChange}
           options={{

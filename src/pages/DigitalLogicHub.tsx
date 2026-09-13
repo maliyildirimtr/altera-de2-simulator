@@ -16,27 +16,44 @@ function ConceptSection({ title, description, icon: Icon, category }: ConceptSec
   return (
     <div className="mb-12">
       <div className="flex items-center gap-3 mb-4">
-        <div className="p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+        <div
+          className="p-2 rounded-lg border"
+          style={{
+            backgroundColor: 'var(--accent-subtle)',
+            borderColor: 'var(--accent-border)',
+            color: 'var(--accent-primary)',
+          }}
+        >
           <Icon size={24} />
         </div>
-        <h2 className="text-2xl font-bold text-slate-100">{title}</h2>
+        <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{title}</h2>
       </div>
-      <p className="text-slate-400 mb-6 max-w-3xl">{description}</p>
+      <p className="mb-6 max-w-3xl" style={{ color: 'var(--text-secondary)' }}>{description}</p>
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {examples.map(ex => (
           <Link
             key={ex.id}
             to="/examples"
-            className="block p-4 rounded-xl border border-slate-800 bg-slate-900/50 hover:bg-slate-800/50 hover:border-slate-700 transition-colors group"
+            className="block p-4 rounded-xl border transition-colors group"
+            style={{
+              backgroundColor: 'var(--bg-panel)',
+              borderColor: 'var(--border-subtle)',
+            }}
           >
-            <h3 className="text-sm font-bold text-slate-200 mb-2 group-hover:text-indigo-300 transition-colors">
+            <h3
+              className="text-sm font-bold mb-2 group-hover:text-[var(--accent-primary)] transition-colors"
+              style={{ color: 'var(--text-primary)' }}
+            >
               {ex.title}
             </h3>
-            <p className="text-xs text-slate-400 line-clamp-2">
+            <p className="text-xs line-clamp-2" style={{ color: 'var(--text-secondary)' }}>
               {ex.description}
             </p>
-            <div className="mt-4 flex items-center text-xs font-semibold text-indigo-400 group-hover:text-indigo-300">
+            <div
+              className="mt-4 flex items-center text-xs font-semibold group-hover:translate-x-0.5 transition-transform"
+              style={{ color: 'var(--accent-primary)' }}
+            >
               View Example <ArrowRight size={14} className="ml-1" />
             </div>
           </Link>
@@ -48,21 +65,46 @@ function ConceptSection({ title, description, icon: Icon, category }: ConceptSec
 
 export default function DigitalLogicHub() {
   return (
-    <div className="flex-1 w-full bg-[#070b14] text-slate-200 overflow-y-auto font-sans p-6 lg:p-12">
+    <div
+      className="flex-1 w-full overflow-y-auto font-sans p-6 lg:p-12"
+      style={{
+        backgroundColor: 'var(--bg-app)',
+        color: 'var(--text-primary)',
+      }}
+    >
       <div className="max-w-5xl mx-auto">
-        <div className="mb-12 border-b border-slate-800/80 pb-10">
+        <div
+          className="mb-12 border-b pb-10"
+          style={{ borderColor: 'var(--border-subtle)' }}
+        >
           <div className="flex items-center gap-2.5 mb-4">
-            <div className="p-1.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+            <div
+              className="p-1.5 rounded-md border"
+              style={{
+                backgroundColor: 'var(--accent-subtle)',
+                borderColor: 'var(--accent-border)',
+                color: 'var(--accent-primary)',
+              }}
+            >
               <Layers size={18} />
             </div>
-            <span className="text-xs font-mono font-semibold uppercase tracking-wider text-indigo-400">
+            <span
+              className="text-xs font-mono font-semibold uppercase tracking-wider"
+              style={{ color: 'var(--accent-primary)' }}
+            >
               Engineering Area
             </span>
           </div>
-          <h1 className="text-4xl sm:text-5xl font-bold text-slate-100 tracking-tight mb-4">
+          <h1
+            className="text-4xl sm:text-5xl font-bold tracking-tight mb-4"
+            style={{ color: 'var(--text-primary)' }}
+          >
             Digital Logic
           </h1>
-          <p className="text-lg text-slate-400 max-w-3xl">
+          <p
+            className="text-lg max-w-3xl"
+            style={{ color: 'var(--text-secondary)' }}
+          >
             Explore the fundamental building blocks of digital systems. Learn how simple logic gates combine to form complex arithmetic circuits, memory elements, and state machines.
           </p>
         </div>

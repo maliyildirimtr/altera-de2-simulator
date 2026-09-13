@@ -54,7 +54,7 @@ function loadSavedLayout(): WorkspaceLayout {
   }
 }
 
-export default function DE2Simulator() {
+export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boolean }) {
   const {
     hdlCode,
     setHdlCode,
@@ -261,7 +261,7 @@ export default function DE2Simulator() {
                 style={{ width: `${Math.round(layout.editorRatio * 10000) / 100}%` }}
                 className="h-full flex flex-col shrink-0 overflow-hidden"
               >
-                <CodeEditor isOpen={true} onOpenImport={() => setUploaderOpen(true)} />
+                <CodeEditor isOpen={true} onOpenImport={() => setUploaderOpen(true)} isDarkMode={isDarkMode} />
               </div>
 
               {/* Editor ↔ Board Divider (Zero physical dead space) */}
@@ -303,7 +303,7 @@ export default function DE2Simulator() {
           {/* Full Code View */}
           {activeView === 'code' && (
             <div className="flex-1 h-full flex flex-col min-w-0">
-              <CodeEditor isOpen={true} onOpenImport={() => setUploaderOpen(true)} />
+              <CodeEditor isOpen={true} onOpenImport={() => setUploaderOpen(true)} isDarkMode={isDarkMode} />
             </div>
           )}
 

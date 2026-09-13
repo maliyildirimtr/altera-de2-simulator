@@ -20,7 +20,15 @@
 
 /* ── 1. Primitive Palette ───────────────────────────────────── */
 :root {
-  /* Landing Page Brand Tokens (Independent of app theme) */
+  /* Canonical Brand Tokens */
+  --brand-navy-deep:   #070B14;
+  --brand-navy:        #0D1627;
+  --brand-blue:        #2563EB;
+  --brand-blue-hover:  #1D4ED8;
+  --brand-warm-bg:     #F9F7F4;
+  --brand-warm-alt:    #F3F0EA;
+
+  /* Landing Page Brand Tokens (Default / Light) */
   --landing-bg: #F9F7F4;
   --landing-surface: #FFFFFF;
   --landing-surface-alt: #F3F0EA;
@@ -110,88 +118,156 @@
 
 /* ── 2. Semantic Aliases — Dark Theme (default) ─────────────── */
 [data-theme='dark'], :root {
-  /* Surfaces */
-  --surface-base:     var(--color-neutral-900);
-  --surface-raised:   var(--color-neutral-800);
-  --surface-overlay:  var(--color-neutral-750);
-  --surface-sunken:   var(--color-neutral-950);
+  /* Canvas & Application Surfaces */
+  --bg-app:            #070B14;
+  --bg-surface:        #0D1627;
+  --bg-panel:          #0F172A;
+  --bg-panel-header:   #0A1120;
+  --bg-canvas:         #070A12;
+  --bg-toolbar:        #0A1120;
+  --bg-input:          #070B14;
 
-  /* Text */
-  --text-primary:     var(--color-neutral-0);
-  --text-secondary:   var(--color-neutral-300);
-  --text-muted:       var(--color-neutral-400);
-  --text-inverse:     var(--color-neutral-900);
+  /* Typography */
+  --text-primary:      #F8FAFC;
+  --text-secondary:    #94A3B8;
+  --text-muted:        #64748B;
+  --text-inverse:      #070B14;
 
-  /* Borders */
-  --border-subtle:    var(--color-neutral-700);
-  --border-default:   var(--color-neutral-600);
-  --border-strong:    var(--color-neutral-500);
+  /* Borders & Dividers */
+  --border-subtle:     #1E293B;
+  --border-strong:     #334155;
+  --border-active:     #3B82F6;
 
-  /* Accent — Blue */
-  --accent-primary:         var(--color-blue-500);
-  --accent-primary-hover:   var(--color-blue-400);
-  --accent-primary-subtle:  rgba(37, 99, 235, 0.15);
-  --accent-primary-border:  rgba(37, 99, 235, 0.35);
+  /* Primary Accent & Hover */
+  --accent-primary:    #2563EB;
+  --accent-hover:      #3B82F6;
+  --accent-subtle:     rgba(37, 99, 235, 0.15);
+  --accent-border:     rgba(37, 99, 235, 0.35);
 
-  /* Accent — secondary (indigo) */
-  --accent-secondary:       var(--color-indigo-500);
-  --accent-secondary-hover: var(--color-indigo-400);
+  /* Secondary Accent (Indigo) */
+  --accent-secondary:       #6366f1;
+  --accent-secondary-hover: #818cf8;
 
-  /* Status */
-  --status-success:  var(--color-green-500);
-  --status-error:    var(--color-red-500);
-  --status-warning:  var(--color-amber-500);
-  --status-info:     var(--color-blue-400);
+  /* Status Tokens */
+  --state-success:     #10B981;
+  --state-warning:     #F59E0B;
+  --state-error:       #EF4444;
+  --state-info:        #3B82F6;
+
+  /* Canvas Grid & Elevation */
+  --canvas-grid:       rgba(255, 255, 255, 0.04);
+  --shadow-panel:      0 4px 20px rgba(0, 0, 0, 0.5);
 
   /* Tool-specific accents */
-  --tool-de2-accent:      var(--color-blue-400);
-  --tool-waveform-accent: var(--color-emerald-400);
-  --tool-schematic-accent:var(--color-teal-400);
-  --tool-examples-accent: var(--color-indigo-400);
+  --tool-de2-accent:      #3b82f6;
+  --tool-waveform-accent: #34d399;
+  --tool-schematic-accent:#2dd4bf;
+  --tool-examples-accent: #818cf8;
 
-  /* Canvas */
-  --canvas-bg:    var(--color-neutral-950);
-  --canvas-grid:  rgba(255, 255, 255, 0.03);
+  /* Backward-compatibility aliases */
+  --surface-base:      var(--bg-app);
+  --surface-raised:    var(--bg-surface);
+  --surface-overlay:   var(--bg-panel);
+  --surface-sunken:    var(--bg-input);
+  --border-default:    var(--border-subtle);
+  --bg-primary:        var(--bg-app);
+  --bg-secondary:      var(--bg-panel);
+  --border-color:      var(--border-subtle);
+  --accent-color:      var(--accent-primary);
+  --grid-color:        var(--canvas-grid);
+
+  /* Landing Page Dark Overrides */
+  --landing-bg:           #070B14;
+  --landing-surface:      #0D1627;
+  --landing-surface-alt:  #0F172A;
+  --landing-text:         #F8FAFC;
+  --landing-text-secondary:#94A3B8;
+  --landing-text-muted:   #64748B;
+  --landing-border:       #1E293B;
+  --landing-border-subtle:#334155;
+  --landing-navy:         #0D1627;
+  --landing-navy-deep:    #070B14;
+  --landing-accent:       #3B82F6;
 }
 
 /* ── 2b. Semantic Aliases — Light Theme ─────────────────────── */
 [data-theme='light'] {
-  --surface-page:       #f9f7f4;
-  --surface-primary:    #ffffff;
-  --surface-secondary:  #f3f0ea;
-  --surface-elevated:   #ffffff;
-  --surface-navy:       var(--color-navy-900);
-  --surface-navy-dark:  var(--color-navy-950);
+  /* Canvas & Application Surfaces */
+  --bg-app:            #F9F7F4;
+  --bg-surface:        #FFFFFF;
+  --bg-panel:          #FFFFFF;
+  --bg-panel-header:   #F3F0EA;
+  --bg-canvas:         #F3F0EA;
+  --bg-toolbar:        #FFFFFF;
+  --bg-input:          #FFFFFF;
 
-  --text-primary:     var(--color-neutral-950);
-  --text-secondary:   var(--color-neutral-500);
-  --text-muted:       var(--color-neutral-400);
-  --text-inverse:     var(--color-neutral-0);
+  /* Typography */
+  --text-primary:      #0C1225;
+  --text-secondary:    #4B5563;
+  --text-muted:        #64748B;
+  --text-inverse:      #F8FAFC;
 
-  --border-subtle:    #e8e4dc;
-  --border-default:   #d4cfc9;
-  --border-strong:    #b8b2aa;
+  /* Borders & Dividers */
+  --border-subtle:     #E2E8F0;
+  --border-strong:     #CBD5E1;
+  --border-active:     #2563EB;
 
-  --accent-primary:         var(--color-blue-500);
-  --accent-primary-hover:   var(--color-blue-600);
-  --accent-primary-subtle:  rgba(37, 99, 235, 0.08);
-  --accent-primary-border:  rgba(37, 99, 235, 0.25);
+  /* Primary Accent & Hover */
+  --accent-primary:    #2563EB;
+  --accent-hover:      #1D4ED8;
+  --accent-subtle:     rgba(37, 99, 235, 0.08);
+  --accent-border:     rgba(37, 99, 235, 0.25);
 
-  --accent-secondary:       var(--color-indigo-600);
-  --accent-secondary-hover: var(--color-indigo-500);
+  /* Secondary Accent (Indigo) */
+  --accent-secondary:       #4f46e5;
+  --accent-secondary-hover: #6366f1;
 
-  --status-success:  var(--color-green-600);
-  --status-error:    var(--color-red-600);
-  --status-warning:  var(--color-amber-600);
-  --status-info:     var(--color-blue-500);
+  /* Status Tokens */
+  --state-success:     #059669;
+  --state-warning:     #D97706;
+  --state-error:       #DC2626;
+  --state-info:        #2563EB;
 
-  --tool-de2-accent:      var(--color-blue-500);
-  --tool-waveform-accent: var(--color-emerald-600);
-  --tool-schematic-accent:var(--color-teal-600);
-  --tool-examples-accent: var(--color-indigo-600);
+  /* Canvas Grid & Elevation */
+  --canvas-grid:       rgba(0, 0, 0, 0.06);
+  --shadow-panel:      0 4px 16px rgba(0, 0, 0, 0.08);
 
-  --canvas-bg:    var(--color-neutral-50);
-  --canvas-grid:  rgba(0, 0, 0, 0.05);
+  /* Tool-specific accents */
+  --tool-de2-accent:      #2563eb;
+  --tool-waveform-accent: #059669;
+  --tool-schematic-accent:#0d9488;
+  --tool-examples-accent: #4f46e5;
+
+  /* Backward-compatibility aliases */
+  --surface-base:      var(--bg-app);
+  --surface-raised:    var(--bg-surface);
+  --surface-overlay:   var(--bg-panel);
+  --surface-sunken:    var(--bg-input);
+  --surface-page:      var(--bg-app);
+  --surface-primary:   var(--bg-surface);
+  --surface-secondary: var(--bg-panel-header);
+  --surface-elevated:  var(--bg-surface);
+  --surface-navy:      #0D1627;
+  --surface-navy-dark: #070B14;
+  --border-default:    var(--border-subtle);
+  --bg-primary:        var(--bg-app);
+  --bg-secondary:      var(--bg-panel);
+  --border-color:      var(--border-subtle);
+  --accent-color:      var(--accent-primary);
+  --grid-color:        var(--canvas-grid);
+
+  /* Landing Page Light Tokens */
+  --landing-bg:           #F9F7F4;
+  --landing-surface:      #FFFFFF;
+  --landing-surface-alt:  #F3F0EA;
+  --landing-text:         #0C1225;
+  --landing-text-secondary:#4B5563;
+  --landing-text-muted:   #64748B;
+  --landing-border:       #d4cfc9;
+  --landing-border-subtle:#e8e4dc;
+  --landing-navy:         #0D1627;
+  --landing-navy-deep:    #070B14;
+  --landing-accent:       #2563EB;
 }
 
 /* ── 3. Typography ──────────────────────────────────────────── */

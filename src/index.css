@@ -12,28 +12,10 @@
   --silkscreen-yellow: #f5c842;
 }
 
-[data-theme='dark'] {
-  --bg-primary: #0a0a0f;
-  --bg-secondary: #12121a;
-  --border-color: #1f1f2e;
-  --text-primary: #ffffff;
-  --text-secondary: #9ca3af;
-  --accent-color: #2563eb;
-  --accent-hover: #1d4ed8;
-  --canvas-bg: #0a0a0f;
-  --grid-color: rgba(255, 255, 255, 0.03);
-}
-
-[data-theme='light'] {
-  --bg-primary: #f8fafc;
-  --bg-secondary: #ffffff;
-  --border-color: #e2e8f0;
-  --text-primary: #0f172a;
-  --text-secondary: #64748b;
-  --accent-color: #3b82f6;
-  --accent-hover: #2563eb;
-  --canvas-bg: #f8fafc;
-  --grid-color: rgba(0, 0, 0, 0.05);
+/* Legacy aliases for backward compatibility mapping to canonical tokens */
+:root {
+  --canvas-bg: var(--bg-canvas);
+  --grid-color: var(--canvas-grid);
 }
 
 .dot-grid {
@@ -42,19 +24,23 @@
   background-size: 20px 20px;
 }
 
-body {
-  margin: 0;
-  padding: 0;
-  background-color: #0a0f18;
-  color: #fff;
-  font-family: 'Inter', system-ui, sans-serif;
-  height: 100%;
-  overflow: hidden;
-}
-
 html {
   height: 100%;
   overflow: hidden;
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  font-family: var(--font-sans, 'Inter', system-ui, sans-serif);
+  height: 100%;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
@@ -62,6 +48,36 @@ html {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+}
+
+/* Global focus accessibility */
+:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* Global selection */
+::selection {
+  background-color: var(--accent-subtle);
+  color: var(--text-primary);
+}
+
+/* Normalized subtle scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
 /* =============================================

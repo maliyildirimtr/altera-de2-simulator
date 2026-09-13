@@ -32,12 +32,21 @@ export const OverwriteConfirmModal: React.FC<OverwriteConfirmModalProps> = ({
       onClick={onCancel}
     >
       <div
-        className="relative flex flex-col w-full max-w-md bg-[#0c1322] border border-amber-500/40 rounded-xl shadow-2xl overflow-hidden font-sans"
+        className="relative flex flex-col w-full max-w-md border border-amber-500/40 rounded-xl shadow-2xl overflow-hidden font-sans"
+        style={{
+          backgroundColor: 'var(--bg-surface)',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-800 bg-[#090f1c]">
-          <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400">
+        <div
+          className="flex items-center gap-3 px-6 py-4 border-b"
+          style={{
+            backgroundColor: 'var(--bg-panel-header)',
+            borderColor: 'var(--border-subtle)',
+          }}
+        >
+          <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-500">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
                 strokeLinecap="round"
@@ -48,31 +57,42 @@ export const OverwriteConfirmModal: React.FC<OverwriteConfirmModalProps> = ({
             </svg>
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-slate-100">
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
               Replace Active Workspace Content?
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
               {toolLabels[targetTool]} has unsaved modifications
             </p>
           </div>
         </div>
 
         {/* Body */}
-        <div className="p-6 text-xs text-slate-300 space-y-3 leading-relaxed">
+        <div className="p-6 text-xs space-y-3 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
           <p>
-            You have unsaved changes in <strong className="text-slate-100">{toolLabels[targetTool]}</strong>.
+            You have unsaved changes in <strong style={{ color: 'var(--text-primary)' }}>{toolLabels[targetTool]}</strong>.
           </p>
-          <p className="text-slate-400">
-            Loading <strong className="text-indigo-300">{example.title}</strong> will replace your current workspace files and reset simulation state. Unsaved edits will be lost.
+          <p>
+            Loading <strong style={{ color: 'var(--accent-primary)' }}>{example.title}</strong> will replace your current workspace files and reset simulation state. Unsaved edits will be lost.
           </p>
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-end gap-3 px-6 py-3.5 bg-[#090f1c] border-t border-slate-800">
+        <div
+          className="flex items-center justify-end gap-3 px-6 py-3.5 border-t"
+          style={{
+            backgroundColor: 'var(--bg-panel-header)',
+            borderColor: 'var(--border-subtle)',
+          }}
+        >
           <button
             data-testid="example-overwrite-cancel"
             onClick={onCancel}
-            className="px-4 py-2 text-xs font-medium rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors"
+            className="px-4 py-2 text-xs font-medium rounded-md border transition-colors"
+            style={{
+              backgroundColor: 'var(--bg-panel)',
+              borderColor: 'var(--border-subtle)',
+              color: 'var(--text-primary)',
+            }}
           >
             Cancel
           </button>
