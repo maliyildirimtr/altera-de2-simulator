@@ -509,7 +509,416 @@ async function main() {
 
     console.log('  PASS: Responsive toolbar adapts smoothly and overflow menu provides full access.');
 
-    console.log('\nAll Phase 12.2C UX assertions PASSED successfully!');
+    // =========================================================================
+    // Phase 12.2D Waveform Workspace UX & Multi-File HDL Project Support
+    // =========================================================================
+    console.log('\n--- Phase 12.2D Waveform Workspace UX Regression Suite ---');
+
+    // [Test 9] Fresh Waveform Workspace
+    console.log('[Test 9] Verifying Fresh Waveform Workspace Defaults...');
+    await evaluate(`
+      localStorage.removeItem('wf_workspace_layout_v1');
+      location.hash = '#/waveform';
+    `);
+    await wait(1800);
+    await waitFor('[data-testid="waveform-workspace"]');
+
+    const wfMainView = await evaluate(`
+      document.querySelector('[data-testid="wf-view-waveform"]')?.getAttribute('aria-selected')
+    `);
+    assert.strictEqual(wfMainView, 'true', 'Default primary view must be "waveform"');
+
+    const isObjectsOpen = await evaluate(`
+      !!document.querySelector('[data-testid="wf-objects-panel"]')
+    `);
+    assert.strictEqual(isObjectsOpen, false, 'Objects panel must be closed by default on fresh workspace');
+
+    const isConsoleOpen = await evaluate(`
+      !!document.querySelector('[data-testid="wf-console"]')
+    `);
+    assert.strictEqual(isConsoleOpen, false, 'Console panel must be closed by default on fresh workspace');
+
+    const isProjectOpen = await evaluate(`
+      !!document.querySelector('[data-testid="wf-project-panel"]')
+    `);
+    assert.strictEqual(isProjectOpen, true, 'Project panel should be open by default');
+    console.log('  PASS: Fresh Waveform workspace defaults: Waveform primary view, Objects closed, Console closed.');
+
+    // [Test 10] Objects Empty State
+    console.log('[Test 10] Verifying Objects Panel Manual Open Empty State...');
+    await evaluate(`document.querySelector('[data-testid="wf-toggle-objects"]').click()`);
+    await wait(250);
+    const objectsEmptyText = await evaluate(`
+      document.querySelector('[data-testid="wf-objects-panel"]')?.textContent || ''
+    `);
+    assert.ok(objectsEmptyText.includes('No signals loaded'), 'Objects empty state must indicate no signals loaded');
+    assert.ok(objectsEmptyText.includes('Compile an HDL project or import a VCD file'), 'Objects empty state must guide user');
+    // Close Objects again
+    await evaluate(`document.querySelector('[data-testid="wf-toggle-objects"]').click()`);
+    await wait(200);
+    console.log('  PASS: Objects panel shows deliberate empty state without raw headers when opened before compilation.');
+
+    // [Test 11] Multi-File Source Import & Testbench Import
+    console.log('[Test 11] Verifying Multi-File Source Import and Selection...');
+    const halfAdderCode = `module half_adder(
+  input logic a,
+  input logic b,
+  output logic sum,
+  output logic carry
+);
+  assign sum = a ^ b;
+  assign carry = a & b;
+endmodule`;
+
+    const fullAdderCode = `module full_adder(
+  input logic a,
+  input logic b,
+  input logic cin,
+  output logic sum,
+  output logic cout
+);
+
+  logic s1;
+  logic c1;
+  logic c2;
+
+  half_adder ha1(
+    .a(a),
+    .b(b),
+    .sum(s1),
+    .carry(c1)
+  );
+
+  half_adder ha2(
+    .a(s1),
+    .b(cin),
+    .sum(sum),
+    .carry(c2)
+  );
+
+  assign cout = c1 | c2;
+
+endmodule`;
+
+    const fullAdderTbCode = `module full_adder_tb;
+  logic a;
+  logic b;
+  logic cin;
+  logic sum;
+  logic cout;
+
+  full_adder dut(
+    .a(a),
+    .b(b),
+    .cin(cin),
+    .sum(sum),
+    .cout(cout)
+  );
+
+  initial begin
+    $dumpfile("dump.vcd");
+    $dumpvars(0, full_adder_tb);
+    a = 0; b = 0; cin = 0;
+    #10 a = 0; b = 1; cin = 0;
+    #10 a = 1; b = 0; cin = 0;
+    #10 a = 1; b = 1; cin = 0;
+    #10 a = 0; b = 0; cin = 1;
+    #10 a = 0; b = 1; cin = 1;
+    #10 a = 1; b = 0; cin = 1;
+    #10 a = 1; b = 1; cin = 1;
+    #10 $finish;
+  end
+endmodule`;
+
+    // Inject half_adder.sv and full_adder.sv via DataTransfer on hidden source input
+    await evaluate(`
+      (() => {
+        const dt = new DataTransfer();
+        const f1 = new File([${JSON.stringify(halfAdderCode)}], 'half_adder.sv', { type: 'text/plain' });
+        const f2 = new File([${JSON.stringify(fullAdderCode)}], 'full_adder.sv', { type: 'text/plain' });
+        dt.items.add(f1);
+        dt.items.add(f2);
+        const input = document.querySelector('[data-testid="wf-input-source"]');
+        input.files = dt.files;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      })()
+    `);
+    await wait(800);
+
+    await waitFor('[data-testid="wf-source-item-half_adder.sv"]');
+    await waitFor('[data-testid="wf-source-item-full_adder.sv"]');
+    console.log('  PASS: Multi-file source import loaded half_adder.sv and full_adder.sv into Project panel.');
+
+    // Inject full_adder_tb.sv into testbench input
+    await evaluate(`
+      (() => {
+        const dt = new DataTransfer();
+        const f = new File([${JSON.stringify(fullAdderTbCode)}], 'full_adder_tb.sv', { type: 'text/plain' });
+        dt.items.add(f);
+        const input = document.querySelector('[data-testid="wf-input-tb"]');
+        input.files = dt.files;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      })()
+    `);
+    await wait(800);
+
+    const hasTbFile = await evaluate(`
+      document.querySelector('[data-testid="wf-slot-testbench"]')?.textContent.includes('full_adder_tb.sv')
+    `);
+    assert.strictEqual(hasTbFile, true, 'Testbench slot must contain full_adder_tb.sv');
+    console.log('  PASS: Testbench slot loaded full_adder_tb.sv.');
+
+    // [Test 12] Editor File Architecture & Tab Switching
+    console.log('[Test 12] Verifying Editor Multi-File Tab Switching...');
+    // Ensure in editor mode
+    await evaluate(`document.querySelector('[data-testid="wf-view-editor"]').click()`);
+    await wait(300);
+
+    // Switch to half_adder.sv tab
+    await evaluate(`document.querySelector('[data-editor-tab="source"][data-filename="half_adder.sv"]')?.click()`);
+    await wait(250);
+    let editorVal = await evaluate(`window.monaco?.editor?.getEditors()?.[0]?.getValue() || ''`);
+    assert.ok(editorVal.includes('module half_adder'), 'Monaco editor should display half_adder.sv content');
+
+    // Switch to full_adder.sv tab
+    await evaluate(`document.querySelector('[data-editor-tab="source"][data-filename="full_adder.sv"]')?.click()`);
+    await wait(250);
+    editorVal = await evaluate(`window.monaco?.editor?.getEditors()?.[0]?.getValue() || ''`);
+    assert.ok(editorVal.includes('module full_adder'), 'Monaco editor should display full_adder.sv content');
+
+    // Switch to testbench tab
+    await evaluate(`document.querySelector('[data-testid="wf-editor-tab-tb"]')?.click()`);
+    await wait(250);
+    editorVal = await evaluate(`window.monaco?.editor?.getEditors()?.[0]?.getValue() || ''`);
+    assert.ok(editorVal.includes('module full_adder_tb'), 'Monaco editor should display full_adder_tb.sv content');
+    console.log('  PASS: Editor tab switching updates Monaco model correctly without content loss.');
+
+    // [Test 13] Hierarchical HDL Multi-File Compilation
+    console.log('[Test 13] Compiling Hierarchical Multi-File HDL (full_adder + half_adder)...');
+    await evaluate(`document.querySelector('[data-testid="wf-btn-compile"]').click()`);
+
+    // Wait for compilation to complete (up to 20s)
+    let compileSuccess = false;
+    for (let i = 0; i < 80; i++) {
+      await wait(250);
+      const status = await evaluate(`
+        document.querySelector('[data-testid="waveform-workspace"]')?.getAttribute('data-compile-status')
+      `);
+      if (status === 'success') {
+        compileSuccess = true;
+        break;
+      }
+      if (status === 'error') {
+        const logs = await evaluate(`
+          Array.from(document.querySelectorAll('[data-testid="wf-console"] .font-mono div')).map(e => e.textContent).join('\\n')
+        `);
+        throw new Error(`Hierarchical compilation failed! Logs: ${logs}`);
+      }
+    }
+    assert.strictEqual(compileSuccess, true, 'Multi-file hierarchical compile must succeed');
+
+    // Verify auto-switch to Waveform view on successful compile
+    const activeViewAfterCompile = await evaluate(`
+      document.querySelector('[data-testid="wf-view-waveform"]')?.getAttribute('aria-selected')
+    `);
+    assert.strictEqual(activeViewAfterCompile, 'true', 'Workspace must automatically switch to Waveform view after compile');
+
+    // Verify Console remains closed on success
+    const consoleAfterSuccess = await evaluate(`
+      !!document.querySelector('[data-testid="wf-console"]')
+    `);
+    assert.strictEqual(consoleAfterSuccess, false, 'Console should remain closed on successful compile');
+
+    // Verify Objects panel auto-opened
+    const objectsAfterSuccess = await evaluate(`
+      !!document.querySelector('[data-testid="wf-objects-panel"]')
+    `);
+    assert.strictEqual(objectsAfterSuccess, true, 'Objects panel should auto-open on first compile with signals');
+
+    // Verify signals from hierarchy exist in Objects panel
+    const objectsContent = await evaluate(`
+      document.querySelector('[data-testid="wf-objects-panel"]')?.textContent || ''
+    `);
+    assert.ok(objectsContent.includes('sum') || objectsContent.includes('cout'), 'Signals from hierarchical design must be visible in Objects');
+    console.log('  PASS: Hierarchical compilation succeeded, auto-switched to Waveform, loaded signals, Objects auto-opened.');
+
+    // [Test 14] Add / Remove Source File Independence
+    console.log('[Test 14] Verifying Add / Remove Source File Independence...');
+    const dummyModule = 'module other_module(input clk, output reg q); always @(posedge clk) q <= ~q; endmodule';
+    await evaluate(`
+      (() => {
+        const dt = new DataTransfer();
+        const f = new File([${JSON.stringify(dummyModule)}], 'other_module.sv', { type: 'text/plain' });
+        dt.items.add(f);
+        const input = document.querySelector('[data-testid="wf-input-source"]');
+        input.files = dt.files;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      })()
+    `);
+    await wait(600);
+
+    await waitFor('[data-testid="wf-source-item-other_module.sv"]');
+    // Verify all 3 sources exist
+    const countWithDummy = await evaluate(`
+      document.querySelectorAll('[data-testid^="wf-source-item-"]').length
+    `);
+    assert.strictEqual(countWithDummy, 3, 'Project should now have 3 source files');
+
+    // Delete other_module.sv
+    await evaluate(`
+      document.querySelector('[data-action="remove-source"][data-filename="other_module.sv"]')?.click()
+    `);
+    await wait(400);
+
+    // Verify other_module is gone, but half_adder and full_adder remain intact
+    const remainingSources = await evaluate(`
+      Array.from(document.querySelectorAll('[data-testid^="wf-source-item-"]')).map(e => e.getAttribute('data-filename'))
+    `);
+    assert.ok(!remainingSources.includes('other_module.sv'), 'other_module.sv must be removed');
+    assert.ok(remainingSources.includes('half_adder.sv'), 'half_adder.sv must remain intact');
+    assert.ok(remainingSources.includes('full_adder.sv'), 'full_adder.sv must remain intact');
+
+    // Verify testbench file was NOT affected
+    const tbRemains = await evaluate(`
+      document.querySelector('[data-testid="wf-slot-testbench"]')?.textContent.includes('full_adder_tb.sv')
+    `);
+    assert.strictEqual(tbRemains, true, 'Testbench file must remain intact when deleting a source file');
+    console.log('  PASS: Adding and removing individual source file preserves all other sources and testbench.');
+
+    // [Test 15] Dirty-State Compatibility
+    console.log('[Test 15] Verifying Dirty-State Across Multi-File Project...');
+    const isWfDirty = await evaluate(`
+      sessionStorage.getItem('eda_workspace_state_waveform_dirty') === 'true'
+    `);
+    assert.strictEqual(isWfDirty, true, 'Waveform workspace must be marked dirty after project modifications');
+    console.log('  PASS: Dirty state correctly tracks multi-file project changes.');
+
+    // [Test 16] Primary Views Switching & Persistence
+    console.log('[Test 16] Verifying Primary View Switching (Waveform <-> Editor <-> Split)...');
+    // Switch to Editor
+    await evaluate(`document.querySelector('[data-testid="wf-view-editor"]').click()`);
+    await wait(250);
+    const editorVisible = await evaluate(`
+      (() => {
+        const c = document.querySelector('[data-testid="wf-editor-container"]');
+        return c && c.offsetHeight > 200 && c.offsetWidth > 200;
+      })()
+    `);
+    assert.strictEqual(editorVisible, true, 'Editor container must have non-zero dimensions in Editor view');
+
+    // Switch to Split
+    await evaluate(`document.querySelector('[data-testid="wf-view-split"]').click()`);
+    await wait(250);
+    const splitValid = await evaluate(`
+      (() => {
+        const ed = document.querySelector('[data-testid="wf-editor-container"]');
+        const cv = document.querySelector('canvas');
+        return ed && cv && ed.offsetHeight > 50 && cv.offsetHeight > 50;
+      })()
+    `);
+    assert.strictEqual(splitValid, true, 'Both Editor and Waveform canvas must be active in Split view');
+
+    // Switch back to Waveform
+    await evaluate(`document.querySelector('[data-testid="wf-view-waveform"]').click()`);
+    await wait(250);
+    const waveActive = await evaluate(`
+      document.querySelector('[data-testid="wf-view-waveform"]')?.getAttribute('aria-selected')
+    `);
+    assert.strictEqual(waveActive, 'true', 'Waveform view must be active');
+    console.log('  PASS: Primary view tabs switch smoothly and allocate full dimensions.');
+
+    // [Test 17] Console Auto-Open on Compile Failure
+    console.log('[Test 17] Verifying Console Auto-Open on Syntax / Compile Failure...');
+    // Introduce intentional syntax error in testbench
+    await evaluate(`document.querySelector('[data-testid="wf-view-editor"]').click()`);
+    await wait(250);
+    await evaluate(`document.querySelector('[data-testid="wf-editor-tab-tb"]').click()`);
+    await wait(250);
+    await evaluate(`
+      (() => {
+        const ed = window.monaco?.editor?.getEditors()?.[0];
+        if (ed) ed.setValue('module broken_tb; syntax_error_here; endmodule');
+      })()
+    `);
+    await wait(250);
+
+    // Click Compile
+    await evaluate(`document.querySelector('[data-testid="wf-btn-compile"]').click()`);
+
+    // Wait for compilation error
+    let compileErrored = false;
+    for (let i = 0; i < 50; i++) {
+      await wait(250);
+      const status = await evaluate(`
+        document.querySelector('[data-testid="waveform-workspace"]')?.getAttribute('data-compile-status')
+      `);
+      if (status === 'error') {
+        compileErrored = true;
+        break;
+      }
+    }
+    assert.strictEqual(compileErrored, true, 'Compilation must report error status on syntax error');
+
+    // Verify Console automatically opened
+    const consoleOpenedOnError = await evaluate(`
+      !!document.querySelector('[data-testid="wf-console"]')
+    `);
+    assert.strictEqual(consoleOpenedOnError, true, 'Console must auto-open on compilation error');
+
+    // Verify Console displays error message
+    const consoleErrLogs = await evaluate(`
+      document.querySelector('[data-testid="wf-console"]')?.textContent || ''
+    `);
+    assert.ok(consoleErrLogs.includes('syntax_error_here') || consoleErrLogs.includes('HATA') || consoleErrLogs.includes('error'), 'Console must display compiler diagnostic');
+    console.log('  PASS: Console auto-opens on error with compiler diagnostics.');
+
+    // [Test 18] Resizable Panel Boundaries & Zero Page Overflow
+    console.log('[Test 18] Verifying Panel Resize Limits and Zero Page Overflow...');
+    // Check splitter min/max attributes
+    const projectMinMax = await evaluate(`
+      (() => {
+        const s = document.querySelector('[data-testid="splitter-wf-project"]');
+        return {
+          min: Number(s?.getAttribute('aria-valuemin')),
+          max: Number(s?.getAttribute('aria-valuemax')),
+        };
+      })()
+    `);
+    assert.strictEqual(projectMinMax.min, 180, 'Project panel minimum width should be 180px');
+    assert.strictEqual(projectMinMax.max, 360, 'Project panel maximum width should be 360px');
+
+    const objectsMinMax = await evaluate(`
+      (() => {
+        const s = document.querySelector('[data-testid="splitter-wf-objects"]');
+        return {
+          min: Number(s?.getAttribute('aria-valuemin')),
+          max: Number(s?.getAttribute('aria-valuemax')),
+        };
+      })()
+    `);
+    assert.strictEqual(objectsMinMax.min, 200, 'Objects panel minimum width should be 200px');
+    assert.strictEqual(objectsMinMax.max, 420, 'Objects panel maximum width should be 420px');
+
+    const consoleMinMax = await evaluate(`
+      (() => {
+        const s = document.querySelector('[data-testid="splitter-wf-console"]');
+        return {
+          min: Number(s?.getAttribute('aria-valuemin')),
+          max: Number(s?.getAttribute('aria-valuemax')),
+        };
+      })()
+    `);
+    assert.strictEqual(consoleMinMax.min, 100, 'Console minimum height should be 100px');
+    assert.strictEqual(consoleMinMax.max, 380, 'Console maximum height should be 380px');
+
+    // Check page horizontal overflow
+    const overflowCheck = await evaluate(`
+      document.documentElement.scrollWidth <= document.documentElement.clientWidth
+    `);
+    assert.strictEqual(overflowCheck, true, 'Workspace must not have page-level horizontal overflow');
+    console.log('  PASS: Panel resize boundaries (180-360, 200-420, 100-380) strictly enforced with zero page horizontal overflow.');
+
+    console.log('\nAll Phase 12.2C & 12.2D UX assertions PASSED successfully!');
     cleanup();
     process.exit(0);
   } catch (err) {

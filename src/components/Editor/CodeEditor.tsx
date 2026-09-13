@@ -88,6 +88,11 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ isOpen, onOpenImport, is
           defaultLanguage="verilog"
           theme={isDarkMode ? 'vs-dark' : 'vs-light'}
           value={hdlCode}
+          onMount={(editor) => {
+            editor.onDidChangeModelContent(() => {
+              markWorkspaceDirty('de2');
+            });
+          }}
           onChange={handleEditorChange}
           options={{
             minimap: { enabled: false },

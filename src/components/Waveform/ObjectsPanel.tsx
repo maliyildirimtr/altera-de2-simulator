@@ -4,10 +4,9 @@
 // ============================================================
 
 import React, { useState } from 'react';
-import { Layers, FolderTree, Info } from 'lucide-react';
+import { Layers } from 'lucide-react';
 import type { VCDScope, VCDSignal } from '../../services/vcdParser';
 import { getSignalValueAtTime } from '../../services/waveformRenderer';
-import { useResizableColumns } from '../../hooks/useResizableColumns';
 
 export interface ObjectsPanelProps {
   activeScope: VCDScope | null;
@@ -23,11 +22,6 @@ export function ObjectsPanel({
 }: ObjectsPanelProps) {
   const [selectedObjects, setSelectedObjects] = useState<string[]>([]);
   const [lastSelected, setLastSelected]       = useState<string | null>(null);
-
-  // ── Resizable columns: [Name, Value] widths in px ──────
-  // Type column takes remaining space (flex-1) automatically.
-  const { widths, getHandleProps } = useResizableColumns([120, 70, 70]);
-  const [nameW, valW] = widths;
 
   const signals: VCDSignal[] = (hasSimulationData && isCompiled && activeScope)
     ? Object.values(activeScope.signals)
@@ -58,120 +52,87 @@ export function ObjectsPanel({
     if (!waveSignalNames.includes(sigName)) onAddSignals([sigName]);
   };
 
-  // Shared column cell style
-  const cell = (extra = '') =>
-    `shrink-0 overflow-hidden truncate px-1 ${extra}`;
-
   return (
-    <div className="border-r border-[#999999] flex flex-col bg-[#0c0d0e] shrink-0 h-full select-none">
+    <div className="border-r border-[#1e293b] flex flex-col bg-[#0c0d0e] shrink-0 h-full select-none min-w-0">
       {/* Header */}
-      <div className="h-6 bg-[#0c0d0e] border-b border-[#333333] flex items-center justify-between px-2 shrink-0">
-        <span className="text-xs font-bold text-gray-300">Objects</span>
+      <div className="h-7 bg-[#0a1120] border-b border-[#1e293b] flex items-center justify-between px-2.5 shrink-0">
+        <span className="text-xs font-bold text-slate-300 tracking-wide uppercase text-[10px]">Objects</span>
         {selectedObjects.length > 0 && (
           <button
             onClick={handleAddSelected}
-            className="text-[10px] bg-blue-600 hover:bg-blue-500 text-white px-2 py-0.5 rounded"
+            className="text-[10px] bg-blue-600 hover:bg-blue-500 text-white px-2 py-0.5 rounded font-medium shadow-sm transition-colors"
           >
             + Add {selectedObjects.length} to Wave
           </button>
         )}
       </div>
 
-      {/* ── Column header row with drag handles ── */}
-      <div className="flex bg-[#0c0d0e] border-b border-[#333333] text-xs font-bold text-gray-400 h-5 shrink-0 relative">
-        {/* Name col */}
-        <div className={cell('flex items-center')} style={{ width: nameW }}>Name</div>
-
-        {/* Splitter 1 */}
-        <div
-          className="w-[3px] shrink-0 cursor-col-resize hover:bg-blue-500 active:bg-blue-600 bg-[#333] z-10 transition-colors"
-          {...getHandleProps(0)}
-        />
-
-        {/* Value col */}
-        <div className={cell('flex items-center')} style={{ width: valW }}>Value</div>
-
-        {/* Splitter 2 */}
-        <div
-          className="w-[3px] shrink-0 cursor-col-resize hover:bg-blue-500 active:bg-blue-600 bg-[#333] z-10 transition-colors"
-          {...getHandleProps(1)}
-        />
-
-        {/* Type col */}
-        <div className={cell('flex-1 flex items-center')} style={{ minWidth: 40 }}>Type</div>
-      </div>
-
-      {/* Signal rows / Empty state */}
+      {/* Signal rows or Empty state */}
       {signals.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center p-4 text-center text-slate-500 text-xs bg-[#0c0d0e] select-none">
-          {!hasSimulationData || !isCompiled ? (
-            <>
-              <Layers size={22} className="mb-2 opacity-30 text-blue-400" />
-              <p className="font-medium text-slate-400 mb-1">Signals appear after compilation.</p>
-              <p className="text-[11px] text-slate-600 max-w-[200px]">Compile your design to inspect module signals and variables.</p>
-            </>
-          ) : !activeScope ? (
-            <>
-              <FolderTree size={22} className="mb-2 opacity-30 text-blue-400" />
-              <p className="font-medium text-slate-400 mb-1">Select a scope in Hardware Hierarchy</p>
-              <p className="text-[11px] text-slate-600 max-w-[200px]">Choose a module from the Project hierarchy tree to view its signals.</p>
-            </>
-          ) : (
-            <>
-              <Info size={22} className="mb-2 opacity-30 text-slate-400" />
-              <p className="font-medium text-slate-400 mb-1">No signals in this scope.</p>
-              <p className="text-[11px] text-slate-600 max-w-[200px]">This module does not contain any monitored signals or variables.</p>
-            </>
-          )}
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-slate-500 text-xs bg-[#0c0d0e] select-none">
+          <Layers size={26} className="mb-2.5 opacity-30 text-blue-400" />
+          <p className="font-semibold text-slate-300 mb-1 text-xs">No signals loaded</p>
+          <p className="text-[11px] text-slate-500 max-w-[210px] leading-relaxed">
+            Compile an HDL project or import a VCD file to inspect design signals.
+          </p>
         </div>
       ) : (
-        <div className="flex-1 overflow-auto text-gray-200 font-mono text-[13px] py-1 bg-[#0c0d0e]">
-          {signals.map((sig, idx) => {
-            const isSelected = selectedObjects.includes(sig.name);
-            return (
-              <div
-                key={idx}
-                onClick={e => handleSelect(e, sig)}
-                className={`flex items-center hover:bg-[#1e3a5f] border-b border-[#222222] group cursor-pointer ${isSelected ? 'bg-[#2a3f5f]' : ''}`}
-                style={{ height: 28 }}
-              >
-                {/* Name */}
-                <div className="flex items-center gap-1 overflow-hidden px-1" style={{ width: nameW }} title={sig.name}>
-                  {sig.width > 1 ? (
-                    <div className="w-1.5 h-1.5 rounded-sm bg-purple-500 shrink-0 mx-0.5" />
-                  ) : (
-                    <div className="w-1.5 h-1.5 rotate-45 bg-cyan-400 shrink-0 mx-0.5" />
-                  )}
-                  <span className="truncate">{sig.name.split('.').pop()}</span>
-                  {sig.width > 1 && (
-                    <span className="text-[10px] text-gray-500 shrink-0 ml-0.5">[{sig.width - 1}:0]</span>
-                  )}
+        <>
+          {/* ── Responsive Column Header Row ── */}
+          <div className="grid grid-cols-[minmax(80px,1.5fr)_minmax(50px,1fr)_minmax(50px,1fr)] bg-[#090e1a] border-b border-[#1e293b] text-[10px] font-bold tracking-wider text-slate-400 uppercase h-6 shrink-0 px-2 items-center gap-1.5">
+            <div className="truncate">Name</div>
+            <div className="truncate">Value</div>
+            <div className="truncate">Type</div>
+          </div>
+
+          {/* ── Responsive Signal Rows ── */}
+          <div className="flex-1 overflow-auto text-gray-200 font-mono text-[12px] py-0.5 bg-[#0c0d0e]">
+            {signals.map((sig, idx) => {
+              const isSelected = selectedObjects.includes(sig.name);
+              return (
+                <div
+                  key={idx}
+                  onClick={e => handleSelect(e, sig)}
+                  className={`grid grid-cols-[minmax(80px,1.5fr)_minmax(50px,1fr)_minmax(50px,1fr)] items-center px-2 h-7 hover:bg-[#1e3a5f]/40 border-b border-[#1e293b]/40 group cursor-pointer gap-1.5 transition-colors ${
+                    isSelected ? 'bg-blue-950/40 border-blue-500/40' : ''
+                  }`}
+                >
+                  {/* Name */}
+                  <div className="flex items-center gap-1 min-w-0 overflow-hidden" title={sig.name}>
+                    {sig.width > 1 ? (
+                      <div className="w-1.5 h-1.5 rounded-sm bg-purple-500 shrink-0" />
+                    ) : (
+                      <div className="w-1.5 h-1.5 rotate-45 bg-cyan-400 shrink-0" />
+                    )}
+                    <span className="truncate text-slate-200 group-hover:text-blue-300 font-medium">
+                      {sig.name.split('.').pop()}
+                    </span>
+                    {sig.width > 1 && (
+                      <span className="text-[9px] text-slate-500 shrink-0">[{sig.width - 1}:0]</span>
+                    )}
+                  </div>
+
+                  {/* Value */}
+                  <div className="min-w-0 overflow-hidden font-bold text-yellow-300 truncate text-[11px]">
+                    {getSignalValueAtTime(sig, currentTime)}
+                  </div>
+
+                  {/* Type & Quick Add */}
+                  <div className="flex items-center justify-between min-w-0 overflow-hidden text-slate-400 text-[10px] uppercase">
+                    <span className="truncate">{sig.type}</span>
+                    <button
+                      onClick={e => handleAddOne(e, sig.name)}
+                      className="opacity-0 group-hover:opacity-100 shrink-0 px-1.5 py-0.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-[9px] cursor-pointer shadow-sm transition-opacity ml-1 font-sans"
+                      title="Add to Waveform"
+                    >
+                      + Add
+                    </button>
+                  </div>
                 </div>
-
-                <div className="w-[3px] shrink-0 bg-[#222]" />
-
-                {/* Value */}
-                <div className="overflow-hidden px-1 font-bold text-yellow-300 truncate" style={{ width: valW }}>
-                  {getSignalValueAtTime(sig, currentTime)}
-                </div>
-
-                <div className="w-[3px] shrink-0 bg-[#222]" />
-
-                {/* Type */}
-                <div className="flex-1 flex items-center justify-between overflow-hidden px-1 text-gray-500 text-[11px] uppercase min-w-0">
-                  <span className="truncate">{sig.type}</span>
-                  <button
-                    onClick={e => handleAddOne(e, sig.name)}
-                    className="opacity-0 group-hover:opacity-100 shrink-0 px-1.5 py-0.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-[10px] cursor-pointer shadow-sm transition-opacity ml-1"
-                    title="Add to Waveform"
-                  >
-                    + Add
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );

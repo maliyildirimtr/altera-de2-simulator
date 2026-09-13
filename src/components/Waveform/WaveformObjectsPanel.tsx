@@ -51,7 +51,7 @@ export const WaveformObjectsPanel: React.FC<WaveformObjectsPanelProps> = ({
   return (
     <aside
       data-testid="wf-objects-panel"
-      className="shrink-0 flex flex-col bg-[#0c0d0e] border-r border-[#1e293b] select-none overflow-hidden h-full z-10"
+      className="shrink-0 flex flex-col bg-[#0c0d0e] border-r border-[#1e293b] select-none overflow-hidden h-full z-10 min-w-0"
       style={{ width }}
     >
       {/* ── Header with Title, Badge, and Close Button ──────────── */}

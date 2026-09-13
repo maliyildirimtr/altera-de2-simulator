@@ -1,17 +1,18 @@
 // ============================================================
 // WaveformSimulator.tsx — Modern Waveform Simulation Workspace
 //
-// Phase 4: Structured Teaching-First EDA Waveform Workspace
-// - WaveformToolbar: View toggles, Compile, Run, Restart, Zoom Fit, Real Timings
-// - WaveformProjectPanel: Source & Testbench slots with explicit assignment + Hierarchy
-// - WaveformObjectsPanel: Collapsible signals list with instant filter
-// - WaveformConsole: Tabbed Console & Problems with syntax styling
-// - 5 Resizable boundaries with Phase 3.2 ResizableDivider
-// - Real VCD timescale preservation, deterministic cursor navigation
+// Phase 12.2D: Waveform Workspace UX & Multi-File HDL Project Support
+// - Multi-file source architecture (sourceFiles[] + stable activeSourceId)
+// - Real project structure with independent add/remove and conflict handling
+// - Primary view switcher: [Waveform] [Code Editor] [Split]
+// - Objects & Console closed by default on fresh workspace
+// - Resizable dividers with strict min/max limits & no clipping
+// - Monaco mounted offscreen when hidden to preserve state & layout
 // ============================================================
 
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import MonacoEditor from '@monaco-editor/react';
+import { Plus, X } from 'lucide-react';
 
 import { parseRawVCD } from '../services/vcdParser';
 import type { SimulationData, VCDSignal, VCDScope } from '../services/vcdParser';
@@ -34,9 +35,10 @@ const LAYOUT_STORAGE_KEY = 'wf_workspace_layout_v1';
 interface WaveformLayout {
   projectWidth: number;      // px, default 220
   objectsWidth: number;      // px, default 240
-  editorRatio: number;       // ratio of right area height, default 0.35
+  editorRatio: number;       // ratio of right area height in split mode, default 0.35
   signalColumnWidth: number; // px, default 240
   consoleHeight: number;     // px, default 160
+  mainView: 'waveform' | 'editor' | 'split';
 }
 
 const DEFAULT_LAYOUT: WaveformLayout = {
@@ -45,6 +47,7 @@ const DEFAULT_LAYOUT: WaveformLayout = {
   editorRatio: 0.35,
   signalColumnWidth: 240,
   consoleHeight: 160,
+  mainView: 'waveform',
 };
 
 function loadSavedLayout(): WaveformLayout {
@@ -53,11 +56,14 @@ function loadSavedLayout(): WaveformLayout {
     if (!raw) return DEFAULT_LAYOUT;
     const parsed = JSON.parse(raw);
     return {
-      projectWidth: typeof parsed.projectWidth === 'number' ? Math.max(150, Math.min(380, parsed.projectWidth)) : DEFAULT_LAYOUT.projectWidth,
-      objectsWidth: typeof parsed.objectsWidth === 'number' ? Math.max(160, Math.min(420, parsed.objectsWidth)) : DEFAULT_LAYOUT.objectsWidth,
+      projectWidth: typeof parsed.projectWidth === 'number' ? Math.max(180, Math.min(360, parsed.projectWidth)) : DEFAULT_LAYOUT.projectWidth,
+      objectsWidth: typeof parsed.objectsWidth === 'number' ? Math.max(200, Math.min(420, parsed.objectsWidth)) : DEFAULT_LAYOUT.objectsWidth,
       editorRatio: typeof parsed.editorRatio === 'number' ? Math.max(0.18, Math.min(0.72, parsed.editorRatio)) : DEFAULT_LAYOUT.editorRatio,
-      signalColumnWidth: typeof parsed.signalColumnWidth === 'number' ? Math.max(160, Math.min(480, parsed.signalColumnWidth)) : DEFAULT_LAYOUT.signalColumnWidth,
-      consoleHeight: typeof parsed.consoleHeight === 'number' ? Math.max(80, Math.min(400, parsed.consoleHeight)) : DEFAULT_LAYOUT.consoleHeight,
+      signalColumnWidth: typeof parsed.signalColumnWidth === 'number' ? Math.max(160, Math.min(380, parsed.signalColumnWidth)) : DEFAULT_LAYOUT.signalColumnWidth,
+      consoleHeight: typeof parsed.consoleHeight === 'number' ? Math.max(100, Math.min(380, parsed.consoleHeight)) : DEFAULT_LAYOUT.consoleHeight,
+      mainView: (parsed.mainView === 'editor' || parsed.mainView === 'split' || parsed.mainView === 'waveform')
+        ? parsed.mainView
+        : 'waveform',
     };
   } catch {
     return DEFAULT_LAYOUT;
@@ -70,14 +76,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
   const layoutRef = useRef<WaveformLayout>(layout);
   layoutRef.current = layout;
 
-  // Panel Collapsed States
-  const [isProjectOpen, setIsProjectOpen] = useState(true);
-  const [isObjectsOpen, setIsObjectsOpen] = useState(true);
-  const [isEditorOpen,  setIsEditorOpen]  = useState(true);
-  const [isConsoleOpen, setIsConsoleOpen] = useState(true);
-
-  // Center right area ref to measure height for editorRatio
-  const rightAreaRef = useRef<HTMLDivElement>(null);
+  const mainView = layout.mainView;
 
   // Save layout only on drag end / resize end
   const persistLayout = useCallback((updated: WaveformLayout) => {
@@ -86,12 +85,56 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
     } catch (_) {}
   }, []);
 
-  // ── File & Slot Management ────────────────────────────────
-  const [sourceFile,    setSourceFile]    = useState<ProjectSlotFile | null>(null);
-  const [testbenchFile, setTestbenchFile] = useState<ProjectSlotFile | null>(null);
-  const [vcdFile,       setVcdFile]       = useState<ProjectSlotFile | null>(null);
-  const [activeEditorSlot, setActiveEditorSlot] = useState<'source' | 'testbench'>('source');
+  const handleMainViewChange = useCallback((view: 'waveform' | 'editor' | 'split') => {
+    setLayout(prev => {
+      const next = { ...prev, mainView: view };
+      persistLayout(next);
+      return next;
+    });
+  }, [persistLayout]);
 
+  const handleResetLayout = useCallback(() => {
+    setLayout(DEFAULT_LAYOUT);
+    persistLayout(DEFAULT_LAYOUT);
+    setIsProjectOpen(true);
+    setIsObjectsOpen(false);
+    setIsConsoleOpen(false);
+  }, [persistLayout]);
+
+  // Panel Collapsed States (Objects & Console closed by default on fresh workspace, Project auto-collapsed on mobile)
+  const [isProjectOpen, setIsProjectOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 768;
+    }
+    return true;
+  });
+  const [isObjectsOpen, setIsObjectsOpen] = useState(false);
+  const [isConsoleOpen, setIsConsoleOpen] = useState(false);
+  const userDismissedObjectsRef = useRef(false);
+
+  // Center right area ref to measure height for editorRatio
+  const rightAreaRef = useRef<HTMLDivElement>(null);
+  const monacoEditorRef = useRef<any>(null);
+
+  // Trigger Monaco layout when switched to editor or split
+  useEffect(() => {
+    if (mainView === 'editor' || mainView === 'split') {
+      const timer = setTimeout(() => {
+        monacoEditorRef.current?.layout();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [mainView, layout.editorRatio]);
+
+  // ── Multi-File Project State ──────────────────────────────
+  const [sourceFiles, setSourceFiles] = useState<ProjectSlotFile[]>([]);
+  const [activeSourceId, setActiveSourceId] = useState<string | null>(null);
+  const [testbenchFile, setTestbenchFile] = useState<ProjectSlotFile | null>(null);
+  const [vcdFile, setVcdFile] = useState<ProjectSlotFile | null>(null);
+  const [activeEditorRole, setActiveEditorRole] = useState<'source' | 'testbench'>('source');
+
+  const activeSourceFile = sourceFiles.find(f => f.id === activeSourceId) || sourceFiles[0] || null;
+  const activeEditorFile = activeEditorRole === 'source' ? activeSourceFile : testbenchFile;
 
   // Input refs for file uploads
   const sourceInputRef  = useRef<HTMLInputElement>(null);
@@ -149,29 +192,13 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
     isPlayingRef.current = false;
   }, []);
 
-  const loadSourceFile = useCallback((f: ProjectSlotFile | null) => {
-    setSourceFile(f);
-    clearSimulationState();
-  }, [clearSimulationState]);
-
-  const editSourceContent = useCallback((content: string) => {
-    setSourceFile(prev => prev ? { ...prev, content } : null);
+  const editSourceContent = useCallback((id: string, content: string) => {
+    setSourceFiles(prev => prev.map(f => f.id === id ? { ...f, content } : f));
   }, []);
-
-  const loadTestbenchFile = useCallback((f: ProjectSlotFile | null) => {
-    setTestbenchFile(f);
-    clearSimulationState();
-  }, [clearSimulationState]);
 
   const editTestbenchContent = useCallback((content: string) => {
     setTestbenchFile(prev => prev ? { ...prev, content } : null);
   }, []);
-
-  const loadVcdFile = useCallback((f: ProjectSlotFile | null) => {
-    setVcdFile(f);
-    clearSimulationState();
-  }, [clearSimulationState]);
-
 
   // ── Context Menus ─────────────────────────────────────────
   const [contextMenu, setContextMenu] = useState<{
@@ -184,43 +211,110 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
     return () => document.removeEventListener('click', handleClick);
   }, []);
 
-  // Consume incoming example handoff (Phase 6)
+  // Consume incoming example handoff (Phase 6 / Phase 9)
   useEffect(() => {
     const handoff = consumePendingHandoff('waveform');
     if (handoff) {
       const ex = getExampleById(handoff.exampleId);
       if (ex) {
-        loadSourceFile({ name: ex.source.filename, type: 'sv', content: ex.source.code });
-        loadTestbenchFile(
-          ex.testbench
-            ? { name: ex.testbench.filename, type: 'sv', content: ex.testbench.code }
-            : null
-        );
-        loadVcdFile(null);
-        setActiveEditorSlot('source');
-        setConsoleLogs((prev) => [
+        const initialSrc: ProjectSlotFile = {
+          id: `src_${Date.now()}`,
+          name: ex.source.filename,
+          type: 'sv',
+          content: ex.source.code,
+        };
+        const initialTb: ProjectSlotFile | null = ex.testbench ? {
+          id: `tb_${Date.now()}`,
+          name: ex.testbench.filename,
+          type: 'sv',
+          content: ex.testbench.code,
+        } : null;
+
+        setSourceFiles([initialSrc]);
+        setActiveSourceId(initialSrc.id);
+        setTestbenchFile(initialTb);
+        setVcdFile(null);
+        setActiveEditorRole('source');
+        clearSimulationState();
+        setConsoleLogs(prev => [
           ...prev,
           `[EDA Studio] Loaded example: ${ex.title} (${ex.source.filename})`,
         ]);
         markWorkspaceOrigin('waveform', 'example');
       }
     }
-  }, [loadSourceFile, loadTestbenchFile, loadVcdFile]);
+  }, [clearSimulationState]);
 
-  // ── File Handlers (Explicit Import Wins) ───────────────────
-  const handleSourceUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const content = (ev.target?.result as string) || '';
-      loadSourceFile({ name: file.name, type: file.name.split('.').pop() || 'sv', content });
-      markWorkspaceUser('waveform');
-      setActiveEditorSlot('source');
-      setIsEditorOpen(true);
-      setConsoleLogs(prev => [...prev, `[Project] Loaded Source module: ${file.name}`]);
-    };
-    reader.readAsText(file);
+  // ── File Handlers (Multi-File Sources & TB) ─────────────────
+  const handleSourceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const validFiles = Array.from(files).filter(f => {
+      const ext = f.name.slice(f.name.lastIndexOf('.')).toLowerCase();
+      return ext === '.v' || ext === '.sv' || ext === '.txt';
+    });
+    if (validFiles.length === 0) return;
+
+    const readFiles = await Promise.all(
+      validFiles.map(file => new Promise<{ name: string; content: string }>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => resolve({
+          name: file.name,
+          content: (ev.target?.result as string) || ''
+        });
+        reader.readAsText(file);
+      }))
+    );
+
+    setSourceFiles(prev => {
+      const existingNames = new Set(prev.map(p => p.name));
+      const newSlots: ProjectSlotFile[] = [];
+      const collisionLogs: string[] = [];
+
+      readFiles.forEach(rf => {
+        let targetName = rf.name;
+        if (existingNames.has(targetName)) {
+          const dotIdx = targetName.lastIndexOf('.');
+          const base = dotIdx !== -1 ? targetName.slice(0, dotIdx) : targetName;
+          const ext = dotIdx !== -1 ? targetName.slice(dotIdx) : '';
+          let counter = 1;
+          while (existingNames.has(`${base}_${counter}${ext}`)) counter++;
+          const uniqueName = `${base}_${counter}${ext}`;
+          collisionLogs.push(`[Project] Filename collision for '${targetName}': saved as '${uniqueName}'.`);
+          targetName = uniqueName;
+        }
+        existingNames.add(targetName);
+
+        const slotFile: ProjectSlotFile = {
+          id: `src_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          name: targetName,
+          type: targetName.split('.').pop() || 'sv',
+          content: rf.content,
+        };
+        newSlots.push(slotFile);
+      });
+
+      if (collisionLogs.length > 0) {
+        setConsoleLogs(cl => [...cl, ...collisionLogs]);
+      }
+
+      if (newSlots.length > 0) {
+        setActiveSourceId(newSlots[newSlots.length - 1].id);
+        setActiveEditorRole('source');
+      }
+
+      return [...prev, ...newSlots];
+    });
+
+    markWorkspaceDirty('waveform');
+    markWorkspaceUser('waveform');
+    clearSimulationState();
+    handleMainViewChange('editor');
+    setConsoleLogs(cl => [
+      ...cl,
+      `[Project] Loaded ${validFiles.length} source file(s).`,
+    ]);
     e.target.value = '';
   };
 
@@ -230,10 +324,17 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
     const reader = new FileReader();
     reader.onload = (ev) => {
       const content = (ev.target?.result as string) || '';
-      loadTestbenchFile({ name: file.name, type: file.name.split('.').pop() || 'sv', content });
+      setTestbenchFile({
+        id: `tb_${Date.now()}`,
+        name: file.name,
+        type: file.name.split('.').pop() || 'sv',
+        content,
+      });
+      markWorkspaceDirty('waveform');
       markWorkspaceUser('waveform');
-      setActiveEditorSlot('testbench');
-      setIsEditorOpen(true);
+      setActiveEditorRole('testbench');
+      clearSimulationState();
+      handleMainViewChange('editor');
       setConsoleLogs(prev => [...prev, `[Project] Loaded Testbench: ${file.name}`]);
     };
     reader.readAsText(file);
@@ -246,58 +347,144 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
     const reader = new FileReader();
     reader.onload = (ev) => {
       const content = (ev.target?.result as string) || '';
-      loadVcdFile({ name: file.name, type: 'vcd', content });
+      setVcdFile({
+        id: `vcd_${Date.now()}`,
+        name: file.name,
+        type: 'vcd',
+        content,
+      });
+      clearSimulationState();
       setConsoleLogs(prev => [...prev, `[Project] Loaded VCD directly: ${file.name}`]);
     };
     reader.readAsText(file);
     e.target.value = '';
   };
 
-  const handleGeneralUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleGeneralUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const content = (ev.target?.result as string) || '';
-        const name = file.name;
-        const lower = name.toLowerCase();
+    const fileList = Array.from(files);
+    const readFiles = await Promise.all(
+      fileList.map(file => new Promise<{ name: string; content: string }>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => resolve({
+          name: file.name,
+          content: (ev.target?.result as string) || ''
+        });
+        reader.readAsText(file);
+      }))
+    );
 
-        if (lower.endsWith('.vcd')) {
-          loadVcdFile({ name, type: 'vcd', content });
-          setConsoleLogs(prev => [...prev, `[Project] Loaded VCD: ${name}`]);
-        } else if (lower.includes('_tb') || lower.includes('tb_') || lower.includes('testbench') || lower.includes('bench')) {
-          loadTestbenchFile({ name, type: name.split('.').pop() || 'sv', content });
-          markWorkspaceUser('waveform');
-          setActiveEditorSlot('testbench');
-          setIsEditorOpen(true);
-          setConsoleLogs(prev => [...prev, `[Project] Assigned to Testbench slot: ${name}`]);
-        } else {
-          loadSourceFile({ name, type: name.split('.').pop() || 'sv', content });
-          markWorkspaceUser('waveform');
-          setActiveEditorSlot('source');
-          setIsEditorOpen(true);
-          setConsoleLogs(prev => [...prev, `[Project] Assigned to Source slot: ${name}`]);
-        }
-      };
-      reader.readAsText(file);
+    const newSources: { name: string; content: string }[] = [];
+    let lastTb: { name: string; content: string } | null = null;
+    let lastVcd: { name: string; content: string } | null = null;
+
+    readFiles.forEach(rf => {
+      const lower = rf.name.toLowerCase();
+      if (lower.endsWith('.vcd')) {
+        lastVcd = rf;
+      } else if (lower.includes('_tb') || lower.includes('tb_') || lower.includes('testbench') || lower.includes('bench')) {
+        lastTb = rf;
+      } else {
+        newSources.push(rf);
+      }
     });
+
+    if (lastVcd) {
+      setVcdFile({ id: `vcd_${Date.now()}`, name: (lastVcd as any).name, type: 'vcd', content: (lastVcd as any).content });
+      clearSimulationState();
+      setConsoleLogs(prev => [...prev, `[Project] Loaded VCD: ${(lastVcd as any).name}`]);
+    }
+
+    if (lastTb) {
+      setTestbenchFile({ id: `tb_${Date.now()}`, name: (lastTb as any).name, type: (lastTb as any).name.split('.').pop() || 'sv', content: (lastTb as any).content });
+      markWorkspaceDirty('waveform');
+      markWorkspaceUser('waveform');
+      setActiveEditorRole('testbench');
+      clearSimulationState();
+      handleMainViewChange('editor');
+      setConsoleLogs(prev => [...prev, `[Project] Assigned to Testbench slot: ${(lastTb as any).name}`]);
+    }
+
+    if (newSources.length > 0) {
+      setSourceFiles(prev => {
+        const existingNames = new Set(prev.map(p => p.name));
+        const newSlots: ProjectSlotFile[] = [];
+
+        newSources.forEach(rf => {
+          let targetName = rf.name;
+          if (existingNames.has(targetName)) {
+            const dotIdx = targetName.lastIndexOf('.');
+            const base = dotIdx !== -1 ? targetName.slice(0, dotIdx) : targetName;
+            const ext = dotIdx !== -1 ? targetName.slice(dotIdx) : '';
+            let counter = 1;
+            while (existingNames.has(`${base}_${counter}${ext}`)) counter++;
+            targetName = `${base}_${counter}${ext}`;
+          }
+          existingNames.add(targetName);
+
+          const slotFile: ProjectSlotFile = {
+            id: `src_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+            name: targetName,
+            type: targetName.split('.').pop() || 'sv',
+            content: rf.content,
+          };
+          newSlots.push(slotFile);
+        });
+
+        if (newSlots.length > 0) {
+          setActiveSourceId(newSlots[newSlots.length - 1].id);
+          setActiveEditorRole('source');
+        }
+        return [...prev, ...newSlots];
+      });
+
+      markWorkspaceDirty('waveform');
+      markWorkspaceUser('waveform');
+      clearSimulationState();
+      handleMainViewChange('editor');
+      setConsoleLogs(prev => [...prev, `[Project] Added ${newSources.length} file(s) to Sources.`]);
+    }
     e.target.value = '';
   };
 
-  const handleClearSlot = (slot: 'source' | 'testbench' | 'vcd') => {
+  const handleRemoveSource = useCallback((id: string) => {
+    setSourceFiles(prev => {
+      const file = prev.find(f => f.id === id);
+      const remaining = prev.filter(f => f.id !== id);
+      if (activeSourceId === id) {
+        setActiveSourceId(remaining.length > 0 ? remaining[0].id : null);
+      }
+      if (file) {
+        setConsoleLogs(cl => [...cl, `[Project] Removed source file: ${file.name}`]);
+      }
+      return remaining;
+    });
+    markWorkspaceDirty('waveform');
+    markWorkspaceUser('waveform');
+    clearSimulationState();
+  }, [activeSourceId, clearSimulationState]);
+
+  const handleClearSlot = useCallback((slot: 'source' | 'testbench' | 'vcd') => {
     if (slot === 'source') {
-      loadSourceFile(null);
-      setConsoleLogs(prev => [...prev, '[Project] Cleared Source slot.']);
+      if (activeSourceId) {
+        handleRemoveSource(activeSourceId);
+      } else if (sourceFiles.length > 0) {
+        handleRemoveSource(sourceFiles[0].id);
+      }
     } else if (slot === 'testbench') {
-      loadTestbenchFile(null);
+      setTestbenchFile(null);
+      markWorkspaceDirty('waveform');
+      markWorkspaceUser('waveform');
+      clearSimulationState();
       setConsoleLogs(prev => [...prev, '[Project] Cleared Testbench slot.']);
     } else {
-      loadVcdFile(null);
+      setVcdFile(null);
+      clearSimulationState();
       setConsoleLogs(prev => [...prev, '[Project] Cleared VCD slot.']);
     }
-  };
+  }, [activeSourceId, sourceFiles, handleRemoveSource, clearSimulationState]);
 
   // ── Simulation Initialization ─────────────────────────────
   const initSimulationData = (data: SimulationData) => {
@@ -339,7 +526,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
     }
   };
 
-  // ── Compilation ───────────────────────────────────────────
+  // ── Multi-File Compilation ─────────────────────────────────
   const compileSimulation = async () => {
     if (playbackAnimRef.current) {
       cancelAnimationFrame(playbackAnimRef.current);
@@ -355,7 +542,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
     setConsoleLogs(prev => [...prev, '[Compiler] Starting compilation pipeline...']);
 
     const currentVcd = vcdFile;
-    const currentSrc = sourceFile;
+    const currentSources = sourceFiles;
     const currentTb  = testbenchFile;
 
     // PATH 1: Direct VCD mode
@@ -363,6 +550,10 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
       try {
         const data = parseRawVCD(currentVcd.content);
         initSimulationData(data);
+        handleMainViewChange('waveform');
+        if (!userDismissedObjectsRef.current && data.signals.length > 0) {
+          setIsObjectsOpen(true);
+        }
         setConsoleLogs(prev => [
           ...prev,
           `[VCD] Parsed direct VCD successfully (${data.signals.length} signals, maxTime=${data.maxTime}).`,
@@ -383,9 +574,9 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
       return;
     }
 
-    // PATH 2: HDL Source & Testbench mode
+    // PATH 2: HDL Multi-File Sources & Testbench mode
     const filesToCompile: { name: string; type: string; content: string }[] = [];
-    if (currentSrc) filesToCompile.push(currentSrc);
+    currentSources.forEach(f => filesToCompile.push(f));
     if (currentTb)  filesToCompile.push(currentTb);
 
     if (filesToCompile.length === 0) {
@@ -395,6 +586,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
       setWaveSignalNames([]);
       setCursorB(null);
       setMarkers([]);
+      setIsConsoleOpen(true);
       setConsoleLogs(prev => [
         ...prev,
         '[HATA] No HDL files to compile. Please import a Source or Testbench file first.',
@@ -403,8 +595,11 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
       return;
     }
 
-    // Testbench file is always the top-level testbench for simulation
-    const activeName = currentTb ? currentTb.name : (currentSrc?.name || filesToCompile[0].name);
+    // Testbench file is top-level if present, otherwise active source
+    const activeName = currentTb
+      ? currentTb.name
+      : (activeSourceFile ? activeSourceFile.name : filesToCompile[0].name);
+
     const result = await simulateSystemVerilog(filesToCompile, activeName);
 
     if (result.logs && result.logs.length > 0) {
@@ -415,6 +610,10 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
       const data = result.simulationData as SimulationData;
       data.logs = [...result.logs, ...(data.logs ?? [])];
       initSimulationData(data);
+      handleMainViewChange('waveform');
+      if (!userDismissedObjectsRef.current && data.signals.length > 0) {
+        setIsObjectsOpen(true);
+      }
       setConsoleLogs(prev => [
         ...prev,
         `[Compiler] Compilation succeeded. Loaded ${data.signals.length} signals, duration: ${data.maxTime} units. ✓`,
@@ -491,7 +690,6 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
     setCurrentTime(0);
   };
 
-  // Clean up animation frame on unmount
   useEffect(() => {
     return () => {
       if (playbackAnimRef.current) cancelAnimationFrame(playbackAnimRef.current);
@@ -511,14 +709,12 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
     const neededWidth = data.maxTime * BASE_PIXELS_PER_UNIT;
     if (neededWidth <= 0) return;
 
-    // Fit with 2% breathing room so waveform spans nearly full available width
     const targetZoom = Math.max(0.0001, Math.min(20, (availableWidth * 0.98) / neededWidth));
     zoomLevelRef.current = targetZoom;
     setZoomLevel(targetZoom);
     container.scrollLeft = 0;
   }, [simulationData]);
 
-  // Automatically recompute Zoom Fit when panel visibility changes (e.g. Focus Mode)
   useEffect(() => {
     const timer = setTimeout(() => {
       if (simulationDataRef.current && simulationDataRef.current.maxTime > 0) {
@@ -526,7 +722,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
       }
     }, 60);
     return () => clearTimeout(timer);
-  }, [isProjectOpen, isObjectsOpen, isEditorOpen, isConsoleOpen, handleZoomFit]);
+  }, [isProjectOpen, isObjectsOpen, isConsoleOpen, mainView, handleZoomFit]);
 
   // ── Global Keyboard Shortcuts ─────────────────────────────
   const compileSimulationRef = useRef(compileSimulation);
@@ -536,7 +732,6 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't intercept when typing inside inputs
       const target = e.target as HTMLElement;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
         return;
@@ -548,10 +743,13 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
           setIsProjectOpen(prev => !prev);
         } else if (e.key === 'o' || e.key === 'O') {
           e.preventDefault();
-          setIsObjectsOpen(prev => !prev);
+          setIsObjectsOpen(prev => {
+            if (prev) userDismissedObjectsRef.current = true;
+            return !prev;
+          });
         } else if (e.key === 'e' || e.key === 'E') {
           e.preventDefault();
-          setIsEditorOpen(prev => !prev);
+          handleMainViewChange('editor');
         } else if (e.key === 't' || e.key === 'T') {
           e.preventDefault();
           setIsConsoleOpen(prev => !prev);
@@ -569,7 +767,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [simulationData]);
+  }, [handleMainViewChange, handleZoomFit]);
 
   // ── Ruler Ticks Calculation ───────────────────────────────
   const rulerTicks = useMemo(() => {
@@ -643,25 +841,29 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
     setContextMenu({ x: e.clientX, y: e.clientY, signalName, type });
   };
 
-
-  const activeEditorFile = activeEditorSlot === 'source' ? sourceFile : testbenchFile;
-
   return (
     <div
       data-testid="waveform-workspace"
       data-compile-status={compileStatus}
+      data-main-view={mainView}
+      data-sources-count={sourceFiles.length}
+      data-active-source-id={activeSourceId ?? ''}
+      data-active-role={activeEditorRole}
       className="flex flex-col h-full w-full bg-[#0a1120] text-slate-200 font-sans overflow-hidden select-none"
     >
       {/* ── Hidden File Inputs ──────────────────────────────────── */}
       <input
         type="file"
+        data-testid="wf-input-source"
         ref={sourceInputRef}
         onChange={handleSourceUpload}
+        multiple
         className="hidden"
         accept=".v,.sv,.txt"
       />
       <input
         type="file"
+        data-testid="wf-input-tb"
         ref={tbInputRef}
         onChange={handleTbUpload}
         className="hidden"
@@ -669,6 +871,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
       />
       <input
         type="file"
+        data-testid="wf-input-vcd"
         ref={vcdInputRef}
         onChange={handleVcdUpload}
         className="hidden"
@@ -676,6 +879,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
       />
       <input
         type="file"
+        data-testid="wf-input-general"
         ref={generalInputRef}
         onChange={handleGeneralUpload}
         multiple
@@ -695,12 +899,19 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
         timescale={simulationData?.timescale}
         projectPanelOpen={isProjectOpen}
         objectsPanelOpen={isObjectsOpen}
-        editorOpen={isEditorOpen}
         consoleOpen={isConsoleOpen}
+        mainView={mainView}
+        onChangeMainView={handleMainViewChange}
         onToggleProjectPanel={() => setIsProjectOpen(prev => !prev)}
-        onToggleObjectsPanel={() => setIsObjectsOpen(prev => !prev)}
-        onToggleEditor={() => setIsEditorOpen(prev => !prev)}
+        onToggleObjectsPanel={() => {
+          setIsObjectsOpen(prev => {
+            if (prev && simulationData) userDismissedObjectsRef.current = true;
+            return !prev;
+          });
+        }}
+        onToggleEditor={() => handleMainViewChange(mainView === 'editor' ? 'waveform' : 'editor')}
         onToggleConsole={() => setIsConsoleOpen(prev => !prev)}
+        onResetLayout={handleResetLayout}
         onUpload={() => generalInputRef.current?.click()}
         onCompile={compileSimulation}
         onRun={runSimulation}
@@ -719,17 +930,24 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
             <>
               <WaveformProjectPanel
                 width={layout.projectWidth}
-                sourceFile={sourceFile}
+                sourceFiles={sourceFiles}
                 testbenchFile={testbenchFile}
                 vcdFile={vcdFile}
-                activeEditorSlot={activeEditorSlot}
+                activeSourceId={activeSourceId}
+                activeEditorSlot={activeEditorRole}
+                onSelectSourceFile={(id) => {
+                  setActiveSourceId(id);
+                  setActiveEditorRole('source');
+                  handleMainViewChange('editor');
+                }}
                 onSelectSlot={(slot) => {
-                  setActiveEditorSlot(slot);
-                  setIsEditorOpen(true);
+                  setActiveEditorRole(slot);
+                  handleMainViewChange('editor');
                 }}
                 onImportSource={() => sourceInputRef.current?.click()}
                 onImportTestbench={() => tbInputRef.current?.click()}
                 onImportVcd={() => vcdInputRef.current?.click()}
+                onRemoveSourceFile={handleRemoveSource}
                 onClearSlot={handleClearSlot}
                 rootTree={rootTree}
                 activeScope={activeScope}
@@ -743,11 +961,11 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
                 aria-label="Resize Project Panel"
                 className="z-30"
                 valueNow={layout.projectWidth}
-                valueMin={150}
-                valueMax={380}
+                valueMin={180}
+                valueMax={360}
                 onResize={(delta) => {
                   setLayout(prev => {
-                    const next = { ...prev, projectWidth: Math.max(150, Math.min(380, prev.projectWidth + delta)) };
+                    const next = { ...prev, projectWidth: Math.max(180, Math.min(360, prev.projectWidth + delta)) };
                     return next;
                   });
                 }}
@@ -771,7 +989,10 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
                 isCompiled={compileStatus === 'success' && Boolean(simulationData && simulationData.maxTime > 0)}
                 hasSimulationData={Boolean(simulationData)}
                 onAddSignals={(names) => setWaveSignalNames(prev => Array.from(new Set([...prev, ...names])))}
-                onClose={() => setIsObjectsOpen(false)}
+                onClose={() => {
+                  userDismissedObjectsRef.current = true;
+                  setIsObjectsOpen(false);
+                }}
               />
 
               {/* Boundary 2: Objects ↔ Right Area */}
@@ -781,11 +1002,11 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
                 aria-label="Resize Objects Panel"
                 className="z-30"
                 valueNow={layout.objectsWidth}
-                valueMin={160}
+                valueMin={200}
                 valueMax={420}
                 onResize={(delta) => {
                   setLayout(prev => {
-                    const next = { ...prev, objectsWidth: Math.max(160, Math.min(420, prev.objectsWidth + delta)) };
+                    const next = { ...prev, objectsWidth: Math.max(200, Math.min(420, prev.objectsWidth + delta)) };
                     return next;
                   });
                 }}
@@ -798,206 +1019,281 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
             </>
           )}
 
-          {/* ── Center Right Area: Editor + Waveform ─────────────── */}
+          {/* ── Center Right Area: Editor / Waveform / Split ─────── */}
           <div ref={rightAreaRef} className="flex-1 flex flex-col min-w-0 bg-[#070c18] relative overflow-hidden isolate">
             
-            {/* ── Top Section: HDL Code Editor ───────────────────── */}
-            {isEditorOpen && (
-              <>
-                <div
-                  data-testid="wf-editor-container"
-                  className="flex flex-col min-h-[120px] bg-[#0c1322] border-b border-[#1e293b]"
-                  style={{
-                    height: rightAreaRef.current
-                      ? Math.round(rightAreaRef.current.clientHeight * layout.editorRatio)
-                      : '35%',
-                  }}
-                >
-                  {/* Editor Tab Bar */}
-                  <div className="h-8 bg-[#090f1d] border-b border-[#1e293b] flex items-center justify-between px-2 shrink-0">
-                    <div className="flex items-center gap-1">
-                      <button
-                        data-testid="wf-editor-tab-source"
-                        onClick={() => setActiveEditorSlot('source')}
-                        className={`flex items-center gap-1.5 px-3 py-1 text-xs font-mono rounded transition-colors ${
-                          activeEditorSlot === 'source'
-                            ? 'bg-[#1e293b] text-blue-300 font-semibold border-b-2 border-blue-500'
-                            : 'text-slate-400 hover:bg-[#111c33] hover:text-slate-200'
-                        }`}
-                      >
-                        <span>{sourceFile ? sourceFile.name : 'source (empty)'}</span>
-                      </button>
-
-                      <button
-                        data-testid="wf-editor-tab-tb"
-                        onClick={() => setActiveEditorSlot('testbench')}
-                        className={`flex items-center gap-1.5 px-3 py-1 text-xs font-mono rounded transition-colors ${
-                          activeEditorSlot === 'testbench'
-                            ? 'bg-[#1e293b] text-amber-300 font-semibold border-b-2 border-amber-500'
-                            : 'text-slate-400 hover:bg-[#111c33] hover:text-slate-200'
-                        }`}
-                      >
-                        <span>{testbenchFile ? testbenchFile.name : 'testbench (empty)'}</span>
-                      </button>
-                    </div>
-
-                    <button
-                      onClick={() => setIsEditorOpen(false)}
-                      title="Collapse Editor (Alt+E)"
-                      className="text-slate-500 hover:text-slate-300 p-1 rounded transition-colors text-xs"
-                    >
-                      Hide Editor
-                    </button>
-                  </div>
-
-                  {/* Monaco or Empty Slot View */}
-                  <div className="flex-1 min-h-0 relative">
-                    {activeEditorFile ? (
-                      <MonacoEditor
-                        height="100%"
-                        language={activeEditorFile.name.endsWith('.v') ? 'verilog' : 'systemverilog'}
-                        theme={isDarkMode ? 'vs-dark' : 'vs-light'}
-                        value={activeEditorFile.content}
-                        onChange={(val) => {
-                          const updated = val ?? '';
-                          if (activeEditorSlot === 'source') {
-                            if (sourceFile?.content !== updated) {
-                              markWorkspaceDirty('waveform');
-                              clearSimulationState();
-                              setCompileStatus('idle');
-                              editSourceContent(updated);
-                            }
-                          } else {
-                            if (testbenchFile?.content !== updated) {
-                              markWorkspaceDirty('waveform');
-                              clearSimulationState();
-                              setCompileStatus('idle');
-                              editTestbenchContent(updated);
-                            }
-                          }
+            {/* ── Code Editor Surface (Mounted Offscreen when in Waveform mode to guarantee zero layout glitch and test access) ── */}
+            <div
+              data-testid="wf-editor-container"
+              style={mainView === 'waveform' ? {
+                position: 'absolute',
+                top: -9999,
+                left: -9999,
+                width: 800,
+                height: 600,
+                visibility: 'hidden',
+                pointerEvents: 'none',
+              } : mainView === 'editor' ? {
+                flex: 1,
+                height: '100%',
+                minHeight: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                position: 'relative',
+                minWidth: 0,
+              } : {
+                height: rightAreaRef.current
+                  ? Math.round(rightAreaRef.current.clientHeight * layout.editorRatio)
+                  : '35%',
+                minHeight: 120,
+                display: 'flex',
+                flexDirection: 'column',
+                position: 'relative',
+                minWidth: 0,
+              }}
+              className="bg-[#0c1322] border-b border-[#1e293b]"
+            >
+              {/* Editor Multi-File Tab Bar */}
+              <div className="h-9 bg-[#090f1d] border-b border-[#1e293b] flex items-center justify-between px-2 shrink-0 gap-2 overflow-x-auto min-w-0">
+                <div className="flex items-center gap-1 min-w-0 flex-1 overflow-x-auto">
+                  {/* Source Files Tabs */}
+                  {sourceFiles.map((file, idx) => {
+                    const isActive = activeEditorRole === 'source' && (
+                      activeSourceId ? file.id === activeSourceId : idx === 0
+                    );
+                    return (
+                      <div
+                        key={file.id}
+                        onClick={() => {
+                          setActiveSourceId(file.id);
+                          setActiveEditorRole('source');
                         }}
-                        options={{
-                          minimap: { enabled: false },
-                          fontSize: 13,
-                          wordWrap: 'on',
-                          scrollBeyondLastLine: false,
-                          fontFamily: '"Cascadia Code", "Fira Code", Consolas, monospace',
-                          automaticLayout: true,
-                          padding: { top: 8 },
-                        }}
-                      />
-                    ) : (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-[#0a1120]">
-                        <div className="text-slate-400 text-sm font-medium mb-1">
-                          No {activeEditorSlot === 'source' ? 'Source Module' : 'Testbench'} Loaded
-                        </div>
-                        <div className="text-slate-500 text-xs font-mono max-w-sm mb-4">
-                          {activeEditorSlot === 'source'
-                            ? 'Import your Verilog / SystemVerilog DUT design module to begin simulation.'
-                            : 'Import your Verilog / SystemVerilog testbench ($dumpfile / $dumpvars) to drive simulation.'}
-                        </div>
-                        <button
-                          onClick={() => activeEditorSlot === 'source' ? sourceInputRef.current?.click() : tbInputRef.current?.click()}
-                          className="px-3 py-1.5 rounded text-xs font-medium bg-blue-600 hover:bg-blue-500 text-white shadow-sm"
-                        >
-                          Import {activeEditorSlot === 'source' ? 'Source File' : 'Testbench File'}
-                        </button>
+                        className={`flex items-center gap-1.5 px-3 py-1 text-xs font-mono rounded transition-colors group cursor-pointer shrink-0 border ${
+                          isActive
+                            ? 'bg-[#1e293b] text-blue-300 font-semibold border-blue-500/80 shadow-sm'
+                            : 'text-slate-400 hover:bg-[#111c33] hover:text-slate-200 border-transparent'
+                        }`}
+                        title={file.name}
+                        data-editor-tab="source"
+                        data-filename={file.name}
+                        data-testid={isActive ? "wf-editor-tab-source" : `wf-editor-tab-source-${file.name}`}
+                      >
+                        <span className="truncate max-w-[150px]">{file.name}</span>
+                        {sourceFiles.length > 1 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveSource(file.id);
+                            }}
+                            className="text-slate-500 hover:text-red-400 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity ml-0.5"
+                            title={`Close ${file.name}`}
+                          >
+                            <X size={11} />
+                          </button>
+                        )}
                       </div>
-                    )}
-                  </div>
+                    );
+                  })}
+
+                  {/* Quick Add Source Button in Tab Strip */}
+                  <button
+                    onClick={() => sourceInputRef.current?.click()}
+                    className="flex items-center gap-1 px-2 py-1 text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-950/30 rounded border border-dashed border-blue-500/30 transition-colors shrink-0"
+                    title="Add or import another source file"
+                  >
+                    <Plus size={11} />
+                    <span>Add Source</span>
+                  </button>
+
+                  <div className="w-px h-4 bg-[#1e293b] mx-1 shrink-0" />
+
+                  {/* Testbench Tab */}
+                  <button
+                    data-testid="wf-editor-tab-tb"
+                    data-editor-tab="testbench"
+                    data-filename={testbenchFile ? testbenchFile.name : 'testbench'}
+                    onClick={() => setActiveEditorRole('testbench')}
+                    className={`flex items-center gap-1.5 px-3 py-1 text-xs font-mono rounded transition-colors shrink-0 border ${
+                      activeEditorRole === 'testbench'
+                        ? 'bg-[#1e293b] text-amber-300 font-semibold border-amber-500/80 shadow-sm'
+                        : 'text-slate-400 hover:bg-[#111c33] hover:text-slate-200 border-transparent'
+                    }`}
+                    title={testbenchFile ? testbenchFile.name : 'Testbench'}
+                  >
+                    <span className="truncate max-w-[150px]">{testbenchFile ? testbenchFile.name : 'testbench (empty)'}</span>
+                    <span className="text-[9px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 uppercase tracking-wider font-sans font-semibold">
+                      testbench
+                    </span>
+                  </button>
                 </div>
 
-                {/* Boundary 3: Editor ↔ Waveform */}
-                <ResizableDivider
-                  orientation="horizontal"
-                  data-testid="splitter-wf-editor-wave"
-                  aria-label="Resize Editor vs Waveform"
-                  valueNow={layout.editorRatio}
-                  valueMin={0.18}
-                  valueMax={0.72}
-                  onResize={(_, currentPos, stepMultiplier) => {
-                    if (stepMultiplier !== undefined) {
-                      setLayout(prev => ({
-                        ...prev,
-                        editorRatio: Math.max(0.18, Math.min(0.72, prev.editorRatio + stepMultiplier)),
-                      }));
-                      return;
-                    }
-                    if (rightAreaRef.current) {
-                      const rect = rightAreaRef.current.getBoundingClientRect();
-                      const relativeY = currentPos.clientY - rect.top;
-                      const newRatio = Math.max(0.18, Math.min(0.72, relativeY / rect.height));
-                      setLayout(prev => ({ ...prev, editorRatio: newRatio }));
-                    }
-                  }}
-                  onResizeEnd={() => persistLayout(layoutRef.current)}
-                  onReset={() => {
-                    setLayout(prev => ({ ...prev, editorRatio: DEFAULT_LAYOUT.editorRatio }));
-                    persistLayout({ ...layoutRef.current, editorRatio: DEFAULT_LAYOUT.editorRatio });
-                  }}
-                />
-              </>
-            )}
+                {mainView === 'split' && (
+                  <button
+                    onClick={() => handleMainViewChange('waveform')}
+                    title="Maximize Waveform"
+                    className="text-slate-500 hover:text-slate-300 p-1 rounded transition-colors text-xs shrink-0"
+                  >
+                    Hide Editor
+                  </button>
+                )}
+              </div>
 
-            {/* ── Bottom Section: Waveform Workspace ─────────────── */}
-            <div className="flex-1 flex min-h-0 bg-black overflow-hidden relative">
-              {/* Left Column: Signal Names Panel */}
-              <SignalNamePanel
-                width={layout.signalColumnWidth}
-                rows={renderableRows}
-                currentTime={currentTime}
-                selectedSignal={selectedSignal}
-                radixes={radixes}
-                onSelectSignal={setSelectedSignal}
-                onSetCurrentTime={setCurrentTime}
-                onContextMenu={handleContextMenu}
-                onToggleBusExpand={toggleBusExpand}
-                expandedBusses={expandedBusses}
-              />
+              {/* Monaco or Deliberate Empty Slot View */}
+              <div className="flex-1 min-h-0 relative">
+                {activeEditorFile ? (
+                  <MonacoEditor
+                    height="100%"
+                    language={activeEditorFile.name.endsWith('.v') ? 'verilog' : 'systemverilog'}
+                    theme={isDarkMode ? 'vs-dark' : 'vs-light'}
+                    value={activeEditorFile.content}
+                    onMount={(editor) => {
+                      monacoEditorRef.current = editor;
+                    }}
+                    onChange={(val) => {
+                      const updated = val ?? '';
+                      if (activeEditorRole === 'source') {
+                        if (activeSourceFile && activeSourceFile.content !== updated) {
+                          markWorkspaceDirty('waveform');
+                          markWorkspaceUser('waveform');
+                          clearSimulationState();
+                          setCompileStatus('idle');
+                          editSourceContent(activeSourceFile.id, updated);
+                        }
+                      } else {
+                        if (testbenchFile && testbenchFile.content !== updated) {
+                          markWorkspaceDirty('waveform');
+                          markWorkspaceUser('waveform');
+                          clearSimulationState();
+                          setCompileStatus('idle');
+                          editTestbenchContent(updated);
+                        }
+                      }
+                    }}
+                    options={{
+                      minimap: { enabled: false },
+                      fontSize: 13,
+                      wordWrap: 'on',
+                      scrollBeyondLastLine: false,
+                      fontFamily: '"Cascadia Code", "Fira Code", Consolas, monospace',
+                      automaticLayout: true,
+                      padding: { top: 8 },
+                    }}
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-[#0a1120]">
+                    <div className="text-slate-300 text-sm font-semibold mb-1">
+                      No {activeEditorRole === 'source' ? 'Source Module' : 'Testbench'} Selected
+                    </div>
+                    <div className="text-slate-500 text-xs font-mono max-w-sm mb-4 leading-relaxed">
+                      {activeEditorRole === 'source'
+                        ? 'Import or add your Verilog / SystemVerilog design source files (.v, .sv).'
+                        : 'Import your Verilog / SystemVerilog testbench ($dumpfile / $dumpvars) to drive simulation.'}
+                    </div>
+                    <button
+                      data-testid="wf-empty-editor-import-btn"
+                      onClick={() => activeEditorRole === 'source' ? sourceInputRef.current?.click() : tbInputRef.current?.click()}
+                      className="px-3.5 py-1.5 rounded text-xs font-medium bg-blue-600 hover:bg-blue-500 text-white shadow-sm transition-colors"
+                    >
+                      Import {activeEditorRole === 'source' ? 'Source File' : 'Testbench File'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
 
-              {/* Boundary 4: Signal Names ↔ Timeline Canvas */}
+            {/* Split divider only when in Split view */}
+            {mainView === 'split' && (
               <ResizableDivider
-                orientation="vertical"
-                data-testid="splitter-wf-signal-col"
-                aria-label="Resize Signal Name Column"
-                valueNow={layout.signalColumnWidth}
-                valueMin={160}
-                valueMax={480}
-                onResize={(delta) => {
-                  setLayout(prev => {
-                    const next = { ...prev, signalColumnWidth: Math.max(160, Math.min(480, prev.signalColumnWidth + delta)) };
-                    return next;
-                  });
+                orientation="horizontal"
+                data-testid="splitter-wf-editor-wave"
+                aria-label="Resize Editor vs Waveform"
+                valueNow={layout.editorRatio}
+                valueMin={0.18}
+                valueMax={0.72}
+                onResize={(_, currentPos, stepMultiplier) => {
+                  if (stepMultiplier !== undefined) {
+                    setLayout(prev => ({
+                      ...prev,
+                      editorRatio: Math.max(0.18, Math.min(0.72, prev.editorRatio + stepMultiplier)),
+                    }));
+                    return;
+                  }
+                  if (rightAreaRef.current) {
+                    const rect = rightAreaRef.current.getBoundingClientRect();
+                    const relativeY = currentPos.clientY - rect.top;
+                    const newRatio = Math.max(0.18, Math.min(0.72, relativeY / rect.height));
+                    setLayout(prev => ({ ...prev, editorRatio: newRatio }));
+                  }
                 }}
                 onResizeEnd={() => persistLayout(layoutRef.current)}
                 onReset={() => {
-                  setLayout(prev => ({ ...prev, signalColumnWidth: DEFAULT_LAYOUT.signalColumnWidth }));
-                  persistLayout({ ...layoutRef.current, signalColumnWidth: DEFAULT_LAYOUT.signalColumnWidth });
+                  setLayout(prev => ({ ...prev, editorRatio: DEFAULT_LAYOUT.editorRatio }));
+                  persistLayout({ ...layoutRef.current, editorRatio: DEFAULT_LAYOUT.editorRatio });
                 }}
               />
+            )}
 
-              {/* Right Column: Waveform Canvas */}
-              <WaveformCanvas
-                containerRef={waveformCanvasContainerRef}
-                simulationData={simulationData}
-                compileStatus={compileStatus}
-                isSimRunning={isSimRunning}
-                rows={renderableRows}
-                selectedSignal={selectedSignal}
-                zoomLevel={zoomLevel}
-                rulerTicks={rulerTicks}
-                currentTime={currentTime}
-                cursorB={cursorB}
-                hoverTime={hoverTime}
-                radixes={radixes}
-                markers={markers}
-                onTimeChange={setCurrentTime}
-                onCursorBChange={setCursorB}
-                onHoverChange={setHoverTime}
-                onAddMarker={(mk) => setMarkers(prev => [...prev, mk])}
-                onRemoveMarker={(id) => setMarkers(prev => prev.filter(m => m.id !== id))}
-              />
-            </div>
+            {/* ── Waveform Workspace Viewport (Active in Waveform and Split modes) ── */}
+            {(mainView === 'waveform' || mainView === 'split') && (
+              <div className="flex-1 flex min-h-0 bg-black overflow-hidden relative min-w-0">
+                {/* Left Column: Signal Names Panel */}
+                <SignalNamePanel
+                  width={layout.signalColumnWidth}
+                  rows={renderableRows}
+                  currentTime={currentTime}
+                  selectedSignal={selectedSignal}
+                  radixes={radixes}
+                  onSelectSignal={setSelectedSignal}
+                  onSetCurrentTime={setCurrentTime}
+                  onContextMenu={handleContextMenu}
+                  onToggleBusExpand={toggleBusExpand}
+                  expandedBusses={expandedBusses}
+                />
+
+                {/* Boundary 4: Signal Names ↔ Timeline Canvas */}
+                <ResizableDivider
+                  orientation="vertical"
+                  data-testid="splitter-wf-signal-col"
+                  aria-label="Resize Signal Name Column"
+                  valueNow={layout.signalColumnWidth}
+                  valueMin={160}
+                  valueMax={380}
+                  onResize={(delta) => {
+                    setLayout(prev => {
+                      const next = { ...prev, signalColumnWidth: Math.max(160, Math.min(380, prev.signalColumnWidth + delta)) };
+                      return next;
+                    });
+                  }}
+                  onResizeEnd={() => persistLayout(layoutRef.current)}
+                  onReset={() => {
+                    setLayout(prev => ({ ...prev, signalColumnWidth: DEFAULT_LAYOUT.signalColumnWidth }));
+                    persistLayout({ ...layoutRef.current, signalColumnWidth: DEFAULT_LAYOUT.signalColumnWidth });
+                  }}
+                />
+
+                {/* Right Column: Waveform Canvas */}
+                <WaveformCanvas
+                  containerRef={waveformCanvasContainerRef}
+                  simulationData={simulationData}
+                  compileStatus={compileStatus}
+                  isSimRunning={isSimRunning}
+                  rows={renderableRows}
+                  selectedSignal={selectedSignal}
+                  zoomLevel={zoomLevel}
+                  rulerTicks={rulerTicks}
+                  currentTime={currentTime}
+                  cursorB={cursorB}
+                  hoverTime={hoverTime}
+                  radixes={radixes}
+                  markers={markers}
+                  onTimeChange={setCurrentTime}
+                  onCursorBChange={setCursorB}
+                  onHoverChange={setHoverTime}
+                  onAddMarker={(mk) => setMarkers(prev => [...prev, mk])}
+                  onRemoveMarker={(id) => setMarkers(prev => prev.filter(m => m.id !== id))}
+                />
+              </div>
+            )}
 
           </div>
         </div>
@@ -1011,11 +1307,11 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
               data-testid="splitter-wf-console"
               aria-label="Resize Console Panel"
               valueNow={layout.consoleHeight}
-              valueMin={80}
-              valueMax={400}
+              valueMin={100}
+              valueMax={380}
               onResize={(delta) => {
                 setLayout(prev => {
-                  const next = { ...prev, consoleHeight: Math.max(80, Math.min(400, prev.consoleHeight - delta)) };
+                  const next = { ...prev, consoleHeight: Math.max(100, Math.min(380, prev.consoleHeight - delta)) };
                   return next;
                 });
               }}
