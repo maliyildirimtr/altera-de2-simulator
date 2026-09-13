@@ -13,6 +13,7 @@
     "test:waveform": "node scripts/regression/waveform.mjs",
     "test:dirty-state": "node scripts/regression/dirty-state.mjs",
     "test:dependencies": "node scripts/regression/dependencies.mjs",
+    "test:ux": "node scripts/regression/phase12-ux.mjs",
     "test:release": "npm run typecheck && npm run test:security && npm run build"
   },
   "dependencies": {
