@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Terminal, AlertTriangle, XCircle, X } from 'lucide-react';
 
 interface SchematicConsoleProps {
   isOpen: boolean;
@@ -27,18 +28,16 @@ export const SchematicConsole: React.FC<SchematicConsoleProps> = ({
 
   if (!isOpen) return null;
 
-  const errorMessages: string[] = [];
-  if (error) {
-    errorMessages.push(error);
-  }
-  if (stderr.trim()) {
-    const lines = stderr.split('\n').filter((l) => l.trim().length > 0);
-    lines.forEach((l) => {
-      if (!errorMessages.includes(l)) {
-        errorMessages.push(l);
-      }
-    });
-  }
+  // Split stderr/error into readable issues
+  const rawIssues = (error ? error.split('\n').map((l) => l.trim()) : []).concat(
+    stderr
+      ? stderr
+          .split('\n')
+          .map((l) => l.trim())
+          .filter((l) => l.length > 0 && (l.includes('ERROR') || l.includes('syntax error') || l.includes('failed')))
+      : []
+  );
+  const errorMessages = Array.from(new Set(rawIssues.filter((l) => l.length > 0)));
 
   return (
     <div
@@ -46,34 +45,38 @@ export const SchematicConsole: React.FC<SchematicConsoleProps> = ({
       style={{
         width: '100%',
         height: '100%',
-        backgroundColor: 'var(--bg-secondary)',
         display: 'flex',
         flexDirection: 'column',
+        backgroundColor: 'var(--bg-app)',
+        borderTop: '1px solid var(--border-subtle)',
+        fontFamily: 'monospace',
+        fontSize: '0.8rem',
         overflow: 'hidden',
-        fontSize: '0.82rem',
       }}
     >
-      {/* Console Tab Header */}
+      {/* Console Tab Bar */}
       <div
         style={{
-          padding: '0 10px',
           height: '32px',
-          borderBottom: '1px solid var(--border-color)',
+          backgroundColor: 'var(--bg-panel-header)',
+          borderBottom: '1px solid var(--border-subtle)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          padding: '0 8px',
+          userSelect: 'none',
           flexShrink: 0,
         }}
       >
-        <div style={{ display: 'flex', gap: '4px', height: '100%', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '100%' }}>
           <button
             data-testid="tab-console"
             onClick={() => setActiveTab('console')}
             style={{
               padding: '4px 10px',
-              background: activeTab === 'console' ? 'var(--bg-primary)' : 'transparent',
+              background: activeTab === 'console' ? 'var(--bg-panel)' : 'transparent',
               border: 'none',
-              borderBottom: activeTab === 'console' ? '2px solid var(--accent-color)' : '2px solid transparent',
+              borderBottom: activeTab === 'console' ? '2px solid var(--accent-primary)' : '2px solid transparent',
               color: activeTab === 'console' ? 'var(--text-primary)' : 'var(--text-secondary)',
               fontWeight: activeTab === 'console' ? 600 : 500,
               cursor: 'pointer',
@@ -84,14 +87,15 @@ export const SchematicConsole: React.FC<SchematicConsoleProps> = ({
               gap: '6px',
             }}
           >
-            <span>📟 Output</span>
+            <Terminal size={14} />
+            <span>Output</span>
           </button>
           <button
             data-testid="tab-problems"
             onClick={() => setActiveTab('problems')}
             style={{
               padding: '4px 10px',
-              background: activeTab === 'problems' ? 'var(--bg-primary)' : 'transparent',
+              background: activeTab === 'problems' ? 'var(--bg-panel)' : 'transparent',
               border: 'none',
               borderBottom: activeTab === 'problems' ? '2px solid #ef4444' : '2px solid transparent',
               color: activeTab === 'problems' ? 'var(--text-primary)' : 'var(--text-secondary)',
@@ -104,7 +108,8 @@ export const SchematicConsole: React.FC<SchematicConsoleProps> = ({
               gap: '6px',
             }}
           >
-            <span>⚠️ Problems</span>
+            <AlertTriangle size={14} className="text-amber-400" />
+            <span>Problems</span>
             {errorMessages.length > 0 && (
               <span
                 style={{
@@ -140,43 +145,50 @@ export const SchematicConsole: React.FC<SchematicConsoleProps> = ({
           <button
             onClick={onClose}
             title="Close Panel"
+            aria-label="Close Console"
             style={{
               background: 'transparent',
               border: 'none',
               color: 'var(--text-secondary)',
               cursor: 'pointer',
-              fontSize: '1rem',
-              padding: '0 4px',
+              padding: '2px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '4px',
             }}
           >
-            ×
+            <X size={14} />
           </button>
         </div>
       </div>
 
-      {/* Console Tab Body */}
+      {/* Terminal View / Problems View */}
       <div
         style={{
           flex: 1,
-          overflowY: 'auto',
+          overflow: 'auto',
           padding: '8px 12px',
-          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-          fontSize: '0.78rem',
-          lineHeight: 1.5,
-          backgroundColor: '#0b0f19',
-          color: '#e2e8f0',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-all',
+          lineHeight: '1.4',
         }}
       >
         {activeTab === 'console' ? (
-          stdout.trim() ? (
-            <pre data-testid="console-output" style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-              {stdout}
-            </pre>
-          ) : (
-            <div style={{ color: '#64748b', fontStyle: 'italic' }}>
-              No synthesis output yet. Click Synthesize to run Yosys.
-            </div>
-          )
+          <div>
+            {stdout ? (
+              <span style={{ color: 'var(--text-primary)' }}>{stdout}</span>
+            ) : (
+              <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                Console initialized. Synthesizer logs will stream here.
+              </span>
+            )}
+            {stderr && (
+              <div style={{ color: '#ef4444', marginTop: '6px' }}>
+                [STDERR]: {stderr}
+              </div>
+            )}
+          </div>
         ) : errorMessages.length > 0 ? (
           <div data-testid="problems-list" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {errorMessages.map((msg, i) => (
@@ -193,13 +205,13 @@ export const SchematicConsole: React.FC<SchematicConsoleProps> = ({
                   borderLeft: '3px solid #ef4444',
                 }}
               >
-                <span>❌</span>
+                <XCircle size={14} className="text-red-400 shrink-0 mt-0.5" />
                 <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{msg}</span>
               </div>
             ))}
           </div>
         ) : (
-          <div style={{ color: '#64748b', fontStyle: 'italic' }}>
+          <div style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>
             No errors detected. Synthesis succeeded or waiting for input.
           </div>
         )}

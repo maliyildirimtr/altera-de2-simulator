@@ -3,12 +3,40 @@ import { runYosys } from '@yowasp/yosys';
 // @ts-ignore
 import { yosys2digitaljs } from 'yosys2digitaljs/core';
 
+export class HdlSynthesisError extends Error {
+  public readonly isHdlError = true;
+  public readonly stdout: string;
+  public readonly stderr: string;
+
+  constructor(message: string, stdout: string = '', stderr: string = '') {
+    super(message);
+    this.name = 'HdlSynthesisError';
+    this.stdout = stdout;
+    this.stderr = stderr;
+  }
+}
+
+export class InternalSchematicError extends Error {
+  public readonly isInternalError = true;
+  public readonly originalError?: any;
+  public readonly stdout: string;
+  public readonly stderr: string;
+
+  constructor(message: string, originalError?: any, stdout: string = '', stderr: string = '') {
+    super(message);
+    this.name = 'InternalSchematicError';
+    this.originalError = originalError;
+    this.stdout = stdout;
+    this.stderr = stderr;
+  }
+}
+
 export async function synthesizeVerilog(
   filesData: { name: string, content: string }[], 
   options: { optimize?: boolean, simplify?: boolean } = { optimize: false, simplify: true }
 ): Promise<any> {
   if (!filesData || filesData.length === 0) {
-    throw new Error('Sentezlenecek dosya bulunamadı.');
+    throw new HdlSynthesisError('Sentezlenecek dosya bulunamadı.');
   }
 
   // Yosys sanal dosya sistemini (VFS) oluştur
@@ -55,112 +83,127 @@ export async function synthesizeVerilog(
   let stdoutLog = '';
   let stderrLog = '';
 
-  const resultFiles = await runYosys(args, files, {
-    print: (text: string) => { stdoutLog += text + '\n'; },
-    printErr: (text: string) => { stderrLog += text + '\n'; }
-  } as any);
+  let resultFiles: any;
+  try {
+    resultFiles = await runYosys(args, files, {
+      print: (text: string) => { stdoutLog += text + '\n'; },
+      printErr: (text: string) => { stderrLog += text + '\n'; }
+    } as any);
+  } catch (yosysErr: any) {
+    const errorDetails = (stderrLog.trim() || stdoutLog.trim() || yosysErr?.message || 'Yosys synthesis failed.');
+    throw new HdlSynthesisError(errorDetails, stdoutLog, stderrLog);
+  }
 
   if (resultFiles && resultFiles['output.json']) {
-    const jsonRaw = resultFiles['output.json'];
-    const jsonString = typeof jsonRaw === 'string' ? jsonRaw : new TextDecoder().decode(jsonRaw as Uint8Array);
-    const rawYosysJson = JSON.parse(jsonString);
-    
-    // Top modülü belirle. Yosys `hierarchy -auto-top` kullanıldığında ana modülün attributes objesinde `top: 1` bulunur.
-    let topModule = '';
-    const moduleNames = Object.keys(rawYosysJson.modules || {});
-    
-    for (const modName of moduleNames) {
-      if (rawYosysJson.modules[modName].attributes?.top === 1 || rawYosysJson.modules[modName].attributes?.top === "00000000000000000000000000000001") {
-        topModule = modName;
-        break;
-      }
-    }
-    
-    // Eğer `top` özelliği bulunamazsa, ilk modülü (veya içinde instantiation olmayan modülü) fallback olarak al
-    if (!topModule && moduleNames.length > 0) {
-      topModule = moduleNames[moduleNames.length - 1]; // Genelde Yosys top modülü sona koyar ama emin olmak için
-    }
+    try {
+      const jsonRaw = resultFiles['output.json'];
+      const jsonString = typeof jsonRaw === 'string' ? jsonRaw : new TextDecoder().decode(jsonRaw as Uint8Array);
+      const rawYosysJson = JSON.parse(jsonString);
 
-    if (!topModule) {
-      throw new Error('Sentezleme sonucunda hiçbir modül bulunamadı.');
-    }
+      // Top modülü belirle. Yosys `hierarchy -auto-top` kullanıldığında ana modülün attributes objesinde `top: 1` bulunur.
+      let topModule = '';
+      const moduleNames = Object.keys(rawYosysJson.modules || {});
 
-    // yosys2digitaljs ile çevir
-    const digitalJsData = yosys2digitaljs(rawYosysJson);
-    
-    // Çıkış portlarını düzelt ve kapı isimlerini (Label) temizle
-    if (digitalJsData && digitalJsData.devices) {
-      const mod = rawYosysJson.modules[topModule];
-      const ports = mod?.ports || {};
-      
-      // Port bit haritası (bit id'sinden port adına ulaşmak için)
-      const bitToPort: Record<string, string> = {};
-      for (const [pName, pData] of Object.entries<any>(ports)) {
-        if (pData.bits) {
-          pData.bits.forEach((b: number | string) => { bitToPort[b.toString()] = pName; });
+      for (const modName of moduleNames) {
+        if (rawYosysJson.modules[modName].attributes?.top === 1 || rawYosysJson.modules[modName].attributes?.top === "00000000000000000000000000000001") {
+          topModule = modName;
+          break;
         }
       }
 
-      for (const devId in digitalJsData.devices) {
-        const dev = digitalJsData.devices[devId];
+      // Eğer `top` özelliği bulunamazsa, ilk modülü (veya içinde instantiation olmayan modülü) fallback olarak al
+      if (!topModule && moduleNames.length > 0) {
+        topModule = moduleNames[moduleNames.length - 1]; // Genelde Yosys top modülü sona koyar ama emin olmak için
+      }
 
-        // 1. Kapı isimlendirmeleri (Yosys $ isimleri hariç gerçek isimleri sakla)
-        let givenName = '';
-        if (dev.label && !dev.label.startsWith('$') && !dev.label.startsWith('dev')) {
-          givenName = dev.label;
-        } else if (!devId.startsWith('$') && !devId.startsWith('dev')) {
-          givenName = devId;
-        }
-        
-        if (givenName) {
-           dev.given_name = givenName;
+      if (!topModule) {
+        throw new HdlSynthesisError('Sentezleme sonucunda hiçbir modül bulunamadı.', stdoutLog, stderrLog);
+      }
+
+      // yosys2digitaljs ile çevir
+      const digitalJsData = yosys2digitaljs(rawYosysJson);
+
+      // Çıkış portlarını düzelt ve kapı isimlerini (Label) temizle
+      if (digitalJsData && digitalJsData.devices) {
+        const mod = rawYosysJson.modules[topModule];
+        const ports = mod?.ports || {};
+
+        // Port bit haritası (bit id'sinden port adına ulaşmak için)
+        const bitToPort: Record<string, string> = {};
+        for (const [pName, pData] of Object.entries<any>(ports)) {
+          if (pData.bits) {
+            pData.bits.forEach((b: number | string) => { bitToPort[b.toString()] = pName; });
+          }
         }
 
-        // Kapıların altında kapı türünün yazması için label alanına type'ı atıyoruz.
-        // Input ve Output hariç.
-        if (dev.type !== 'Input' && dev.type !== 'Output') {
-           dev.label = dev.type;
-        }
+        for (const devId in digitalJsData.devices) {
+          const dev = digitalJsData.devices[devId];
 
-        // 2. Input ve Output portlarının isimlerini gerçek port isimleriyle değiştir
-        if (dev.type === 'Input' || dev.type === 'Output') {
-          // Eğer label atanmamışsa veya 'dev' ile başlıyorsa gerçek ismini bulalım
-          if (!dev.label || dev.label.startsWith('dev') || dev.label === 'Input' || dev.label === 'Output') {
-            if (typeof dev.net === 'string') {
-              dev.label = dev.net;
-            } else if (Array.isArray(dev.net) && dev.net.length > 0) {
-              const bit = dev.net[0].toString();
-              if (bitToPort[bit]) {
-                dev.label = bitToPort[bit];
+          // 1. Kapı isimlendirmeleri (Yosys $ isimleri hariç gerçek isimleri sakla)
+          let givenName = '';
+          if (dev.label && !dev.label.startsWith('$') && !dev.label.startsWith('dev')) {
+            givenName = dev.label;
+          } else if (!devId.startsWith('$') && !devId.startsWith('dev')) {
+            givenName = devId;
+          }
+
+          if (givenName) {
+             dev.given_name = givenName;
+          }
+
+          // Kapıların altında kapı türünün yazması için label alanına type'ı atıyoruz.
+          // Input ve Output hariç.
+          if (dev.type !== 'Input' && dev.type !== 'Output') {
+             dev.label = dev.type;
+          }
+
+          // 2. Input ve Output portlarının isimlerini gerçek port isimleriyle değiştir
+          if (dev.type === 'Input' || dev.type === 'Output') {
+            // Eğer label atanmamışsa veya 'dev' ile başlıyorsa gerçek ismini bulalım
+            if (!dev.label || dev.label.startsWith('dev') || dev.label === 'Input' || dev.label === 'Output') {
+              if (typeof dev.net === 'string') {
+                dev.label = dev.net;
+              } else if (Array.isArray(dev.net) && dev.net.length > 0) {
+                const bit = dev.net[0].toString();
+                if (bitToPort[bit]) {
+                  dev.label = bitToPort[bit];
+                }
+              }
+            }
+
+            // Çıkış (Output) net'i düzeltmesi (Eksik in bağlantısı varsa)
+            if (dev.type === 'Output') {
+              if (!dev.connections) dev.connections = {};
+              if (!dev.connections.in && dev.net) {
+                dev.connections.in = dev.net;
               }
             }
           }
-
-          // Çıkış (Output) net'i düzeltmesi (Eksik in bağlantısı varsa)
-          if (dev.type === 'Output') {
-            if (!dev.connections) dev.connections = {};
-            if (!dev.connections.in && dev.net) {
-              dev.connections.in = dev.net;
-            }
-          }
         }
       }
-    }
-    
-    // Metadata for workspace diagnostics and inspection
-    (digitalJsData as any)._topModule = topModule;
-    (digitalJsData as any)._stdout = stdoutLog;
-    (digitalJsData as any)._stderr = stderrLog;
-    (digitalJsData as any)._rawYosysJson = rawYosysJson;
 
-    return digitalJsData;
+      // Metadata for workspace diagnostics and inspection
+      (digitalJsData as any)._topModule = topModule;
+      (digitalJsData as any)._stdout = stdoutLog;
+      (digitalJsData as any)._stderr = stderrLog;
+      (digitalJsData as any)._rawYosysJson = rawYosysJson;
+
+      return digitalJsData;
+    } catch (innerErr: any) {
+      if (innerErr instanceof HdlSynthesisError) {
+        throw innerErr;
+      }
+      throw new InternalSchematicError(
+        innerErr?.message || 'Internal schematic conversion failed.',
+        innerErr,
+        stdoutLog,
+        stderrLog
+      );
+    }
   }
 
   const errorDetails = (stderrLog.trim() || stdoutLog.trim() || 'Yosys synthesis failed to generate circuit output.');
-  const err = new Error(errorDetails);
-  (err as any).stdout = stdoutLog;
-  (err as any).stderr = stderrLog;
-  throw err;
+  throw new HdlSynthesisError(errorDetails, stdoutLog, stderrLog);
 }
 
 

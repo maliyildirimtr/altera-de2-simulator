@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { AlertCircle, FileCode } from 'lucide-react';
-import { synthesizeVerilog } from '../services/synthesizer';
+import { synthesizeVerilog, HdlSynthesisError, InternalSchematicError } from '../services/synthesizer';
 import { ResizableDivider } from '../components/DE2Workspace/ResizableDivider';
 import { SchematicToolbar } from '../components/SchematicWorkspace/SchematicToolbar';
 import type { SynthesisStatus, ViewMode } from '../components/SchematicWorkspace/SchematicToolbar';
@@ -104,6 +104,7 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
   const [topModule, setTopModule] = useState<string>(() => initialExample ? initialExample.topModule : '');
   const [lastSynthesizedContent, setLastSynthesizedContent] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<'hdl' | 'internal' | null>(null);
   const [stdoutLog, setStdoutLog] = useState<string>('');
   const [stderrLog, setStderrLog] = useState<string>('');
 
@@ -133,6 +134,7 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
 
     setSynthesisStatus('synthesizing');
     setErrorMessage(null);
+    setErrorKind(null);
 
     try {
       const result = await synthesizeVerilog(currentFiles, {
@@ -152,9 +154,23 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
       setCircuitData(null);
       setTopModule('');
       setSynthesisStatus('error');
+      const isInternal =
+        err instanceof InternalSchematicError ||
+        Boolean(err?.isInternalError) ||
+        (!err?.isHdlError && !(err instanceof HdlSynthesisError) && (
+          /is not a function|cannot read properties|cannot read property|undefined is not|typeerror/i.test(err?.message || '') ||
+          /is not a function|cannot read properties|cannot read property|undefined is not|typeerror/i.test(err?.stack || '')
+        ));
+      const kind: 'hdl' | 'internal' = isInternal ? 'internal' : 'hdl';
+      setErrorKind(kind);
       const errText = err?.message || 'Synthesis failed.';
       setErrorMessage(errText);
-      setStderrLog(err?.stderr || errText);
+      setStderrLog(
+        err?.stderr ||
+          (isInternal
+            ? `Internal Schematic Processing Error:\n${err?.message || ''}\n${err?.stack || ''}`
+            : errText)
+      );
       if (err?.stdout) setStdoutLog(err.stdout);
       setSelectedItem(null);
       // Automatically reveal Console/Problems panel on error
@@ -194,6 +210,7 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
         setTopModule(ex.topModule);
         setLastSynthesizedContent('');
         setErrorMessage(null);
+        setErrorKind(null);
         setStdoutLog('');
         setStderrLog('');
         setSelectedItem(null);
@@ -304,7 +321,7 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
   };
 
   const handleBrowseExamples = () => {
-    window.location.hash = '#/projects';
+    window.location.hash = '#/examples';
   };
 
   // Reset workspace layout to Phase 12.2E defaults
@@ -554,6 +571,18 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
                   simplify={simplifyDiagram}
                   status={synthesisStatus}
                   errorMessage={errorMessage}
+                  errorKind={errorKind}
+                  onRenderError={(renderErr: any) => {
+                    setCircuitData(null);
+                    setTopModule('');
+                    setSynthesisStatus('error');
+                    setErrorKind('internal');
+                    const msg = renderErr?.message || 'Internal schematic rendering error.';
+                    setErrorMessage(msg);
+                    setStderrLog(`Internal Schematic Rendering Error:\n${msg}\n${renderErr?.stack || ''}`);
+                    setSelectedItem(null);
+                    saveLayout({ isConsoleOpen: true });
+                  }}
                   onSelectItem={(item) => setSelectedItem(item)}
                   onOpenProblems={() => saveLayout({ isConsoleOpen: true })}
                   onImportHDL={() => fileInputRef.current?.click()}

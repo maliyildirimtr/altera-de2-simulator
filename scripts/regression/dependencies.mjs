@@ -4,7 +4,20 @@ import assert from 'node:assert';
 async function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 async function main() {
-  const baseUrl = (process.env.APP_BASE_URL || 'http://127.0.0.1:5173').replace(/\/$/, '');
+  let baseUrl = process.env.APP_BASE_URL;
+  if (!baseUrl) {
+    for (const port of [5173, 5174, 5175]) {
+      try {
+        const res = await fetch(`http://127.0.0.1:${port}`);
+        const text = await res.text();
+        if (text.includes('Engineering Lab')) {
+          baseUrl = `http://127.0.0.1:${port}`;
+          break;
+        }
+      } catch (_) {}
+    }
+  }
+  baseUrl = (baseUrl || 'http://127.0.0.1:5173').replace(/\/$/, '');
   const chrome = spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', [
     '--headless=new',
     '--remote-debugging-port=9251',
@@ -155,6 +168,11 @@ async function main() {
   await waitFor('[data-testid="open-schematic-btn-full_adder"]');
   await evaluate(`document.querySelector('[data-testid="open-schematic-btn-full_adder"]').click();`);
   await waitFor('[data-testid="schematic-workspace"]');
+  const hasSchematicSplit = await evaluate(`!!document.querySelector('[data-testid="view-mode-split"]')`);
+  if (hasSchematicSplit) {
+    await evaluate(`document.querySelector('[data-testid="view-mode-split"]').click();`);
+    await wait(300);
+  }
   await waitFor('.monaco-editor');
   console.log('schematicEditorLoads: PASS');
 
@@ -213,8 +231,9 @@ async function main() {
   await evaluate(`document.querySelector('[data-testid="view-code"]').click()`);
   await waitFor('.monaco-editor textarea');
   await evaluate(`(() => {
-    const editorNode = document.querySelector('[data-testid="de2-workspace"] .monaco-editor');
-    const editor = window.monaco.editor.getEditors().find((candidate) => candidate.getDomNode() === editorNode);
+    const container = document.querySelector('[data-testid="code-editor"]');
+    const editor = window.monaco.editor.getEditors().find((candidate) => container && container.contains(candidate.getDomNode())) ||
+      window.monaco.editor.getEditors().filter((candidate) => document.body.contains(candidate.getDomNode())).pop();
     if (!editor) throw new Error('Visible DE2 Monaco editor not found');
     const model = editor.getModel();
     model.setValue(model.getValue() + '\\n// phase10 dirty-state check');
