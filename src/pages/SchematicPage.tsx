@@ -12,7 +12,7 @@ import type { SchematicViewportHandle } from '../components/SchematicWorkspace/S
 import { SchematicInspector } from '../components/SchematicWorkspace/SchematicInspector';
 import type { SelectedItemInfo } from '../components/SchematicWorkspace/SchematicInspector';
 import { SchematicConsole } from '../components/SchematicWorkspace/SchematicConsole';
-import { consumePendingHandoff, markWorkspaceOrigin, markWorkspaceDirty, markWorkspaceUser } from '../services/exampleHandoff';
+import { consumePendingHandoff, peekPendingHandoff, markWorkspaceOrigin, markWorkspaceDirty, markWorkspaceUser } from '../services/exampleHandoff';
 import { getExampleById } from '../examples/registry';
 import '../index.css';
 
@@ -27,29 +27,23 @@ interface SchematicLayoutConfig {
   isInspectorOpen: boolean;
   isConsoleOpen: boolean;
   viewMode: ViewMode;
+  truthTableWidth: number;
 }
+
+const isDesktop = typeof window !== 'undefined' ? window.innerWidth >= 768 : true;
+const isWideDesktop = typeof window !== 'undefined' ? window.innerWidth >= 1024 : true;
 
 const DEFAULT_LAYOUT: SchematicLayoutConfig = {
   projectWidth: 240,
   editorRatio: 0.38,
   inspectorWidth: 260,
   consoleHeight: 180,
-  isProjectOpen: true,
-  isInspectorOpen: true,
+  isProjectOpen: isDesktop,
+  isInspectorOpen: isWideDesktop,
   isConsoleOpen: false,
-  viewMode: 'split',
+  viewMode: 'schematic',
+  truthTableWidth: 340,
 };
-
-// Deterministic default combinational circuit (Point 22)
-const DEFAULT_VERILOG = `module logic_test(
-    input wire A,
-    input wire B,
-    input wire SEL,
-    output wire Y
-);
-    assign Y = SEL ? (A | B) : (A & B);
-endmodule
-`;
 
 export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
   // Layout persistence
@@ -57,7 +51,13 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
     try {
       const saved = localStorage.getItem(LAYOUT_STORAGE_KEY);
       if (saved) {
-        return { ...DEFAULT_LAYOUT, ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        return {
+          ...DEFAULT_LAYOUT,
+          ...parsed,
+          viewMode: parsed.viewMode || 'schematic',
+          truthTableWidth: typeof parsed.truthTableWidth === 'number' ? parsed.truthTableWidth : DEFAULT_LAYOUT.truthTableWidth,
+        };
       }
     } catch (_) {}
     return DEFAULT_LAYOUT;
@@ -73,11 +73,24 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
     });
   }, []);
 
-  // Project files state
-  const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([
-    { name: 'main.sv', content: DEFAULT_VERILOG },
-  ]);
+  // Inspect initial handoff if present
+  const initialHandoff = typeof window !== 'undefined' ? peekPendingHandoff() : null;
+  const initialExample = initialHandoff && initialHandoff.targetTool === 'schematic' ? getExampleById(initialHandoff.exampleId) : null;
+
+  // Project files state - Fresh workspace starts clean with 0 files (Phase 12.2E)
+  const [projectFiles, setProjectFiles] = useState<ProjectFile[]>(() => {
+    if (initialExample) {
+      consumePendingHandoff('schematic');
+      markWorkspaceOrigin('schematic', 'example');
+      return [{ name: initialExample.source.filename, content: initialExample.source.code }];
+    }
+    return [];
+  });
   const [activeFileIndex, setActiveFileIndex] = useState(0);
+
+  // Keep a ref to projectFiles for immediate access
+  const projectFilesRef = useRef<ProjectFile[]>(projectFiles);
+  projectFilesRef.current = projectFiles;
 
   // Synthesis settings
   const [optimizeInYosys, setOptimizeInYosys] = useState(false);
@@ -85,8 +98,10 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
 
   // Synthesis & Circuit state
   const [circuitData, setCircuitData] = useState<any>(null);
-  const [synthesisStatus, setSynthesisStatus] = useState<SynthesisStatus>('no_source');
-  const [topModule, setTopModule] = useState<string>('logic_test');
+  const [synthesisStatus, setSynthesisStatus] = useState<SynthesisStatus>(() =>
+    projectFiles.length > 0 ? 'modified' : 'no_source'
+  );
+  const [topModule, setTopModule] = useState<string>(() => initialExample ? initialExample.topModule : '');
   const [lastSynthesizedContent, setLastSynthesizedContent] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [stdoutLog, setStdoutLog] = useState<string>('');
@@ -107,10 +122,12 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
 
   // Synthesis handler
   const handleSynthesize = async () => {
-    const hasCode = projectFiles.some((f) => f.content.trim() !== '');
+    const currentFiles = projectFilesRef.current.length > 0 ? projectFilesRef.current : projectFiles;
+    const hasCode = currentFiles.some((f) => f.content.trim() !== '');
     if (!hasCode) {
       setSynthesisStatus('no_source');
       setErrorMessage('Please enter HDL code or upload files to synthesize.');
+      saveLayout({ isConsoleOpen: true });
       return;
     }
 
@@ -118,7 +135,7 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
     setErrorMessage(null);
 
     try {
-      const result = await synthesizeVerilog(projectFiles, {
+      const result = await synthesizeVerilog(currentFiles, {
         optimize: optimizeInYosys,
         simplify: simplifyDiagram,
       });
@@ -127,7 +144,7 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
       setTopModule(result._topModule || 'logic_test');
       setStdoutLog(result._stdout || '');
       setStderrLog(result._stderr || '');
-      setLastSynthesizedContent(projectFiles[activeFileIndex]?.content || '');
+      setLastSynthesizedContent(currentFiles[activeFileIndex]?.content || '');
       setSynthesisStatus('ready');
       setSelectedItem(null);
     } catch (err: any) {
@@ -241,31 +258,68 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
 
   const submitCreateNewFile = (fileName: string) => {
     const name = fileName.trim() || `module${projectFiles.length + 1}.sv`;
-    const newFiles = [...projectFiles, { name, content: '' }];
+    const cleanModuleName = name.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9_]/g, '_');
+    const templateContent = `module ${cleanModuleName}(\n    // Port declarations\n);\n\nendmodule\n`;
+    const newFiles = [...projectFiles, { name, content: templateContent }];
     setProjectFiles(newFiles);
     setActiveFileIndex(newFiles.length - 1);
     setSynthesisStatus('modified');
     markWorkspaceDirty('schematic');
     setCreatePromptOpen(false);
+    if (layout.viewMode === 'schematic') {
+      saveLayout({ viewMode: 'split' });
+    }
   };
 
   // Delete file
   const handleDeleteFile = (index: number) => {
-    if (projectFiles.length === 1) {
-      setAlertMessage('Cannot delete the last file in the project.');
-      return;
-    }
     const newFiles = [...projectFiles];
     newFiles.splice(index, 1);
     setProjectFiles(newFiles);
 
-    if (activeFileIndex === index) {
+    if (newFiles.length === 0) {
+      setActiveFileIndex(0);
+      setCircuitData(null);
+      setSynthesisStatus('no_source');
+      setTopModule('');
+      setLastSynthesizedContent('');
+    } else if (activeFileIndex === index) {
       setActiveFileIndex(Math.max(0, index - 1));
+      setSynthesisStatus('modified');
     } else if (activeFileIndex > index) {
       setActiveFileIndex(activeFileIndex - 1);
+      setSynthesisStatus('modified');
+    } else {
+      setSynthesisStatus('modified');
     }
-    setSynthesisStatus('modified');
     markWorkspaceDirty('schematic');
+  };
+
+  // Empty state action handlers
+  const handleCreateModuleFromEmpty = () => {
+    if (layout.viewMode === 'schematic') {
+      saveLayout({ viewMode: 'split' });
+    }
+    handleCreateNewFile();
+  };
+
+  const handleBrowseExamples = () => {
+    window.location.hash = '#/projects';
+  };
+
+  // Reset workspace layout to Phase 12.2E defaults
+  const handleResetWorkspaceLayout = () => {
+    const isDesk = typeof window !== 'undefined' ? window.innerWidth >= 768 : true;
+    const isWideDesk = typeof window !== 'undefined' ? window.innerWidth >= 1024 : true;
+    const freshDefaults: SchematicLayoutConfig = {
+      ...DEFAULT_LAYOUT,
+      isProjectOpen: isDesk,
+      isInspectorOpen: isWideDesk,
+    };
+    setLayout(freshDefaults);
+    try {
+      localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(freshDefaults));
+    } catch (_) {}
   };
 
   // Resizing Editor <-> Schematic in Split View using ratio (Point 15)
@@ -312,6 +366,10 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
   return (
     <div
       data-testid="schematic-workspace"
+      data-view-mode={layout.viewMode}
+      data-compile-status={synthesisStatus}
+      data-has-circuit={!!circuitData ? 'true' : 'false'}
+      data-file-count={projectFiles.length}
       style={{
         width: '100vw',
         height: '100vh',
@@ -352,6 +410,7 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
         onToggleInspector={handleToggleInspector}
         isConsoleOpen={layout.isConsoleOpen}
         onToggleConsole={() => saveLayout({ isConsoleOpen: !layout.isConsoleOpen })}
+        onResetLayout={handleResetWorkspaceLayout}
         errorCount={synthesisStatus === 'error' ? 1 : 0}
         hasCircuit={!!circuitData && synthesisStatus !== 'error'}
       />
@@ -498,7 +557,15 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
                   onSelectItem={(item) => setSelectedItem(item)}
                   onOpenProblems={() => saveLayout({ isConsoleOpen: true })}
                   onImportHDL={() => fileInputRef.current?.click()}
+                  onCreateModule={handleCreateModuleFromEmpty}
+                  onBrowseExamples={handleBrowseExamples}
+                  onSynthesize={handleSynthesize}
                   onTruthTableChange={handleTruthTableChange}
+                  truthTableWidth={layout.truthTableWidth || 340}
+                  onTruthTableResize={(w) => setLayout((prev) => ({ ...prev, truthTableWidth: w }))}
+                  onTruthTableResizeEnd={() => saveLayout()}
+                  isDarkMode={isDarkMode}
+                  hasFiles={projectFiles.length > 0}
                 />
               </div>
             )}

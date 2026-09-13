@@ -406,6 +406,19 @@ text {
   font-weight: bold !important;
 }
 
+/* Light Mode JointJS / DigitalJS overrides */
+[data-theme='light'] .joint-element .body {
+  fill: #ffffff !important;
+  stroke: #94a3b8 !important;
+}
+
+[data-theme='light'] .joint-element text,
+[data-theme='light'] .wire text,
+[data-theme='light'] .link text,
+[data-theme='light'] text {
+  fill: #0f172a !important;
+}
+
 /* Aktif (1) Sinyal Yolları ve Bağlantılar - Parlak Mühendislik Yeşili */
 path[stroke="#03c03c"],
 line[stroke="#03c03c"],

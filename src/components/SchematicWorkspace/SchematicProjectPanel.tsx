@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { FolderTree, FileCode, Plus, X } from 'lucide-react';
 
 export interface ProjectFile {
   name: string;
@@ -42,7 +43,7 @@ export const SchematicProjectPanel: React.FC<SchematicProjectPanelProps> = ({
       style={{
         width: '100%',
         height: '100%',
-        backgroundColor: 'var(--bg-secondary)',
+        backgroundColor: 'var(--bg-panel, var(--bg-secondary))',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -54,7 +55,7 @@ export const SchematicProjectPanel: React.FC<SchematicProjectPanelProps> = ({
       <div
         style={{
           padding: '8px 12px',
-          borderBottom: '1px solid var(--border-color)',
+          borderBottom: '1px solid var(--border-subtle, var(--border-color))',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -62,8 +63,8 @@ export const SchematicProjectPanel: React.FC<SchematicProjectPanelProps> = ({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
-          <span>📁</span>
-          <span>Project Files</span>
+          <FolderTree size={14} className="text-slate-400" />
+          <span style={{ color: 'var(--text-primary)' }}>Project Files</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <button
@@ -71,17 +72,18 @@ export const SchematicProjectPanel: React.FC<SchematicProjectPanelProps> = ({
             onClick={onCreateFile}
             title="Create New HDL File"
             style={{
-              background: 'var(--bg-primary)',
-              border: '1px solid var(--border-color)',
+              background: 'var(--bg-surface, var(--bg-primary))',
+              border: '1px solid var(--border-subtle, var(--border-color))',
               color: 'var(--text-primary)',
               borderRadius: '4px',
-              padding: '2px 7px',
+              padding: '3px 6px',
               cursor: 'pointer',
-              fontSize: '0.85rem',
-              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
-            +
+            <Plus size={12} />
           </button>
           {onClose && (
             <button
@@ -92,11 +94,13 @@ export const SchematicProjectPanel: React.FC<SchematicProjectPanelProps> = ({
                 border: 'none',
                 color: 'var(--text-secondary)',
                 cursor: 'pointer',
-                fontSize: '1rem',
-                padding: '0 4px',
+                padding: '2px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
             >
-              ×
+              <X size={14} />
             </button>
           )}
         </div>
@@ -104,59 +108,73 @@ export const SchematicProjectPanel: React.FC<SchematicProjectPanelProps> = ({
 
       {/* File List */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '6px 0' }}>
-        {files.map((file, idx) => {
-          const isActive = activeFileIndex === idx;
-          return (
-            <div
-              key={idx}
-              data-testid={`project-file-${idx}`}
-              onClick={() => onSelectFile(idx)}
-              onMouseEnter={() => setHoveredIndex(idx)}
-              onMouseLeave={() => setHoveredIndex(null)}
-              style={{
-                padding: '6px 12px',
-                cursor: 'pointer',
-                backgroundColor: isActive ? 'var(--accent-color)' : 'transparent',
-                color: isActive ? '#fff' : 'var(--text-primary)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '8px',
-                fontSize: '0.82rem',
-                whiteSpace: 'nowrap',
-                transition: 'background-color 0.15s ease',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
-                <span style={{ fontSize: '0.9rem' }}>📄</span>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{file.name}</span>
-              </div>
+        {files.length === 0 ? (
+          <div
+            style={{
+              padding: '24px 12px',
+              textAlign: 'center',
+              color: 'var(--text-muted)',
+              fontSize: '0.78rem',
+            }}
+          >
+            No source files loaded
+          </div>
+        ) : (
+          files.map((file, idx) => {
+            const isActive = activeFileIndex === idx;
+            return (
+              <div
+                key={idx}
+                data-testid={`project-file-${idx}`}
+                onClick={() => onSelectFile(idx)}
+                onMouseEnter={() => setHoveredIndex(idx)}
+                onMouseLeave={() => setHoveredIndex(null)}
+                style={{
+                  padding: '6px 12px',
+                  cursor: 'pointer',
+                  backgroundColor: isActive ? 'var(--accent-subtle)' : 'transparent',
+                  color: isActive ? 'var(--accent-primary)' : 'var(--text-primary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '8px',
+                  fontSize: '0.82rem',
+                  whiteSpace: 'nowrap',
+                  transition: 'background-color 0.15s ease',
+                  borderLeft: isActive ? '2px solid var(--accent-primary)' : '2px solid transparent',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
+                  <FileCode size={13} className={isActive ? 'text-blue-400' : 'text-slate-400'} />
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{file.name}</span>
+                </div>
 
-              {hoveredIndex === idx && files.length > 1 && (
-                <button
-                  data-testid={`delete-file-btn-${idx}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteFile(idx);
-                  }}
-                  title="Delete File"
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: isActive ? '#fff' : '#ef4444',
-                    cursor: 'pointer',
-                    fontSize: '0.85rem',
-                    padding: '0 4px',
-                    lineHeight: 1,
-                    opacity: 0.9,
-                  }}
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-          );
-        })}
+                {hoveredIndex === idx && files.length > 1 && (
+                  <button
+                    data-testid={`delete-file-btn-${idx}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteFile(idx);
+                    }}
+                    title="Delete File"
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: '#ef4444',
+                      cursor: 'pointer',
+                      fontSize: '0.85rem',
+                      padding: '0 4px',
+                      lineHeight: 1,
+                      opacity: 0.9,
+                    }}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            );
+          })
+        )}
       </div>
 
       {/* Top Module Info (Point 7) */}

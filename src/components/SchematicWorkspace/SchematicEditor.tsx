@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Editor from '@monaco-editor/react';
+import { FileCode, X, Upload } from 'lucide-react';
 import type { ProjectFile } from './SchematicProjectPanel';
 
 interface SchematicEditorProps {
@@ -33,7 +34,7 @@ export const SchematicEditor: React.FC<SchematicEditorProps> = ({
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        backgroundColor: 'var(--bg-secondary)',
+        backgroundColor: 'var(--bg-panel, var(--bg-secondary))',
         overflow: 'hidden',
       }}
     >
@@ -41,8 +42,8 @@ export const SchematicEditor: React.FC<SchematicEditorProps> = ({
       <div
         style={{
           height: '34px',
-          background: 'var(--bg-primary)',
-          borderBottom: '1px solid var(--border-color)',
+          background: 'var(--bg-surface, var(--bg-primary))',
+          borderBottom: '1px solid var(--border-subtle, var(--border-color))',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -58,17 +59,17 @@ export const SchematicEditor: React.FC<SchematicEditorProps> = ({
               alignItems: 'center',
               gap: '6px',
               padding: '4px 10px',
-              background: 'var(--bg-secondary)',
-              borderTop: '2px solid var(--accent-color)',
-              borderRight: '1px solid var(--border-color)',
-              borderLeft: '1px solid var(--border-color)',
+              background: 'var(--bg-panel, var(--bg-secondary))',
+              borderTop: '2px solid var(--accent-primary, var(--accent-color))',
+              borderRight: '1px solid var(--border-subtle, var(--border-color))',
+              borderLeft: '1px solid var(--border-subtle, var(--border-color))',
               borderRadius: '4px 4px 0 0',
               fontSize: '0.8rem',
               fontWeight: 600,
               color: 'var(--text-primary)',
             }}
           >
-            <span>📄</span>
+            <FileCode size={13} className="text-blue-400" />
             <span>{currentFile?.name || 'untitled.sv'}</span>
             {isModified && (
               <span
@@ -91,14 +92,18 @@ export const SchematicEditor: React.FC<SchematicEditorProps> = ({
             style={{
               padding: '2px 8px',
               background: 'transparent',
-              border: '1px solid var(--border-color)',
+              border: '1px solid var(--border-subtle, var(--border-color))',
               borderRadius: '4px',
               color: 'var(--text-secondary)',
               fontSize: '0.75rem',
               cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
             }}
           >
-            Import HDL
+            <Upload size={12} />
+            <span>Import HDL</span>
           </button>
           {onClose && (
             <button
@@ -109,11 +114,13 @@ export const SchematicEditor: React.FC<SchematicEditorProps> = ({
                 border: 'none',
                 color: 'var(--text-secondary)',
                 cursor: 'pointer',
-                fontSize: '1rem',
-                padding: '0 4px',
+                padding: '2px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
             >
-              ×
+              <X size={14} />
             </button>
           )}
         </div>

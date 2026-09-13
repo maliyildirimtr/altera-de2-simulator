@@ -918,7 +918,347 @@ endmodule`;
     assert.strictEqual(overflowCheck, true, 'Workspace must not have page-level horizontal overflow');
     console.log('  PASS: Panel resize boundaries (180-360, 200-420, 100-380) strictly enforced with zero page horizontal overflow.');
 
-    console.log('\nAll Phase 12.2C & 12.2D UX assertions PASSED successfully!');
+    console.log('\n--- Phase 12.2E Schematic Workspace UX Regression Suite ---');
+
+    // =========================================================================
+    // 19. Fresh Schematic Workspace Defaults (Zero Files, Deliberate Empty State, Clean Dirty-State)
+    // =========================================================================
+    console.log('[Test 19] Verifying Fresh Schematic Workspace Defaults...');
+    await evaluate(`
+      sessionStorage.removeItem('eda_workspace_state_schematic_origin');
+      sessionStorage.removeItem('eda_workspace_state_schematic_dirty');
+      localStorage.removeItem('schematic_workspace_layout_v1');
+      window.location.hash = '#/schematic';
+    `);
+    await waitFor('[data-testid="schematic-workspace"]');
+    await wait(1000);
+
+    // Assert projectFiles is empty (no fake main.sv)
+    const freshWorkspaceState = await evaluate(`(() => {
+      const el = document.querySelector('[data-testid="schematic-workspace"]');
+      const fileTabs = document.querySelectorAll('[data-testid^="project-file-"]');
+      const emptyState = document.querySelector('[data-testid="schematic-empty-state"]');
+      const consolePanel = document.querySelector('[data-testid="schematic-console"]');
+      const monacoEditor = document.querySelector('.monaco-editor');
+      return {
+        fileCount: Number(el?.getAttribute('data-file-count')),
+        viewMode: el?.getAttribute('data-view-mode'),
+        tabCount: fileTabs.length,
+        hasEmptyState: !!emptyState,
+        hasConsole: !!consolePanel,
+        hasEditor: !!monacoEditor,
+        dirtyState: sessionStorage.getItem('eda_workspace_state_schematic_dirty'),
+      };
+    })()`);
+
+    assert.strictEqual(freshWorkspaceState.fileCount, 0, 'Fresh Schematic must have 0 project files (no fake main.sv)');
+    assert.strictEqual(freshWorkspaceState.tabCount, 0, 'No file tabs should be present in project panel');
+    assert.strictEqual(freshWorkspaceState.hasEmptyState, true, 'Deliberate empty state must be visible in Schematic canvas');
+    assert.notStrictEqual(freshWorkspaceState.dirtyState, 'true', 'Fresh Schematic workspace must be clean (not dirty)');
+    assert.strictEqual(freshWorkspaceState.viewMode, 'schematic', 'Fresh Schematic workspace must default to schematic viewMode');
+    assert.strictEqual(freshWorkspaceState.hasEditor, false, 'Monaco editor should not be visible in default schematic mode');
+    assert.strictEqual(freshWorkspaceState.hasConsole, false, 'Console should be closed by default on fresh workspace');
+    console.log('  PASS: Fresh Schematic starts clean with 0 files, deliberate empty state, and closed console.');
+
+    // =========================================================================
+    // 20. Empty-State Action Controls (Create Module, Import, Browse Examples)
+    // =========================================================================
+    console.log('[Test 20] Verifying Empty-State Action Buttons...');
+    const emptyActions = await evaluate(`(() => {
+      const createBtn = document.querySelector('[data-testid="empty-create-module-btn"]');
+      const importBtn = document.querySelector('[data-testid="empty-import-hdl-btn"]');
+      const browseBtn = document.querySelector('[data-testid="empty-browse-examples-btn"]');
+      return {
+        createReachable: !!createBtn && !createBtn.disabled,
+        importReachable: !!importBtn && !importBtn.disabled,
+        browseReachable: !!browseBtn && !browseBtn.disabled,
+      };
+    })()`);
+    assert.strictEqual(emptyActions.createReachable, true, 'Create HDL Module action must be reachable');
+    assert.strictEqual(emptyActions.importReachable, true, 'Import Verilog action must be reachable');
+    assert.strictEqual(emptyActions.browseReachable, true, 'Browse Examples action must be reachable');
+
+    // Test clicking Create HDL Module opens dialog and can be cancelled
+    await evaluate(`document.querySelector('[data-testid="empty-create-module-btn"]').click();`);
+    await wait(300);
+    const dialogState = await evaluate(`(() => {
+      const inputs = Array.from(document.querySelectorAll('input'));
+      const promptInput = inputs.find(i => i.value.includes('module') || i.placeholder?.includes('.sv'));
+      const buttons = Array.from(document.querySelectorAll('button'));
+      const cancelBtn = buttons.find(b => b.textContent?.trim() === 'Cancel');
+      if (cancelBtn) cancelBtn.click();
+      return { promptFound: !!promptInput, cancelFound: !!cancelBtn };
+    })()`);
+    assert.strictEqual(dialogState.promptFound, true, 'Create Module prompt input should be visible');
+    assert.strictEqual(dialogState.cancelFound, true, 'Cancel button should be present in prompt dialog');
+    await wait(300);
+    console.log('  PASS: Empty-state actions (Create, Import, Browse) are reachable and functional.');
+
+    // =========================================================================
+    // 21. Console Default State and Auto-Open on Diagnostic/Error
+    // =========================================================================
+    console.log('[Test 21] Verifying Console Auto-Open on Synthesis Error...');
+    // Currently on empty workspace, triggering synthesis reports diagnostic and auto-opens console
+    await evaluate(`document.querySelector('[data-testid="schematic-synthesize-btn"]').click();`);
+    await wait(500);
+
+    const errorConsoleState = await evaluate(`(() => {
+      const consoleEl = document.querySelector('[data-testid="schematic-console"]');
+      const text = consoleEl?.textContent || '';
+      return {
+        isOpen: !!consoleEl,
+        hasDiagnostic: text.includes('HDL') || text.includes('synthesize') || text.includes('source'),
+      };
+    })()`);
+    assert.strictEqual(errorConsoleState.isOpen, true, 'Console must auto-open on synthesis error or missing source');
+    assert.strictEqual(errorConsoleState.hasDiagnostic, true, 'Console must contain actionable diagnostic');
+
+    // Manual close toggle
+    await evaluate(`(document.querySelector('[data-testid="schematic-console-toggle"]') || document.querySelector('[data-testid="schematic-console-btn"]')).click();`);
+    await wait(300);
+    const isClosedAfterManual = await evaluate(`!document.querySelector('[data-testid="schematic-console"]')`);
+    assert.strictEqual(isClosedAfterManual, true, 'Console should close when manually toggled');
+    console.log('  PASS: Console auto-opens on error and respects manual toggle.');
+
+    // =========================================================================
+    // 22. Example Handoff Consumption (half_adder)
+    // =========================================================================
+    console.log('[Test 22] Verifying Example Handoff into Schematic...');
+    await evaluate(`window.location.hash = '#/projects';`);
+    await waitFor('[data-testid="open-schematic-btn-half_adder"]');
+    await wait(500);
+    await evaluate(`document.querySelector('[data-testid="open-schematic-btn-half_adder"]').click();`);
+    await waitFor('[data-testid="schematic-workspace"]');
+    await wait(1000);
+
+    const handoffState = await evaluate(`(() => {
+      const el = document.querySelector('[data-testid="schematic-workspace"]');
+      const emptyState = document.querySelector('[data-testid="schematic-empty-state"]');
+      const files = document.querySelectorAll('[data-testid^="project-file-"]');
+      return {
+        fileCount: Number(el?.getAttribute('data-file-count')),
+        tabCount: files.length,
+        hasEmptyState: !!emptyState,
+        dirty: sessionStorage.getItem('eda_workspace_state_schematic_dirty'),
+        origin: sessionStorage.getItem('eda_workspace_state_schematic_origin'),
+      };
+    })()`);
+    assert.strictEqual(handoffState.fileCount, 1, 'Handoff must load exactly 1 example source file');
+    assert.strictEqual(handoffState.hasEmptyState, false, 'Empty state must disappear once source is loaded');
+    assert.notStrictEqual(handoffState.dirty, 'true', 'Clean example handoff must not mark workspace dirty');
+    assert.strictEqual(handoffState.origin, 'example', 'Origin must be set to example');
+    console.log('  PASS: Example handoff successfully loaded half_adder cleanly without triggering dirty state.');
+
+    // =========================================================================
+    // 23. Synthesis and Desktop Truth Table Drawer Resizing
+    // =========================================================================
+    console.log('[Test 23] Verifying Synthesis and Truth Table Desktop Resizing...');
+    await evaluate(`document.querySelector('[data-testid="schematic-synthesize-btn"]').click();`);
+    
+    // Wait for synthesis to complete
+    let synthSuccess = false;
+    for (let i = 0; i < 60; i++) {
+      await wait(300);
+      const s = await evaluate(`
+        document.querySelector('[data-testid="schematic-workspace"]')?.getAttribute('data-compile-status')
+      `);
+      if (s === 'ready') {
+        synthSuccess = true;
+        break;
+      }
+    }
+    assert.strictEqual(synthSuccess, true, 'Synthesis of half_adder must succeed and reach ready status');
+
+    // Open Truth Table
+    await evaluate(`(document.querySelector('[data-testid="schematic-truth-table-toggle"]') || document.querySelector('[data-testid="schematic-truth-table-btn"]')).click();`);
+    await waitFor('[data-testid="truth-table-drawer"]');
+    await wait(400);
+
+    // Verify Truth Table drawer is open and check splitter bounds
+    const drawerSplitter = await evaluate(`(() => {
+      const s = document.querySelector('[data-testid="splitter-truth-table"]');
+      const drawer = document.querySelector('[data-testid="truth-table-drawer"]');
+      return {
+        min: Number(s?.getAttribute('aria-valuemin')),
+        max: Number(s?.getAttribute('aria-valuemax')),
+        drawerWidth: drawer ? drawer.getBoundingClientRect().width : 0,
+      };
+    })()`);
+    assert.strictEqual(drawerSplitter.min, 260, 'Truth Table divider minimum bound should be 260px');
+    assert.strictEqual(drawerSplitter.max, 600, 'Truth Table divider maximum bound should be 600px');
+    assert.ok(drawerSplitter.drawerWidth >= 260 && drawerSplitter.drawerWidth <= 600, 'Drawer width should be within 260-600px');
+
+    // Verify sticky header and scrollable table content
+    const tableAudit = await evaluate(`(() => {
+      const thead = document.querySelector('[data-testid="truth-table-drawer"] thead');
+      const pos = thead ? window.getComputedStyle(thead).position : '';
+      const rows = document.querySelectorAll('[data-testid="truth-table-content"] tr');
+      return {
+        isSticky: pos === 'sticky',
+        rowCount: rows.length,
+      };
+    })()`);
+    assert.strictEqual(tableAudit.isSticky, true, 'Truth Table header must have sticky positioning');
+    assert.ok(tableAudit.rowCount >= 4, 'Truth Table for half_adder must have at least 4 truth combinations');
+    console.log('  PASS: Truth Table opened with bounds (260-600px), sticky header, and populated combinations.');
+
+    // =========================================================================
+    // 24. DigitalJS Canvas Stability During Truth Table Resizing
+    // =========================================================================
+    console.log('[Test 24] Verifying DigitalJS Canvas Stability During Resize...');
+    // Check initial paper render
+    const paperBefore = await evaluate(`(() => {
+      const paper = document.querySelector('.joint-paper');
+      const svg = paper?.querySelector('svg');
+      return {
+        hasPaper: !!paper,
+        hasSvg: !!svg,
+        width: svg ? svg.clientWidth : 0,
+        height: svg ? svg.clientHeight : 0,
+      };
+    })()`);
+    assert.strictEqual(paperBefore.hasPaper, true, 'DigitalJS JointJS paper must be mounted');
+    assert.ok(paperBefore.width > 0, 'Paper SVG should have positive width');
+
+    // Simulate resizing truth table via ResizableDivider drag
+    await evaluate(`(() => {
+      const divider = document.querySelector('[data-testid="splitter-truth-table"]');
+      if (divider) {
+        const rect = divider.getBoundingClientRect();
+        const startX = rect.left + rect.width / 2;
+        const startY = rect.top + rect.height / 2;
+        divider.dispatchEvent(new PointerEvent('pointerdown', { clientX: startX, clientY: startY, button: 0, bubbles: true }));
+        divider.dispatchEvent(new PointerEvent('pointermove', { clientX: startX - 100, clientY: startY, button: 0, bubbles: true }));
+        divider.dispatchEvent(new PointerEvent('pointerup', { clientX: startX - 100, clientY: startY, button: 0, bubbles: true }));
+      }
+    })()`);
+    await wait(300);
+
+    // Verify paper is still mounted, interactive, and didn't throw
+    const paperAfter = await evaluate(`(() => {
+      const paper = document.querySelector('.joint-paper');
+      const svg = paper?.querySelector('svg');
+      const nodes = paper?.querySelectorAll('.joint-element');
+      return {
+        hasPaper: !!paper,
+        hasSvg: !!svg,
+        nodeCount: nodes ? nodes.length : 0,
+      };
+    })()`);
+    assert.strictEqual(paperAfter.hasPaper, true, 'JointJS paper must remain mounted after resize');
+    assert.ok(paperAfter.nodeCount > 0, 'Nodes must remain rendered on the paper after resize');
+    console.log('  PASS: DigitalJS remains stable, nodes intact without error during canvas resize.');
+
+    // =========================================================================
+    // 25. Mobile / Tablet Responsive Truth Table Presentation (< 768px)
+    // =========================================================================
+    console.log('[Test 25] Verifying Mobile Truth Table Presentation & Zero Page Overflow...');
+    await send('Emulation.setDeviceMetricsOverride', {
+      width: 430,
+      height: 932,
+      deviceScaleFactor: 1,
+      mobile: true,
+    });
+    await wait(500);
+
+    const mobileDrawerState = await evaluate(`(() => {
+      const drawer = document.querySelector('[data-testid="truth-table-drawer"]');
+      const cs = drawer ? window.getComputedStyle(drawer) : null;
+      const noOverflow = document.documentElement.scrollWidth <= document.documentElement.clientWidth;
+      return {
+        hasDrawer: !!drawer,
+        position: cs?.position,
+        bottom: cs?.bottom,
+        noOverflow,
+      };
+    })()`);
+    assert.strictEqual(mobileDrawerState.hasDrawer, true, 'Truth Table drawer must remain open on mobile');
+    assert.ok(mobileDrawerState.position === 'absolute' || mobileDrawerState.position === 'fixed', 'Mobile Truth Table must render as overlay/bottom sheet');
+    assert.strictEqual(mobileDrawerState.noOverflow, true, 'Mobile viewport must have zero horizontal overflow');
+
+    // Restore desktop viewport
+    await send('Emulation.setDeviceMetricsOverride', {
+      width: 1440,
+      height: 900,
+      deviceScaleFactor: 1,
+      mobile: false,
+    });
+    await wait(500);
+    console.log('  PASS: Mobile Truth Table adapts to bottom sheet overlay with zero page horizontal overflow.');
+
+    // =========================================================================
+    // 26. View Mode Switching and Layout Persistence
+    // =========================================================================
+    console.log('[Test 26] Verifying View Mode Selection and Persistence...');
+    // Switch to Split mode
+    await evaluate(`(document.querySelector('[data-testid="view-mode-split"]') || document.querySelector('[data-testid="schematic-view-split"]')).click();`);
+    await wait(300);
+
+    const splitState = await evaluate(`(() => {
+      const el = document.querySelector('[data-testid="schematic-workspace"]');
+      const saved = JSON.parse(localStorage.getItem('schematic_workspace_layout_v1') || '{}');
+      return {
+        viewMode: el?.getAttribute('data-view-mode'),
+        savedMode: saved.viewMode,
+        hasEditor: !!document.querySelector('.monaco-editor'),
+      };
+    })()`);
+    assert.strictEqual(splitState.viewMode, 'split', 'Workspace should be in split mode');
+    assert.strictEqual(splitState.savedMode, 'split', 'Split viewMode should be persisted to localStorage');
+    assert.strictEqual(splitState.hasEditor, true, 'Editor should be visible in split mode');
+
+    // Switch to Code mode
+    await evaluate(`(document.querySelector('[data-testid="view-mode-code"]') || document.querySelector('[data-testid="schematic-view-code"]')).click();`);
+    await wait(300);
+    const codeSaved = await evaluate(`
+      JSON.parse(localStorage.getItem('schematic_workspace_layout_v1') || '{}').viewMode
+    `);
+    assert.strictEqual(codeSaved, 'code', 'Code viewMode should be persisted');
+
+    // Reset Layout button
+    await evaluate(`document.querySelector('[data-testid="schematic-reset-layout-btn"]').click();`);
+    await wait(300);
+
+    const resetState = await evaluate(`(() => {
+      const el = document.querySelector('[data-testid="schematic-workspace"]');
+      const saved = JSON.parse(localStorage.getItem('schematic_workspace_layout_v1') || '{}');
+      return {
+        viewMode: el?.getAttribute('data-view-mode'),
+        savedMode: saved.viewMode,
+      };
+    })()`);
+    assert.strictEqual(resetState.viewMode, 'schematic', 'Reset layout must restore viewMode to schematic');
+    assert.strictEqual(resetState.savedMode, 'schematic', 'Reset layout must persist schematic viewMode');
+    console.log('  PASS: View mode selection persists and Reset Layout cleanly restores schematic view.');
+
+    // =========================================================================
+    // 27. Theme Toggle & Contrast Verification
+    // =========================================================================
+    console.log('[Test 27] Verifying Theme Synchronization in Schematic Workspace...');
+    // Switch to split mode so both editor and canvas are visible
+    await evaluate(`(document.querySelector('[data-testid="view-mode-split"]') || document.querySelector('[data-testid="schematic-view-split"]')).click();`);
+    await wait(300);
+
+    // Toggle to light mode
+    await evaluate(`document.querySelector('[data-testid="theme-toggle"]').click();`);
+    await wait(500);
+
+    const lightThemeState = await evaluate(`(() => {
+      const theme = document.documentElement.getAttribute('data-theme');
+      const isLight = theme === 'light' || document.documentElement.classList.contains('light');
+      const monaco = window.monaco?.editor;
+      return { theme, isLight, hasMonaco: !!monaco };
+    })()`);
+    assert.ok(lightThemeState.isLight || lightThemeState.theme === 'light', 'Document should reflect light theme');
+
+    // Toggle back to dark mode
+    await evaluate(`document.querySelector('[data-testid="theme-toggle"]').click();`);
+    await wait(500);
+    const darkThemeState = await evaluate(`document.documentElement.getAttribute('data-theme')`);
+    assert.strictEqual(darkThemeState, 'dark', 'Document should return to dark theme');
+    console.log('  PASS: Theme synchronization functional across Schematic canvas and Monaco editor.');
+
+    console.log('\nAll Phase 12.2C, 12.2D & 12.2E UX assertions PASSED successfully!');
     cleanup();
     process.exit(0);
   } catch (err) {

@@ -1,4 +1,18 @@
 import React from 'react';
+import {
+  RotateCcw,
+  Upload,
+  Cpu,
+  FolderTree,
+  Table2,
+  Info,
+  Terminal,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  Loader2,
+  GitGraph,
+} from 'lucide-react';
 
 export type SynthesisStatus = 'no_source' | 'ready' | 'synthesizing' | 'modified' | 'error';
 export type ViewMode = 'schematic' | 'split' | 'code';
@@ -21,6 +35,7 @@ interface SchematicToolbarProps {
   onToggleInspector: () => void;
   isConsoleOpen: boolean;
   onToggleConsole: () => void;
+  onResetLayout?: () => void;
   errorCount?: number;
   hasCircuit: boolean;
 }
@@ -43,6 +58,7 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
   onToggleInspector,
   isConsoleOpen,
   onToggleConsole,
+  onResetLayout,
   errorCount = 0,
   hasCircuit,
 }) => {
@@ -114,8 +130,8 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
       data-testid="schematic-toolbar"
       style={{
         height: '42px',
-        background: 'var(--bg-secondary)',
-        borderBottom: '1px solid var(--border-color)',
+        background: 'var(--bg-toolbar, var(--bg-surface))',
+        borderBottom: '1px solid var(--border-subtle)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -133,17 +149,18 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
           onClick={onToggleProject}
           style={{
             ...btnBaseStyle,
-            border: isProjectOpen ? '1px solid var(--border-color)' : '1px solid transparent',
-            background: isProjectOpen ? 'rgba(255,255,255,0.06)' : 'transparent',
+            border: isProjectOpen ? '1px solid var(--border-strong)' : '1px solid transparent',
+            background: isProjectOpen ? 'var(--accent-subtle)' : 'transparent',
+            color: isProjectOpen ? 'var(--accent-primary)' : 'var(--text-secondary)',
             padding: '4px 6px',
           }}
         >
-          <span style={{ fontSize: '1rem' }}>📁</span>
+          <FolderTree size={15} />
         </button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ fontSize: '1.05rem', lineHeight: 1 }}>📐</span>
-          <span style={{ fontWeight: 600, fontSize: '0.88rem', letterSpacing: '-0.01em' }}>
+          <GitGraph size={16} style={{ color: 'var(--tool-schematic-accent, #2dd4bf)' }} />
+          <span style={{ fontWeight: 600, fontSize: '0.88rem', letterSpacing: '-0.01em', color: 'var(--text-primary)' }}>
             Schematic
           </span>
         </div>
@@ -176,60 +193,79 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
         </div>
       </div>
 
-      {/* Center: View Modes */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          background: 'var(--bg-primary)',
-          border: '1px solid var(--border-color)',
-          borderRadius: '6px',
-          padding: '2px',
-          gap: '2px',
-        }}
-      >
-        <button
-          data-testid="view-mode-split"
-          onClick={() => onViewModeChange('split')}
+      {/* Center: View Modes & Reset Layout */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div
           style={{
-            ...btnBaseStyle,
-            padding: '3px 10px',
-            fontSize: '0.78rem',
-            background: viewMode === 'split' ? 'var(--accent-color)' : 'transparent',
-            color: viewMode === 'split' ? '#fff' : 'var(--text-secondary)',
-            fontWeight: viewMode === 'split' ? 600 : 500,
+            display: 'flex',
+            alignItems: 'center',
+            background: 'var(--bg-app)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: '6px',
+            padding: '2px',
+            gap: '2px',
           }}
         >
-          Split View
-        </button>
-        <button
-          data-testid="view-mode-schematic"
-          onClick={() => onViewModeChange('schematic')}
-          style={{
-            ...btnBaseStyle,
-            padding: '3px 10px',
-            fontSize: '0.78rem',
-            background: viewMode === 'schematic' ? 'var(--accent-color)' : 'transparent',
-            color: viewMode === 'schematic' ? '#fff' : 'var(--text-secondary)',
-            fontWeight: viewMode === 'schematic' ? 600 : 500,
-          }}
-        >
-          Schematic
-        </button>
-        <button
-          data-testid="view-mode-code"
-          onClick={() => onViewModeChange('code')}
-          style={{
-            ...btnBaseStyle,
-            padding: '3px 10px',
-            fontSize: '0.78rem',
-            background: viewMode === 'code' ? 'var(--accent-color)' : 'transparent',
-            color: viewMode === 'code' ? '#fff' : 'var(--text-secondary)',
-            fontWeight: viewMode === 'code' ? 600 : 500,
-          }}
-        >
-          Code
-        </button>
+          <button
+            data-testid="view-mode-schematic"
+            onClick={() => onViewModeChange('schematic')}
+            style={{
+              ...btnBaseStyle,
+              padding: '3px 10px',
+              fontSize: '0.78rem',
+              background: viewMode === 'schematic' ? 'var(--accent-primary)' : 'transparent',
+              color: viewMode === 'schematic' ? '#fff' : 'var(--text-secondary)',
+              fontWeight: viewMode === 'schematic' ? 600 : 500,
+            }}
+          >
+            Schematic
+          </button>
+          <button
+            data-testid="view-mode-split"
+            onClick={() => onViewModeChange('split')}
+            style={{
+              ...btnBaseStyle,
+              padding: '3px 10px',
+              fontSize: '0.78rem',
+              background: viewMode === 'split' ? 'var(--accent-primary)' : 'transparent',
+              color: viewMode === 'split' ? '#fff' : 'var(--text-secondary)',
+              fontWeight: viewMode === 'split' ? 600 : 500,
+            }}
+          >
+            Split View
+          </button>
+          <button
+            data-testid="view-mode-code"
+            onClick={() => onViewModeChange('code')}
+            style={{
+              ...btnBaseStyle,
+              padding: '3px 10px',
+              fontSize: '0.78rem',
+              background: viewMode === 'code' ? 'var(--accent-primary)' : 'transparent',
+              color: viewMode === 'code' ? '#fff' : 'var(--text-secondary)',
+              fontWeight: viewMode === 'code' ? 600 : 500,
+            }}
+          >
+            Code
+          </button>
+        </div>
+
+        {onResetLayout && (
+          <button
+            data-testid="schematic-reset-layout-btn"
+            onClick={onResetLayout}
+            title="Reset Workspace Layout"
+            style={{
+              ...btnBaseStyle,
+              padding: '5px',
+              border: '1px solid var(--border-subtle)',
+              color: 'var(--text-muted)',
+              background: 'transparent',
+            }}
+          >
+            <RotateCcw size={13} />
+          </button>
+        )}
       </div>
 
       {/* Right: Actions, Zoom/Pan & Toggle Utilities */}
@@ -240,11 +276,12 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
           title="Upload Verilog/SystemVerilog files"
           style={{
             ...btnBaseStyle,
-            background: 'var(--bg-primary)',
-            border: '1px solid var(--border-color)',
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border-subtle)',
+            color: 'var(--text-primary)',
           }}
         >
-          <span>📂</span>
+          <Upload size={14} />
           <span>Upload</span>
         </button>
 
@@ -255,18 +292,22 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
           title="Synthesize HDL into Logic Schematic"
           style={{
             ...btnBaseStyle,
-            background: status === 'synthesizing' ? 'rgba(56, 189, 248, 0.4)' : 'var(--accent-color)',
+            background: status === 'synthesizing' ? 'rgba(56, 189, 248, 0.4)' : 'var(--accent-primary)',
             color: '#fff',
             border: 'none',
             fontWeight: 600,
             cursor: status === 'synthesizing' ? 'not-allowed' : 'pointer',
           }}
         >
-          <span>{status === 'synthesizing' ? '⏳' : '⚙️'}</span>
+          {status === 'synthesizing' ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : (
+            <Cpu size={14} />
+          )}
           <span>{status === 'synthesizing' ? 'Synthesizing...' : 'Synthesize'}</span>
         </button>
 
-        <div style={{ width: '1px', height: '18px', background: 'var(--border-color)', margin: '0 4px' }} />
+        <div style={{ width: '1px', height: '18px', background: 'var(--border-subtle)', margin: '0 4px' }} />
 
         {/* Zoom Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
@@ -277,12 +318,13 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
             title="Zoom Out (Ctrl -)"
             style={{
               ...btnBaseStyle,
-              background: 'var(--bg-primary)',
-              border: '1px solid var(--border-color)',
-              opacity: hasCircuit ? 1 : 0.5,
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-subtle)',
+              opacity: hasCircuit ? 1 : 0.4,
+              padding: '5px',
             }}
           >
-            <span>➖</span>
+            <ZoomOut size={14} />
           </button>
           <button
             data-testid="schematic-fit-btn"
@@ -291,12 +333,13 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
             title="Fit Schematic to Viewport"
             style={{
               ...btnBaseStyle,
-              background: 'var(--bg-primary)',
-              border: '1px solid var(--border-color)',
-              opacity: hasCircuit ? 1 : 0.5,
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-subtle)',
+              opacity: hasCircuit ? 1 : 0.4,
               fontSize: '0.78rem',
             }}
           >
+            <Maximize2 size={13} />
             <span>Fit</span>
           </button>
           <button
@@ -306,12 +349,13 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
             title="Zoom In (Ctrl +)"
             style={{
               ...btnBaseStyle,
-              background: 'var(--bg-primary)',
-              border: '1px solid var(--border-color)',
-              opacity: hasCircuit ? 1 : 0.5,
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-subtle)',
+              opacity: hasCircuit ? 1 : 0.4,
+              padding: '5px',
             }}
           >
-            <span>➕</span>
+            <ZoomIn size={14} />
           </button>
           <button
             data-testid="schematic-reset-view-btn"
@@ -320,9 +364,9 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
             title="Reset Pan & Zoom"
             style={{
               ...btnBaseStyle,
-              background: 'var(--bg-primary)',
-              border: '1px solid var(--border-color)',
-              opacity: hasCircuit ? 1 : 0.5,
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-subtle)',
+              opacity: hasCircuit ? 1 : 0.4,
               fontSize: '0.78rem',
             }}
           >
@@ -330,7 +374,7 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
           </button>
         </div>
 
-        <div style={{ width: '1px', height: '18px', background: 'var(--border-color)', margin: '0 4px' }} />
+        <div style={{ width: '1px', height: '18px', background: 'var(--border-subtle)', margin: '0 4px' }} />
 
         {/* Truth Table Toggle */}
         <button
@@ -340,13 +384,13 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
           title={isTruthTableOpen ? 'Close Truth Table' : 'Open Interactive Truth Table'}
           style={{
             ...btnBaseStyle,
-            background: isTruthTableOpen ? 'rgba(56, 189, 248, 0.15)' : 'var(--bg-primary)',
-            border: isTruthTableOpen ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid var(--border-color)',
+            background: isTruthTableOpen ? 'rgba(56, 189, 248, 0.15)' : 'var(--bg-surface)',
+            border: isTruthTableOpen ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid var(--border-subtle)',
             color: isTruthTableOpen ? '#38bdf8' : 'var(--text-primary)',
-            opacity: hasCircuit ? 1 : 0.5,
+            opacity: hasCircuit ? 1 : 0.4,
           }}
         >
-          <span>📊</span>
+          <Table2 size={14} />
           <span>Truth Table</span>
         </button>
 
@@ -357,11 +401,12 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
           title={isInspectorOpen ? 'Collapse Inspector' : 'Expand Inspector'}
           style={{
             ...btnBaseStyle,
-            background: isInspectorOpen ? 'rgba(255,255,255,0.06)' : 'var(--bg-primary)',
-            border: isInspectorOpen ? '1px solid var(--border-color)' : '1px solid var(--border-color)',
+            background: isInspectorOpen ? 'rgba(255,255,255,0.06)' : 'var(--bg-surface)',
+            border: '1px solid var(--border-subtle)',
+            color: isInspectorOpen ? 'var(--text-primary)' : 'var(--text-secondary)',
           }}
         >
-          <span>🔍</span>
+          <Info size={14} />
           <span>Inspector</span>
         </button>
 
@@ -372,11 +417,12 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
           title={isConsoleOpen ? 'Close Console / Problems' : 'Open Console / Problems'}
           style={{
             ...btnBaseStyle,
-            background: isConsoleOpen ? 'rgba(255,255,255,0.06)' : 'var(--bg-primary)',
-            border: isConsoleOpen ? '1px solid var(--border-color)' : '1px solid var(--border-color)',
+            background: isConsoleOpen ? 'rgba(255,255,255,0.06)' : 'var(--bg-surface)',
+            border: '1px solid var(--border-subtle)',
+            color: isConsoleOpen ? 'var(--text-primary)' : 'var(--text-secondary)',
           }}
         >
-          <span>📟</span>
+          <Terminal size={14} />
           <span>Console</span>
           {errorCount > 0 && (
             <span
