@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Play, RotateCcw, ZoomIn, ZoomOut, Maximize2, Settings,
-  FolderOpen, FileCode, Upload, Terminal, Layers,
+  FolderOpen, FileCode, Upload, Terminal, Layers, Activity, Columns,
 } from 'lucide-react';
 import type { VCDTimescale } from '../../services/vcdParser';
 import { formatTime } from '../../services/waveformRenderer';
@@ -18,12 +18,15 @@ export interface WaveformToolbarProps {
   timescale: VCDTimescale | undefined;
   projectPanelOpen: boolean;
   objectsPanelOpen: boolean;
-  editorOpen: boolean;
+  editorOpen?: boolean;
   consoleOpen: boolean;
+  mainView: 'waveform' | 'editor' | 'split';
+  onChangeMainView: (view: 'waveform' | 'editor' | 'split') => void;
   onToggleProjectPanel: () => void;
   onToggleObjectsPanel: () => void;
-  onToggleEditor: () => void;
+  onToggleEditor?: () => void;
   onToggleConsole: () => void;
+  onResetLayout?: () => void;
   onUpload: () => void;
   onCompile: () => void;
   onRun: () => void;
@@ -43,12 +46,14 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
   timescale,
   projectPanelOpen,
   objectsPanelOpen,
-  editorOpen,
   consoleOpen,
+  mainView,
+  onChangeMainView,
   onToggleProjectPanel,
   onToggleObjectsPanel,
   onToggleEditor,
   onToggleConsole,
+  onResetLayout,
   onUpload,
   onCompile,
   onRun,
@@ -58,9 +63,9 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
   onZoomFit,
 }) => {
   return (
-    <header className="h-12 bg-[#0a1120] border-b border-[#1e293b] px-3 sm:px-4 flex items-center justify-between shrink-0 shadow-sm z-20 select-none text-slate-200">
-      {/* ── Left: Panel View Toggles & Brand ────────────────────── */}
-      <div className="flex items-center gap-1.5 sm:gap-2">
+    <header className="h-12 bg-[#0a1120] border-b border-[#1e293b] px-3 sm:px-4 flex items-center justify-between shrink-0 shadow-sm z-20 select-none text-slate-200 min-w-0">
+      {/* ── Left: Panel View Toggles & Primary View Tabs ─────────── */}
+      <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
         <button
           data-testid="wf-toggle-project"
           onClick={onToggleProjectPanel}
@@ -71,7 +76,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
               : 'bg-[#1e293b]/60 text-slate-400 border-[#334155] hover:bg-[#334155] hover:text-slate-200'
           }`}
         >
-          <FolderOpen size={14} />
+          <FolderOpen size={13} />
           <span className="hidden md:inline">Project</span>
         </button>
 
@@ -85,51 +90,100 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
               : 'bg-[#1e293b]/60 text-slate-400 border-[#334155] hover:bg-[#334155] hover:text-slate-200'
           }`}
         >
-          <Layers size={14} />
+          <Layers size={13} />
           <span className="hidden md:inline">Objects</span>
         </button>
 
-        <button
-          data-testid="wf-toggle-editor"
-          onClick={onToggleEditor}
-          title="Toggle Editor (Alt+E)"
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium border transition-colors ${
-            editorOpen
-              ? 'bg-blue-600/20 text-blue-300 border-blue-500/40 shadow-sm'
-              : 'bg-[#1e293b]/60 text-slate-400 border-[#334155] hover:bg-[#334155] hover:text-slate-200'
-          }`}
-        >
-          <FileCode size={14} />
-          <span className="hidden md:inline">Editor</span>
-        </button>
+        <div className="w-px h-5 bg-[#1e293b] mx-0.5 hidden sm:block" />
 
-        <div className="w-px h-5 bg-[#1e293b] mx-1 hidden sm:block" />
-        <span className="text-xs font-semibold text-slate-400 hidden lg:inline tracking-wide">
-          WAVEFORM
-        </span>
+        {/* ── Primary View Switcher Tabs ── */}
+        <div className="flex items-center bg-[#070c18] border border-[#1e293b] rounded p-0.5 shadow-inner" role="tablist">
+          <button
+            data-testid="wf-view-waveform"
+            role="tab"
+            aria-selected={mainView === 'waveform'}
+            onClick={() => onChangeMainView('waveform')}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+              mainView === 'waveform'
+                ? 'bg-blue-600/20 text-blue-300 font-semibold shadow-sm border border-blue-500/40'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-[#1e293b]/50 border border-transparent'
+            }`}
+            title="Waveform View"
+          >
+            <Activity size={13} />
+            <span className="hidden sm:inline">Waveform</span>
+          </button>
+
+          <button
+            data-testid="wf-view-editor"
+            data-legacy-toggle="wf-toggle-editor"
+            role="tab"
+            aria-selected={mainView === 'editor'}
+            onClick={() => {
+              onChangeMainView('editor');
+              if (onToggleEditor) onToggleEditor();
+            }}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+              mainView === 'editor'
+                ? 'bg-blue-600/20 text-blue-300 font-semibold shadow-sm border border-blue-500/40'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-[#1e293b]/50 border border-transparent'
+            }`}
+            title="Code Editor View (Alt+E)"
+          >
+            <FileCode size={13} />
+            <span className="hidden sm:inline">Code Editor</span>
+          </button>
+
+          <button
+            data-testid="wf-view-split"
+            role="tab"
+            aria-selected={mainView === 'split'}
+            onClick={() => onChangeMainView('split')}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+              mainView === 'split'
+                ? 'bg-blue-600/20 text-blue-300 font-semibold shadow-sm border border-blue-500/40'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-[#1e293b]/50 border border-transparent'
+            }`}
+            title="Split View (Editor + Waveform)"
+          >
+            <Columns size={13} />
+            <span className="hidden lg:inline">Split</span>
+          </button>
+        </div>
+
+        {onResetLayout && (
+          <button
+            data-testid="wf-reset-layout"
+            onClick={onResetLayout}
+            title="Reset Workspace Layout"
+            className="p-1.5 rounded text-slate-400 hover:text-slate-200 hover:bg-[#1e293b] transition-colors border border-transparent hover:border-[#334155] hidden xl:flex items-center"
+          >
+            <RotateCcw size={13} />
+          </button>
+        )}
       </div>
 
       {/* ── Center: Engine Actions & Zoom ──────────────────────── */}
-      <div className="flex items-center gap-1.5 sm:gap-2">
+      <div className="flex items-center gap-1 sm:gap-2">
         {/* Upload Button */}
         <button
           data-testid="wf-btn-upload"
           onClick={onUpload}
-          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded text-xs font-medium bg-[#1e293b] hover:bg-[#334155] text-slate-200 border border-[#334155] transition-colors shadow-sm"
+          className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded text-xs font-medium bg-[#1e293b] hover:bg-[#334155] text-slate-200 border border-[#334155] transition-colors shadow-sm"
           title="Upload .sv / .v / .vcd file"
         >
           <Upload size={14} />
-          <span className="hidden sm:inline">Upload</span>
+          <span className="hidden md:inline">Upload</span>
         </button>
 
-        <div className="w-px h-5 bg-[#1e293b] mx-0.5" />
+        <div className="w-px h-5 bg-[#1e293b] mx-0.5 hidden sm:block" />
 
         {/* Compile Button */}
         <button
           data-testid="wf-btn-compile"
           onClick={onCompile}
           disabled={isCompiling}
-          className={`flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded text-xs font-medium transition-all shadow-sm ${
+          className={`flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded text-xs font-medium transition-all shadow-sm ${
             isCompiling
               ? 'bg-blue-600/40 text-blue-200 cursor-not-allowed border border-blue-500/30'
               : 'bg-blue-600 hover:bg-blue-500 text-white border border-blue-500 shadow-[0_0_12px_rgba(37,99,235,0.25)]'
@@ -149,7 +203,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
           data-testid="wf-btn-run"
           onClick={onRun}
           disabled={!isCompiled || isCompiling || isPlaying}
-          className={`flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded text-xs font-medium transition-all shadow-sm ${
+          className={`hidden sm:flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded text-xs font-medium transition-all shadow-sm ${
             !isCompiled || isCompiling || isPlaying
               ? 'bg-emerald-950/40 text-emerald-500/40 border border-emerald-900/30 cursor-not-allowed'
               : 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.25)]'
@@ -165,16 +219,16 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
           data-testid="wf-btn-restart"
           onClick={onRestart}
           disabled={!isCompiled}
-          className="p-1.5 rounded text-xs font-medium bg-[#1e293b] hover:bg-[#334155] text-slate-300 hover:text-white border border-[#334155] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="hidden sm:flex p-1.5 rounded text-xs font-medium bg-[#1e293b] hover:bg-[#334155] text-slate-300 hover:text-white border border-[#334155] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           title="Reset Playhead to Start"
         >
           <RotateCcw size={14} />
         </button>
 
-        <div className="w-px h-5 bg-[#1e293b] mx-0.5" />
+        <div className="w-px h-5 bg-[#1e293b] mx-0.5 hidden md:block" />
 
         {/* Zoom Controls */}
-        <div className="flex items-center bg-[#0f172a] rounded border border-[#1e293b] p-0.5 shadow-inner">
+        <div className="hidden md:flex items-center bg-[#0f172a] rounded border border-[#1e293b] p-0.5 shadow-inner">
           <button
             data-testid="wf-btn-zoom-out"
             onClick={onZoomOut}
