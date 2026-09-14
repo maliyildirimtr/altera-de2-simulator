@@ -47,98 +47,62 @@ export const SchematicConsole: React.FC<SchematicConsoleProps> = ({
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        backgroundColor: 'var(--bg-app)',
+        backgroundColor: 'var(--bg-input)',
         borderTop: '1px solid var(--border-subtle)',
         fontFamily: 'monospace',
         fontSize: '0.8rem',
         overflow: 'hidden',
+        color: 'var(--text-primary)',
       }}
     >
       {/* Console Tab Bar */}
       <div
+        className="h-8 px-3 flex items-center justify-between shrink-0 border-b select-none"
         style={{
-          height: '32px',
           backgroundColor: 'var(--bg-panel-header)',
-          borderBottom: '1px solid var(--border-subtle)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 8px',
-          userSelect: 'none',
-          flexShrink: 0,
+          borderColor: 'var(--border-subtle)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '100%' }}>
+        <div className="flex items-center gap-1">
           <button
             data-testid="tab-console"
             onClick={() => setActiveTab('console')}
-            style={{
-              padding: '4px 10px',
-              background: activeTab === 'console' ? 'var(--bg-panel)' : 'transparent',
-              border: 'none',
-              borderBottom: activeTab === 'console' ? '2px solid var(--accent-primary)' : '2px solid transparent',
-              color: activeTab === 'console' ? 'var(--text-primary)' : 'var(--text-secondary)',
-              fontWeight: activeTab === 'console' ? 600 : 500,
-              cursor: 'pointer',
-              fontSize: '0.78rem',
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-[4px] transition-colors ${
+              activeTab === 'console'
+                ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+            }`}
           >
-            <Terminal size={14} />
+            <Terminal size={12} />
             <span>Output</span>
           </button>
           <button
             data-testid="tab-problems"
             onClick={() => setActiveTab('problems')}
-            style={{
-              padding: '4px 10px',
-              background: activeTab === 'problems' ? 'var(--bg-panel)' : 'transparent',
-              border: 'none',
-              borderBottom: activeTab === 'problems' ? '2px solid #ef4444' : '2px solid transparent',
-              color: activeTab === 'problems' ? 'var(--text-primary)' : 'var(--text-secondary)',
-              fontWeight: activeTab === 'problems' ? 600 : 500,
-              cursor: 'pointer',
-              fontSize: '0.78rem',
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-[4px] transition-colors ${
+              activeTab === 'problems'
+                ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
+                : errorMessages.length > 0
+                ? 'text-red-500 font-semibold hover:bg-red-500/10'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+            }`}
           >
-            <AlertTriangle size={14} className="text-amber-400" />
+            <AlertTriangle size={12} className={errorMessages.length > 0 ? 'text-red-500' : 'text-[var(--text-muted)]'} />
             <span>Problems</span>
             {errorMessages.length > 0 && (
-              <span
-                style={{
-                  background: '#ef4444',
-                  color: '#fff',
-                  fontSize: '0.65rem',
-                  borderRadius: '10px',
-                  padding: '1px 5px',
-                  fontWeight: 700,
-                }}
-              >
+              <span className="text-[10px] font-mono px-1.5 py-0.2 bg-red-500/10 text-red-500 rounded font-semibold border border-red-500/20">
                 {errorMessages.length}
               </span>
             )}
           </button>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div className="flex items-center gap-1">
           <button
             onClick={onClear}
             title="Clear Console"
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-secondary)',
-              cursor: 'pointer',
-              fontSize: '0.75rem',
-              padding: '2px 6px',
-            }}
+            className="p-1 rounded-[4px] hover:bg-[var(--bg-hover)] transition-colors text-xs font-sans"
+            style={{ color: 'var(--text-muted)' }}
           >
             Clear
           </button>
@@ -146,17 +110,8 @@ export const SchematicConsole: React.FC<SchematicConsoleProps> = ({
             onClick={onClose}
             title="Close Panel"
             aria-label="Close Console"
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-secondary)',
-              cursor: 'pointer',
-              padding: '2px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: '4px',
-            }}
+            className="p-1 rounded-[4px] hover:bg-[var(--bg-hover)] transition-colors"
+            style={{ color: 'var(--text-muted)' }}
           >
             <X size={14} />
           </button>

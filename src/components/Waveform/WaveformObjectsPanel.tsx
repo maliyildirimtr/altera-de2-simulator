@@ -51,17 +51,38 @@ export const WaveformObjectsPanel: React.FC<WaveformObjectsPanelProps> = ({
   return (
     <aside
       data-testid="wf-objects-panel"
-      className="shrink-0 flex flex-col bg-[#0c0d0e] border-r border-[#1e293b] select-none overflow-hidden h-full z-10 min-w-0"
-      style={{ width }}
+      className="shrink-0 flex flex-col select-none overflow-hidden h-full z-10 min-w-0 border-r"
+      style={{
+        width,
+        backgroundColor: 'var(--bg-panel)',
+        borderColor: 'var(--border-subtle)',
+        color: 'var(--text-primary)',
+      }}
     >
       {/* ── Header with Title, Badge, and Close Button ──────────── */}
-      <div className="h-8 px-2.5 bg-[#0a1120] border-b border-[#1e293b] flex items-center justify-between shrink-0">
+      <div
+        className="h-9 px-3 border-b flex items-center justify-between shrink-0"
+        style={{
+          backgroundColor: 'var(--bg-panel-header)',
+          borderColor: 'var(--border-subtle)',
+        }}
+      >
         <div className="flex items-center gap-1.5 min-w-0">
-          <Layers size={13} className="text-blue-400 shrink-0" />
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-300 truncate">
+          <Layers size={13} className="text-blue-500 shrink-0" />
+          <span
+            className="text-[11px] font-bold uppercase tracking-wider truncate"
+            style={{ color: 'var(--text-muted)' }}
+          >
             Signals & Objects
           </span>
-          <span className="text-[10px] px-1.5 py-0.2 bg-[#1e293b] text-slate-400 rounded font-mono shrink-0">
+          <span
+            className="text-[10px] px-1.5 py-0.2 rounded font-mono shrink-0 border"
+            style={{
+              backgroundColor: 'var(--bg-surface)',
+              borderColor: 'var(--border-subtle)',
+              color: 'var(--text-muted)',
+            }}
+          >
             {totalSignalCount}
           </span>
         </div>
@@ -70,7 +91,8 @@ export const WaveformObjectsPanel: React.FC<WaveformObjectsPanelProps> = ({
           <button
             onClick={onClose}
             title="Collapse Objects Panel (Alt+O)"
-            className="text-slate-500 hover:text-slate-300 p-0.5 rounded transition-colors"
+            className="p-1 rounded-[4px] hover:bg-[var(--bg-hover)] transition-colors"
+            style={{ color: 'var(--text-muted)' }}
           >
             <X size={13} />
           </button>
@@ -78,20 +100,32 @@ export const WaveformObjectsPanel: React.FC<WaveformObjectsPanelProps> = ({
       </div>
 
       {/* ── Search filter input ─────────────────────────────────── */}
-      <div className="p-1.5 bg-[#0f172a] border-b border-[#1e293b]">
+      <div
+        className="p-2 border-b"
+        style={{
+          backgroundColor: 'var(--bg-panel)',
+          borderColor: 'var(--border-subtle)',
+        }}
+      >
         <div className="relative flex items-center">
-          <Search size={12} className="absolute left-2 text-slate-500 pointer-events-none" />
+          <Search size={12} className="absolute left-2.5 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
           <input
             type="text"
             value={filterQuery}
             onChange={(e) => setFilterQuery(e.target.value)}
             placeholder="Filter signals..."
-            className="w-full bg-[#0a1120] text-slate-200 text-xs pl-6 pr-6 py-1 rounded border border-[#1e293b] focus:border-blue-500/80 focus:outline-none placeholder:text-slate-600 font-mono"
+            className="w-full text-xs pl-7 pr-6 py-1 rounded-[4px] border font-mono transition-colors"
+            style={{
+              backgroundColor: 'var(--bg-input)',
+              borderColor: 'var(--border-subtle)',
+              color: 'var(--text-primary)',
+            }}
           />
           {filterQuery && (
             <button
               onClick={() => setFilterQuery('')}
-              className="absolute right-1.5 text-slate-500 hover:text-slate-300 p-0.5"
+              className="absolute right-1.5 p-0.5 hover:text-[var(--text-primary)]"
+              style={{ color: 'var(--text-muted)' }}
             >
               <X size={11} />
             </button>

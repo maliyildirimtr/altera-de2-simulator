@@ -47,33 +47,51 @@ export const WaveformConsole: React.FC<WaveformConsoleProps> = ({
       return 'text-cyan-300';
     }
     if (log.startsWith('[ivl') || log.startsWith('[vvp]')) {
-      return 'text-blue-300';
+      return 'text-blue-400';
     }
-    return 'text-slate-300';
+    return 'text-[var(--text-primary)]';
   };
 
   return (
     <div
       data-testid="wf-console"
-      className="shrink-0 flex flex-col bg-[#0a1120] border-t border-[#1e293b] select-none z-10"
-      style={{ height }}
+      className="shrink-0 flex flex-col border-t select-none z-10"
+      style={{
+        height,
+        backgroundColor: 'var(--bg-input)',
+        borderColor: 'var(--border-subtle)',
+        color: 'var(--text-primary)',
+      }}
     >
       {/* ── Tab & Control Header ─────────────────────────────────── */}
-      <div className="h-8 px-3 bg-[#0f172a] border-b border-[#1e293b] flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2">
+      <div
+        className="h-8 px-3 border-b flex items-center justify-between shrink-0"
+        style={{
+          backgroundColor: 'var(--bg-panel-header)',
+          borderColor: 'var(--border-subtle)',
+        }}
+      >
+        <div className="flex items-center gap-1">
           {/* Console Tab */}
           <button
             data-testid="wf-console-tab-all"
             onClick={() => setActiveTab('console')}
-            className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-semibold tracking-wider uppercase transition-colors ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-xs font-medium transition-colors ${
               activeTab === 'console'
-                ? 'text-blue-400 bg-[#1e293b]'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
             }`}
           >
             <Terminal size={12} />
             <span>Console</span>
-            <span className="text-[10px] font-mono px-1 py-0.2 bg-[#0a1120] text-slate-400 rounded">
+            <span
+              className="text-[10px] font-mono px-1 py-0.2 rounded border"
+              style={{
+                backgroundColor: 'var(--bg-surface)',
+                borderColor: 'var(--border-subtle)',
+                color: 'var(--text-muted)',
+              }}
+            >
               {logs.length}
             </span>
           </button>
@@ -82,16 +100,18 @@ export const WaveformConsole: React.FC<WaveformConsoleProps> = ({
           <button
             data-testid="wf-console-tab-problems"
             onClick={() => setActiveTab('problems')}
-            className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-semibold tracking-wider uppercase transition-colors ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-xs font-medium transition-colors ${
               activeTab === 'problems'
-                ? 'text-amber-400 bg-[#1e293b]'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
+                : problems.length > 0
+                ? 'text-amber-500 font-semibold hover:bg-amber-500/10'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
             }`}
           >
-            <AlertTriangle size={12} className={problems.length > 0 ? 'text-amber-400' : ''} />
+            <AlertTriangle size={12} className={problems.length > 0 ? 'text-amber-500' : 'text-[var(--text-muted)]'} />
             <span>Problems</span>
             {problems.length > 0 && (
-              <span className="text-[10px] font-mono px-1 py-0.2 bg-amber-500/20 text-amber-300 rounded font-bold">
+              <span className="text-[10px] font-mono px-1 py-0.2 bg-amber-500/10 text-amber-500 rounded font-semibold border border-amber-500/20">
                 {problems.length}
               </span>
             )}
@@ -101,8 +121,8 @@ export const WaveformConsole: React.FC<WaveformConsoleProps> = ({
         {/* Action Buttons */}
         <div className="flex items-center gap-1">
           {isCompiling && (
-            <div className="flex items-center gap-1.5 text-[11px] text-blue-400 mr-2 font-mono">
-              <div className="w-2.5 h-2.5 border-2 border-blue-400/40 border-t-blue-400 rounded-full animate-spin" />
+            <div className="flex items-center gap-1.5 text-[11px] text-blue-500 mr-2 font-mono">
+              <div className="w-2.5 h-2.5 border-2 border-blue-500/40 border-t-blue-500 rounded-full animate-spin" />
               <span>Compiling...</span>
             </div>
           )}
@@ -110,7 +130,8 @@ export const WaveformConsole: React.FC<WaveformConsoleProps> = ({
           <button
             onClick={onClearLogs}
             title="Clear Console Output"
-            className="p-1 rounded text-slate-400 hover:text-slate-200 hover:bg-[#1e293b] transition-colors"
+            className="p-1 rounded-[4px] hover:bg-[var(--bg-hover)] transition-colors"
+            style={{ color: 'var(--text-muted)' }}
           >
             <Trash2 size={13} />
           </button>
@@ -119,7 +140,8 @@ export const WaveformConsole: React.FC<WaveformConsoleProps> = ({
             <button
               onClick={onClose}
               title="Close Console (Alt+T)"
-              className="p-1 rounded text-slate-400 hover:text-slate-200 hover:bg-[#1e293b] transition-colors ml-1"
+              className="p-1 rounded-[4px] hover:bg-[var(--bg-hover)] transition-colors ml-1"
+              style={{ color: 'var(--text-muted)' }}
             >
               <X size={13} />
             </button>
@@ -130,10 +152,11 @@ export const WaveformConsole: React.FC<WaveformConsoleProps> = ({
       {/* ── Log Content Viewport ─────────────────────────────────── */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto p-3 font-mono text-[11px] leading-relaxed select-text bg-[#070c18]"
+        className="flex-1 overflow-y-auto p-3 font-mono text-[11px] leading-relaxed select-text"
+        style={{ backgroundColor: 'var(--bg-input)' }}
       >
         {displayedLogs.length === 0 ? (
-          <div className="text-slate-600 italic">
+          <div className="italic" style={{ color: 'var(--text-muted)' }}>
             {activeTab === 'problems'
               ? 'No errors or warnings recorded.'
               : 'Console ready. Upload or write HDL files and click Compile.'}

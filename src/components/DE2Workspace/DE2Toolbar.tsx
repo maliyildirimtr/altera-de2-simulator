@@ -76,7 +76,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
 
   return (
     <header
-      className="h-12 w-full px-3 flex items-center justify-between shrink-0 select-none z-20 text-xs border-b transition-colors relative"
+      className="h-[42px] w-full px-3 flex items-center justify-between shrink-0 select-none z-20 text-xs border-b transition-colors relative"
       style={{
         backgroundColor: 'var(--bg-toolbar)',
         borderColor: 'var(--border-subtle)',
@@ -88,20 +88,21 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
         <button
           onClick={onToggleProjectPanel}
-          className="p-1.5 rounded transition-colors hidden sm:flex items-center justify-center"
+          className="w-[28px] h-[28px] sm:w-[30px] sm:h-[30px] rounded-[4px] border transition-colors hidden sm:flex items-center justify-center"
           style={{
             color: projectPanelOpen ? 'var(--accent-primary)' : 'var(--text-secondary)',
             backgroundColor: projectPanelOpen ? 'var(--accent-subtle)' : 'transparent',
+            borderColor: projectPanelOpen ? 'var(--accent-border)' : 'transparent',
           }}
           title={projectPanelOpen ? 'Hide Project Panel' : 'Show Project Panel'}
           aria-label="Toggle Project Panel"
         >
-          <PanelLeft size={16} />
+          <PanelLeft size={15} />
         </button>
 
         <div className="flex items-center gap-1.5 sm:gap-2">
           <div
-            className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded border text-[11px] font-semibold"
+            className="flex items-center gap-1 px-2 h-[26px] rounded-[4px] border text-[11px] font-semibold select-none"
             style={{
               backgroundColor: 'var(--accent-subtle)',
               borderColor: 'var(--accent-border)',
@@ -109,14 +110,15 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
             }}
           >
             <Cpu size={13} />
-            <span className="hidden xs:inline">DE2 LAB</span>
+            <span className="hidden sm:inline">DE2 Simulator</span>
+            <span className="inline sm:hidden">DE2</span>
           </div>
 
           <div className="hidden lg:flex items-center gap-2">
             <span style={{ color: 'var(--border-strong)' }}>/</span>
             <span
               className="font-mono font-medium max-w-[120px] truncate text-[11px]"
-              style={{ color: 'var(--text-secondary)' }}
+              style={{ color: 'var(--text-muted)' }}
               title={hasHdl ? 'main.sv' : '(no source)'}
             >
               {hasHdl ? 'main.sv' : '(no source)'}
@@ -136,22 +138,18 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
 
       {/* ── Center: View Mode Switcher (Board / Split / Code) ── */}
       <div
-        className="flex items-center p-0.5 rounded-lg border shrink-0 mx-1"
-        style={{
-          backgroundColor: 'var(--bg-app)',
-          borderColor: 'var(--border-subtle)',
-        }}
+        className="inline-flex items-center p-0.5 rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-input)] gap-0.5 shrink-0 mx-1 select-none"
         role="group"
         aria-label="Workspace View Mode"
       >
         <button
           data-testid="view-board"
           onClick={() => onSelectView('board')}
-          className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-md text-xs font-medium transition-all"
-          style={{
-            backgroundColor: activeView === 'board' ? 'var(--accent-primary)' : 'transparent',
-            color: activeView === 'board' ? '#FFFFFF' : 'var(--text-secondary)',
-          }}
+          className={`flex items-center gap-1.5 px-2 sm:px-2.5 h-[28px] rounded-[3px] text-[11.5px] font-medium transition-colors ${
+            activeView === 'board'
+              ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] shadow-xs font-semibold border border-[var(--border-subtle)]'
+              : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-transparent'
+          }`}
           title="Board View — Full Virtual FPGA"
           aria-label="Board View"
           aria-pressed={activeView === 'board'}
@@ -163,11 +161,11 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
         <button
           data-testid="view-split"
           onClick={() => onSelectView('split')}
-          className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-md text-xs font-medium transition-all"
-          style={{
-            backgroundColor: activeView === 'split' ? 'var(--accent-primary)' : 'transparent',
-            color: activeView === 'split' ? '#FFFFFF' : 'var(--text-secondary)',
-          }}
+          className={`flex items-center gap-1.5 px-2 sm:px-2.5 h-[28px] rounded-[3px] text-[11.5px] font-medium transition-colors ${
+            activeView === 'split'
+              ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] shadow-xs font-semibold border border-[var(--border-subtle)]'
+              : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-transparent'
+          }`}
           title="Split View — Editor + Board side by side"
           aria-label="Split View"
           aria-pressed={activeView === 'split'}
@@ -179,11 +177,11 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
         <button
           data-testid="view-code"
           onClick={() => onSelectView('code')}
-          className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-md text-xs font-medium transition-all"
-          style={{
-            backgroundColor: activeView === 'code' ? 'var(--accent-primary)' : 'transparent',
-            color: activeView === 'code' ? '#FFFFFF' : 'var(--text-secondary)',
-          }}
+          className={`flex items-center gap-1.5 px-2 sm:px-2.5 h-[28px] rounded-[3px] text-[11.5px] font-medium transition-colors ${
+            activeView === 'code'
+              ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] shadow-xs font-semibold border border-[var(--border-subtle)]'
+              : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-transparent'
+          }`}
           title="Code View — Full Monaco HDL Editor"
           aria-label="Code View"
           aria-pressed={activeView === 'code'}
@@ -201,11 +199,11 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
           <button
             data-testid="de2-open-import"
             onClick={onOpenImport}
-            className="flex items-center gap-1.5 px-2 py-1 rounded border font-medium transition-colors"
+            className="flex items-center gap-1.5 px-2.5 h-[30px] rounded-[4px] border font-medium transition-colors text-xs"
             style={{
               backgroundColor: 'var(--bg-surface)',
               borderColor: 'var(--border-subtle)',
-              color: 'var(--text-secondary)',
+              color: 'var(--text-primary)',
             }}
             title="Import Verilog (.v, .sv) or Pin Constraints (.qsf)"
             aria-label="Import HDL"
@@ -215,7 +213,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
           </button>
 
           <div
-            className="w-px h-5 mx-0.5"
+            className="w-px h-4 mx-0.5"
             style={{ backgroundColor: 'var(--border-subtle)' }}
           />
 
@@ -224,7 +222,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
             data-testid="de2-compile"
             onClick={onCompile}
             disabled={isCompiling || !hasHdl}
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded text-white font-semibold shadow-xs transition-colors disabled:opacity-40 disabled:pointer-events-none"
+            className="flex items-center gap-1.5 px-3 h-[30px] rounded-[4px] text-white font-semibold shadow-xs transition-colors disabled:opacity-40 disabled:pointer-events-none text-xs"
             style={{
               backgroundColor: 'var(--accent-primary)',
             }}
@@ -250,7 +248,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
               else startAutoSimulation();
             }}
             disabled={!hasEngine}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded font-semibold transition-colors disabled:opacity-40 disabled:pointer-events-none text-white ${
+            className={`flex items-center gap-1.5 px-2.5 h-[30px] rounded-[4px] font-semibold transition-colors disabled:opacity-40 disabled:pointer-events-none text-white text-xs ${
               isSimRunning
                 ? 'bg-amber-600 hover:bg-amber-500'
                 : 'bg-emerald-600 hover:bg-emerald-500'
@@ -267,7 +265,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
             data-testid="de2-clock-step"
             onClick={() => tickClock()}
             disabled={!hasEngine}
-            className="flex items-center gap-1 px-2 py-1 rounded border font-medium transition-colors disabled:opacity-40 disabled:pointer-events-none"
+            className="flex items-center gap-1 px-2 h-[30px] rounded-[4px] border font-medium transition-colors disabled:opacity-40 disabled:pointer-events-none text-xs"
             style={{
               backgroundColor: 'rgba(245, 158, 11, 0.12)',
               borderColor: 'rgba(245, 158, 11, 0.25)',
@@ -284,45 +282,47 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
           <button
             data-testid="de2-reset"
             onClick={resetBoard}
-            className="p-1.5 rounded transition-colors"
+            className="w-[30px] h-[30px] rounded-[4px] flex items-center justify-center transition-colors border border-transparent hover:border-[var(--border-subtle)] hover:bg-[var(--bg-hover)]"
             style={{ color: 'var(--text-secondary)' }}
             title="Reset Board State (Switches, Keys, LEDs, HEX, Clock)"
             aria-label="Reset Board"
           >
-            <RotateCcw size={15} />
+            <RotateCcw size={14} />
           </button>
 
           <div
-            className="w-px h-5 mx-0.5"
+            className="w-px h-4 mx-0.5"
             style={{ backgroundColor: 'var(--border-subtle)' }}
           />
 
           {/* Toggle Bottom Console */}
           <button
             onClick={onToggleConsole}
-            className="p-1.5 rounded transition-colors"
+            className="w-[30px] h-[30px] rounded-[4px] flex items-center justify-center transition-colors border"
             style={{
               color: consoleOpen ? 'var(--accent-primary)' : 'var(--text-secondary)',
               backgroundColor: consoleOpen ? 'var(--accent-subtle)' : 'transparent',
+              borderColor: consoleOpen ? 'var(--accent-border)' : 'transparent',
             }}
             title={consoleOpen ? 'Hide Console' : 'Show Console'}
             aria-label="Toggle Console"
           >
-            <Terminal size={15} />
+            <Terminal size={14} />
           </button>
 
           {/* Toggle Inspector */}
           <button
             onClick={onToggleInspector}
-            className="p-1.5 rounded transition-colors"
+            className="w-[30px] h-[30px] rounded-[4px] flex items-center justify-center transition-colors border"
             style={{
               color: inspectorOpen ? 'var(--accent-primary)' : 'var(--text-secondary)',
               backgroundColor: inspectorOpen ? 'var(--accent-subtle)' : 'transparent',
+              borderColor: inspectorOpen ? 'var(--accent-border)' : 'transparent',
             }}
             title={inspectorOpen ? 'Hide Inspector' : 'Show Inspector'}
             aria-label="Toggle Inspector"
           >
-            <PanelRight size={15} />
+            <PanelRight size={14} />
           </button>
 
           {/* Reset Workspace Layout (Restore default layout and Board mode) */}
@@ -330,14 +330,14 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
             <button
               data-testid="de2-reset-layout"
               onClick={onResetLayout}
-              className="p-1.5 rounded transition-colors hover:bg-[var(--accent-subtle)]"
+              className="w-[30px] h-[30px] rounded-[4px] flex items-center justify-center transition-colors border border-transparent hover:border-[var(--border-subtle)] hover:bg-[var(--bg-hover)]"
               style={{
                 color: 'var(--text-secondary)',
               }}
               title="Reset Workspace Layout (Return to Default Board View)"
               aria-label="Reset Workspace Layout"
             >
-              <LayoutGrid size={15} />
+              <LayoutGrid size={14} />
             </button>
           )}
         </div>

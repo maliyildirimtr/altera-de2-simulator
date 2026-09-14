@@ -63,17 +63,24 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
   onZoomFit,
 }) => {
   return (
-    <header className="h-12 bg-[#0a1120] border-b border-[#1e293b] px-3 sm:px-4 flex items-center justify-between shrink-0 shadow-sm z-20 select-none text-slate-200 min-w-0">
+    <header
+      className="h-[42px] px-3 sm:px-4 flex items-center justify-between shrink-0 z-20 select-none border-b min-w-0"
+      style={{
+        backgroundColor: 'var(--bg-toolbar)',
+        borderColor: 'var(--border-subtle)',
+        color: 'var(--text-primary)',
+      }}
+    >
       {/* ── Left: Panel View Toggles & Primary View Tabs ─────────── */}
       <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
         <button
           data-testid="wf-toggle-project"
           onClick={onToggleProjectPanel}
           title="Toggle Project Panel (Alt+P)"
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium border transition-colors ${
+          className={`flex items-center gap-1.5 px-2 py-1 rounded-[4px] text-xs font-medium border transition-colors ${
             projectPanelOpen
-              ? 'bg-blue-600/20 text-blue-300 border-blue-500/40 shadow-sm'
-              : 'bg-[#1e293b]/60 text-slate-400 border-[#334155] hover:bg-[#334155] hover:text-slate-200'
+              ? 'bg-[var(--accent-subtle)] text-[var(--accent-primary)] border-[var(--accent-border)] font-semibold shadow-xs'
+              : 'border-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
           }`}
         >
           <FolderOpen size={13} />
@@ -84,29 +91,32 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
           data-testid="wf-toggle-objects"
           onClick={onToggleObjectsPanel}
           title="Toggle Objects Panel (Alt+O)"
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium border transition-colors ${
+          className={`flex items-center gap-1.5 px-2 py-1 rounded-[4px] text-xs font-medium border transition-colors ${
             objectsPanelOpen
-              ? 'bg-blue-600/20 text-blue-300 border-blue-500/40 shadow-sm'
-              : 'bg-[#1e293b]/60 text-slate-400 border-[#334155] hover:bg-[#334155] hover:text-slate-200'
+              ? 'bg-[var(--accent-subtle)] text-[var(--accent-primary)] border-[var(--accent-border)] font-semibold shadow-xs'
+              : 'border-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
           }`}
         >
           <Layers size={13} />
           <span className="hidden md:inline">Objects</span>
         </button>
 
-        <div className="w-px h-5 bg-[#1e293b] mx-0.5 hidden sm:block" />
+        <div className="w-px h-4 bg-[var(--border-subtle)] mx-0.5 hidden sm:block" />
 
         {/* ── Primary View Switcher Tabs ── */}
-        <div className="flex items-center bg-[#070c18] border border-[#1e293b] rounded p-0.5 shadow-inner" role="tablist">
+        <div
+          className="flex items-center p-0.5 rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-input)] gap-0.5"
+          role="tablist"
+        >
           <button
             data-testid="wf-view-waveform"
             role="tab"
             aria-selected={mainView === 'waveform'}
             onClick={() => onChangeMainView('waveform')}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[3px] text-xs transition-colors ${
               mainView === 'waveform'
-                ? 'bg-blue-600/20 text-blue-300 font-semibold shadow-sm border border-blue-500/40'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-[#1e293b]/50 border border-transparent'
+                ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-transparent'
             }`}
             title="Waveform View"
           >
@@ -123,10 +133,10 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
               onChangeMainView('editor');
               if (onToggleEditor) onToggleEditor();
             }}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[3px] text-xs transition-colors ${
               mainView === 'editor'
-                ? 'bg-blue-600/20 text-blue-300 font-semibold shadow-sm border border-blue-500/40'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-[#1e293b]/50 border border-transparent'
+                ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-transparent'
             }`}
             title="Code Editor View (Alt+E)"
           >
@@ -139,10 +149,10 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
             role="tab"
             aria-selected={mainView === 'split'}
             onClick={() => onChangeMainView('split')}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[3px] text-xs transition-colors ${
               mainView === 'split'
-                ? 'bg-blue-600/20 text-blue-300 font-semibold shadow-sm border border-blue-500/40'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-[#1e293b]/50 border border-transparent'
+                ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-transparent'
             }`}
             title="Split View (Editor + Waveform)"
           >
@@ -156,7 +166,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
             data-testid="wf-reset-layout"
             onClick={onResetLayout}
             title="Reset Workspace Layout"
-            className="p-1.5 rounded text-slate-400 hover:text-slate-200 hover:bg-[#1e293b] transition-colors border border-transparent hover:border-[#334155] hidden xl:flex items-center"
+            className="p-1.5 rounded-[4px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors border border-transparent hidden xl:flex items-center"
           >
             <RotateCcw size={13} />
           </button>
@@ -169,31 +179,36 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
         <button
           data-testid="wf-btn-upload"
           onClick={onUpload}
-          className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded text-xs font-medium bg-[#1e293b] hover:bg-[#334155] text-slate-200 border border-[#334155] transition-colors shadow-sm"
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-xs font-medium border transition-colors shadow-xs"
+          style={{
+            backgroundColor: 'var(--bg-surface)',
+            borderColor: 'var(--border-subtle)',
+            color: 'var(--text-primary)',
+          }}
           title="Upload .sv / .v / .vcd file"
         >
-          <Upload size={14} />
+          <Upload size={13} />
           <span className="hidden md:inline">Upload</span>
         </button>
 
-        <div className="w-px h-5 bg-[#1e293b] mx-0.5 hidden sm:block" />
+        <div className="w-px h-4 bg-[var(--border-subtle)] mx-0.5 hidden sm:block" />
 
         {/* Compile Button */}
         <button
           data-testid="wf-btn-compile"
           onClick={onCompile}
           disabled={isCompiling}
-          className={`flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded text-xs font-medium transition-all shadow-sm ${
+          className={`flex items-center gap-1.5 px-3 py-1 rounded-[4px] text-xs font-medium transition-all shadow-xs ${
             isCompiling
-              ? 'bg-blue-600/40 text-blue-200 cursor-not-allowed border border-blue-500/30'
-              : 'bg-blue-600 hover:bg-blue-500 text-white border border-blue-500 shadow-[0_0_12px_rgba(37,99,235,0.25)]'
+              ? 'opacity-60 cursor-not-allowed bg-[var(--accent-primary)] text-white'
+              : 'bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white shadow-[0_0_10px_rgba(37,99,235,0.25)]'
           }`}
           title="Compile HDL with Icarus Verilog"
         >
           {isCompiling ? (
             <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
           ) : (
-            <Settings size={14} />
+            <Settings size={13} />
           )}
           <span>{isCompiling ? 'Compiling...' : 'Compile'}</span>
         </button>
@@ -203,14 +218,14 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
           data-testid="wf-btn-run"
           onClick={onRun}
           disabled={!isCompiled || isCompiling || isPlaying}
-          className={`hidden sm:flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded text-xs font-medium transition-all shadow-sm ${
+          className={`hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-[4px] text-xs font-medium transition-all shadow-xs ${
             !isCompiled || isCompiling || isPlaying
-              ? 'bg-emerald-950/40 text-emerald-500/40 border border-emerald-900/30 cursor-not-allowed'
-              : 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.25)]'
+              ? 'opacity-40 cursor-not-allowed bg-emerald-800/20 text-emerald-400/40 border border-emerald-800/20'
+              : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.25)]'
           }`}
           title="Run Simulation Playback"
         >
-          <Play size={14} className={isPlaying ? 'animate-pulse' : ''} />
+          <Play size={13} className={isPlaying ? 'animate-pulse' : ''} />
           <span>{isPlaying ? 'Playing...' : 'Run'}</span>
         </button>
 
@@ -219,20 +234,25 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
           data-testid="wf-btn-restart"
           onClick={onRestart}
           disabled={!isCompiled}
-          className="hidden sm:flex p-1.5 rounded text-xs font-medium bg-[#1e293b] hover:bg-[#334155] text-slate-300 hover:text-white border border-[#334155] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="hidden sm:flex p-1.5 rounded-[4px] text-xs font-medium border transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          style={{
+            backgroundColor: 'var(--bg-surface)',
+            borderColor: 'var(--border-subtle)',
+            color: 'var(--text-primary)',
+          }}
           title="Reset Playhead to Start"
         >
-          <RotateCcw size={14} />
+          <RotateCcw size={13} />
         </button>
 
-        <div className="w-px h-5 bg-[#1e293b] mx-0.5 hidden md:block" />
+        <div className="w-px h-4 bg-[var(--border-subtle)] mx-0.5 hidden md:block" />
 
         {/* Zoom Controls */}
-        <div className="hidden md:flex items-center bg-[#0f172a] rounded border border-[#1e293b] p-0.5 shadow-inner">
+        <div className="hidden md:flex items-center rounded-[4px] border border-[var(--border-subtle)] p-0.5 bg-[var(--bg-input)]">
           <button
             data-testid="wf-btn-zoom-out"
             onClick={onZoomOut}
-            className="p-1 hover:bg-[#1e293b] hover:text-white rounded text-slate-400 transition-colors"
+            className="p-1 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] rounded-[3px] text-[var(--text-muted)] transition-colors"
             title="Zoom Out"
           >
             <ZoomOut size={13} />
@@ -240,7 +260,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
 
           <span
             data-testid="wf-zoom-level"
-            className="text-[11px] font-mono px-1.5 min-w-[44px] text-center text-slate-300 select-none"
+            className="text-[11px] font-mono px-1.5 min-w-[44px] text-center select-none text-[var(--text-secondary)]"
           >
             {(() => {
               if (zoomLevel >= 10) return `${zoomLevel.toFixed(0)}x`;
@@ -254,7 +274,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
           <button
             data-testid="wf-btn-zoom-in"
             onClick={onZoomIn}
-            className="p-1 hover:bg-[#1e293b] hover:text-white rounded text-slate-400 transition-colors"
+            className="p-1 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] rounded-[3px] text-[var(--text-muted)] transition-colors"
             title="Zoom In"
           >
             <ZoomIn size={13} />
@@ -263,7 +283,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
           <button
             data-testid="wf-btn-zoom-fit"
             onClick={onZoomFit}
-            className="flex items-center gap-1 px-1.5 py-0.5 ml-0.5 hover:bg-[#1e293b] hover:text-blue-300 rounded text-slate-400 transition-colors text-[10px] font-semibold border-l border-[#1e293b]"
+            className="flex items-center gap-1 px-1.5 py-0.5 ml-0.5 hover:bg-[var(--bg-hover)] hover:text-[var(--accent-primary)] rounded-[3px] text-[var(--text-muted)] transition-colors text-[10px] font-medium border-l border-[var(--border-subtle)]"
             title="Zoom to Fit Full Simulation Duration (Alt+F)"
           >
             <Maximize2 size={11} />
@@ -277,48 +297,48 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
         {/* Read-Only Cursors & Delta Timing Display */}
         <div
           data-testid="wf-timing-display"
-          className="hidden md:flex items-center gap-2.5 px-2.5 py-1 bg-[#0f172a] border border-[#1e293b] rounded font-mono text-[11px] text-slate-300 shadow-inner"
+          className="hidden md:flex items-center gap-2.5 px-2.5 py-1 border border-[var(--border-subtle)] rounded-[4px] font-mono text-[11px] bg-[var(--bg-input)] text-[var(--text-secondary)]"
         >
           <div className="flex items-center gap-1">
-            <span className="text-blue-400 font-bold">A:</span>
-            <span className="text-slate-200">
+            <span className="text-blue-500 font-bold">A:</span>
+            <span className="text-[var(--text-primary)]">
               {isCompiled && timescale ? formatTime(currentTime, timescale) : '—'}
             </span>
           </div>
 
-          <span className="text-slate-600">|</span>
+          <span className="text-[var(--border-subtle)]">|</span>
 
           <div className="flex items-center gap-1">
-            <span className="text-amber-400 font-bold">B:</span>
-            <span className={isCompiled && cursorB !== null ? 'text-slate-200' : 'text-slate-500'}>
+            <span className="text-amber-500 font-bold">B:</span>
+            <span className={isCompiled && cursorB !== null ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}>
               {isCompiled && cursorB !== null ? formatTime(cursorB, timescale) : '—'}
             </span>
           </div>
 
-          <span className="text-slate-600">|</span>
+          <span className="text-[var(--border-subtle)]">|</span>
 
           <div className="flex items-center gap-1">
-            <span className="text-emerald-400 font-bold">ΔT:</span>
-            <span className={isCompiled && cursorB !== null ? 'text-emerald-300 font-semibold' : 'text-slate-500'}>
+            <span className="text-emerald-500 font-bold">ΔT:</span>
+            <span className={isCompiled && cursorB !== null ? 'text-emerald-500 font-semibold' : 'text-[var(--text-muted)]'}>
               {isCompiled && cursorB !== null ? formatTime(Math.abs(cursorB - currentTime), timescale) : '—'}
             </span>
           </div>
         </div>
 
-        <div className="w-px h-5 bg-[#1e293b] hidden md:block" />
+        <div className="w-px h-4 bg-[var(--border-subtle)] hidden md:block" />
 
         {/* Console Toggle */}
         <button
           data-testid="wf-toggle-console"
           onClick={onToggleConsole}
           title="Toggle Console (Alt+T)"
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium border transition-colors ${
+          className={`flex items-center gap-1.5 px-2 py-1 rounded-[4px] text-xs font-medium border transition-colors ${
             consoleOpen
-              ? 'bg-blue-600/20 text-blue-300 border-blue-500/40 shadow-sm'
-              : 'bg-[#1e293b]/60 text-slate-400 border-[#334155] hover:bg-[#334155] hover:text-slate-200'
+              ? 'bg-[var(--accent-subtle)] text-[var(--accent-primary)] border-[var(--accent-border)] font-semibold shadow-xs'
+              : 'border-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
           }`}
         >
-          <Terminal size={14} />
+          <Terminal size={13} />
           <span className="hidden sm:inline">Console</span>
         </button>
       </div>

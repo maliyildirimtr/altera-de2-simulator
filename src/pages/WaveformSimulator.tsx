@@ -849,7 +849,11 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
       data-sources-count={sourceFiles.length}
       data-active-source-id={activeSourceId ?? ''}
       data-active-role={activeEditorRole}
-      className="flex flex-col h-full w-full bg-[#0a1120] text-slate-200 font-sans overflow-hidden select-none"
+      className="flex flex-col h-full w-full font-sans overflow-hidden select-none"
+      style={{
+        backgroundColor: 'var(--bg-app)',
+        color: 'var(--text-primary)',
+      }}
     >
       {/* ── Hidden File Inputs ──────────────────────────────────── */}
       <input

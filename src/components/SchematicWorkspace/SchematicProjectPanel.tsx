@@ -43,44 +43,52 @@ export const SchematicProjectPanel: React.FC<SchematicProjectPanelProps> = ({
       style={{
         width: '100%',
         height: '100%',
-        backgroundColor: 'var(--bg-panel, var(--bg-secondary))',
+        backgroundColor: 'var(--bg-panel)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
         fontSize: '0.85rem',
         userSelect: 'none',
+        color: 'var(--text-primary)',
       }}
     >
       {/* Panel Header */}
       <div
+        className="h-9 px-3 flex items-center justify-between shrink-0 border-b"
         style={{
-          padding: '8px 12px',
-          borderBottom: '1px solid var(--border-subtle, var(--border-color))',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexShrink: 0,
+          backgroundColor: 'var(--bg-panel-header)',
+          borderColor: 'var(--border-subtle)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
-          <FolderTree size={14} className="text-slate-400" />
-          <span style={{ color: 'var(--text-primary)' }}>Project Files</span>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <FolderTree size={13} className="text-blue-500 shrink-0" />
+          <span
+            className="text-[11px] font-bold uppercase tracking-wider truncate"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            Project Files
+          </span>
+          <span
+            className="text-[10px] px-1.5 py-0.2 rounded font-mono shrink-0 border"
+            style={{
+              backgroundColor: 'var(--bg-surface)',
+              borderColor: 'var(--border-subtle)',
+              color: 'var(--text-muted)',
+            }}
+          >
+            {files.length}
+          </span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <div className="flex items-center gap-1">
           <button
             data-testid="create-file-btn"
             onClick={onCreateFile}
             title="Create New HDL File"
+            className="p-1 rounded-[4px] border transition-colors"
             style={{
-              background: 'var(--bg-surface, var(--bg-primary))',
-              border: '1px solid var(--border-subtle, var(--border-color))',
+              backgroundColor: 'var(--bg-surface)',
+              borderColor: 'var(--border-subtle)',
               color: 'var(--text-primary)',
-              borderRadius: '4px',
-              padding: '3px 6px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
             }}
           >
             <Plus size={12} />
@@ -89,16 +97,8 @@ export const SchematicProjectPanel: React.FC<SchematicProjectPanelProps> = ({
             <button
               onClick={onClose}
               title="Collapse Project Panel"
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--text-secondary)',
-                cursor: 'pointer',
-                padding: '2px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
+              className="p-1 rounded-[4px] hover:bg-[var(--bg-hover)] transition-colors"
+              style={{ color: 'var(--text-muted)' }}
             >
               <X size={14} />
             </button>
@@ -182,7 +182,7 @@ export const SchematicProjectPanel: React.FC<SchematicProjectPanelProps> = ({
         <div
           style={{
             padding: '8px 12px',
-            borderTop: '1px solid var(--border-color)',
+            borderTop: '1px solid var(--border-subtle)',
             fontSize: '0.75rem',
             color: 'var(--text-secondary)',
           }}
@@ -195,7 +195,7 @@ export const SchematicProjectPanel: React.FC<SchematicProjectPanelProps> = ({
       {/* Synthesis Settings */}
       <div
         style={{
-          borderTop: '1px solid var(--border-color)',
+          borderTop: '1px solid var(--border-subtle)',
           padding: '12px',
           display: 'flex',
           flexDirection: 'column',
