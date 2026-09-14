@@ -71,7 +71,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
         color: 'var(--text-primary)',
       }}
     >
-      {/* ── Left: Panel View Toggles & Primary View Tabs ─────────── */}
+      {/* ── Left: Panel View Toggles & Segmented View Switcher ─────── */}
       <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
         <button
           data-testid="wf-toggle-project"
@@ -103,7 +103,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
 
         <div className="w-px h-4 bg-[var(--border-subtle)] mx-0.5 hidden sm:block" />
 
-        {/* ── Primary View Switcher Tabs ── */}
+        {/* ── Primary View Segmented Switcher ── */}
         <div
           className="flex items-center p-0.5 rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-input)] gap-0.5"
           role="tablist"
@@ -198,10 +198,10 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
           data-testid="wf-btn-compile"
           onClick={onCompile}
           disabled={isCompiling}
-          className={`flex items-center gap-1.5 px-3 py-1 rounded-[4px] text-xs font-medium transition-all shadow-xs ${
+          className={`flex items-center gap-1.5 px-3 py-1 rounded-[4px] text-xs font-medium transition-colors shadow-xs ${
             isCompiling
               ? 'opacity-60 cursor-not-allowed bg-[var(--accent-primary)] text-white'
-              : 'bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white shadow-[0_0_10px_rgba(37,99,235,0.25)]'
+              : 'bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white'
           }`}
           title="Compile HDL with Icarus Verilog"
         >
@@ -213,19 +213,19 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
           <span>{isCompiling ? 'Compiling...' : 'Compile'}</span>
         </button>
 
-        {/* Run Button */}
+        {/* Run Button (Preserves exact !isCompiled || isCompiling || isPlaying logic; neutral disabled styling without green glow) */}
         <button
           data-testid="wf-btn-run"
           onClick={onRun}
           disabled={!isCompiled || isCompiling || isPlaying}
-          className={`hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-[4px] text-xs font-medium transition-all shadow-xs ${
+          className={`hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-[4px] text-xs font-medium transition-colors shadow-xs ${
             !isCompiled || isCompiling || isPlaying
-              ? 'opacity-40 cursor-not-allowed bg-emerald-800/20 text-emerald-400/40 border border-emerald-800/20'
-              : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.25)]'
+              ? 'bg-[var(--bg-surface)] text-[var(--text-disabled)] border border-[var(--border-subtle)] opacity-40 cursor-not-allowed'
+              : 'bg-emerald-600 hover:bg-emerald-500 text-white'
           }`}
           title="Run Simulation Playback"
         >
-          <Play size={13} className={isPlaying ? 'animate-pulse' : ''} />
+          <Play size={13} className={isPlaying ? 'opacity-80' : ''} />
           <span>{isPlaying ? 'Playing...' : 'Run'}</span>
         </button>
 
@@ -297,11 +297,11 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
         {/* Read-Only Cursors & Delta Timing Display */}
         <div
           data-testid="wf-timing-display"
-          className="hidden md:flex items-center gap-2.5 px-2.5 py-1 border border-[var(--border-subtle)] rounded-[4px] font-mono text-[11px] bg-[var(--bg-input)] text-[var(--text-secondary)]"
+          className="hidden md:flex items-center gap-2.5 px-2.5 py-1 border border-[var(--border-subtle)] rounded-[4px] font-mono text-[11px] bg-[var(--bg-input)] text-[var(--text-secondary)] shadow-xs"
         >
           <div className="flex items-center gap-1">
-            <span className="text-blue-500 font-bold">A:</span>
-            <span className="text-[var(--text-primary)]">
+            <span className="text-blue-400 font-semibold">A:</span>
+            <span className="text-[var(--text-primary)] tabular-nums">
               {isCompiled && timescale ? formatTime(currentTime, timescale) : '—'}
             </span>
           </div>
@@ -309,8 +309,8 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
           <span className="text-[var(--border-subtle)]">|</span>
 
           <div className="flex items-center gap-1">
-            <span className="text-amber-500 font-bold">B:</span>
-            <span className={isCompiled && cursorB !== null ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}>
+            <span className="text-amber-400 font-semibold">B:</span>
+            <span className={`tabular-nums ${isCompiled && cursorB !== null ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}`}>
               {isCompiled && cursorB !== null ? formatTime(cursorB, timescale) : '—'}
             </span>
           </div>
@@ -318,8 +318,8 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
           <span className="text-[var(--border-subtle)]">|</span>
 
           <div className="flex items-center gap-1">
-            <span className="text-emerald-500 font-bold">ΔT:</span>
-            <span className={isCompiled && cursorB !== null ? 'text-emerald-500 font-semibold' : 'text-[var(--text-muted)]'}>
+            <span className="text-emerald-400 font-semibold">ΔT:</span>
+            <span className={`tabular-nums ${isCompiled && cursorB !== null ? 'text-emerald-400 font-semibold' : 'text-[var(--text-muted)]'}`}>
               {isCompiled && cursorB !== null ? formatTime(Math.abs(cursorB - currentTime), timescale) : '—'}
             </span>
           </div>

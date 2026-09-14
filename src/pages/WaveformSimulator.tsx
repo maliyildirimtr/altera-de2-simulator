@@ -1024,41 +1024,55 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
           )}
 
           {/* ── Center Right Area: Editor / Waveform / Split ─────── */}
-          <div ref={rightAreaRef} className="flex-1 flex flex-col min-w-0 bg-[#070c18] relative overflow-hidden isolate">
+          <div
+            ref={rightAreaRef}
+            className="flex-1 flex flex-col min-w-0 relative overflow-hidden isolate"
+            style={{ backgroundColor: 'var(--bg-app)' }}
+          >
             
             {/* ── Code Editor Surface (Mounted Offscreen when in Waveform mode to guarantee zero layout glitch and test access) ── */}
             <div
               data-testid="wf-editor-container"
-              style={mainView === 'waveform' ? {
-                position: 'absolute',
-                top: -9999,
-                left: -9999,
-                width: 800,
-                height: 600,
-                visibility: 'hidden',
-                pointerEvents: 'none',
-              } : mainView === 'editor' ? {
-                flex: 1,
-                height: '100%',
-                minHeight: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                position: 'relative',
-                minWidth: 0,
-              } : {
-                height: rightAreaRef.current
-                  ? Math.round(rightAreaRef.current.clientHeight * layout.editorRatio)
-                  : '35%',
-                minHeight: 120,
-                display: 'flex',
-                flexDirection: 'column',
-                position: 'relative',
-                minWidth: 0,
+              style={{
+                backgroundColor: 'var(--bg-panel)',
+                borderColor: 'var(--border-subtle)',
+                ...(mainView === 'waveform' ? {
+                  position: 'absolute',
+                  top: -9999,
+                  left: -9999,
+                  width: 800,
+                  height: 600,
+                  visibility: 'hidden',
+                  pointerEvents: 'none',
+                } : mainView === 'editor' ? {
+                  flex: 1,
+                  height: '100%',
+                  minHeight: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  position: 'relative',
+                  minWidth: 0,
+                } : {
+                  height: rightAreaRef.current
+                    ? Math.round(rightAreaRef.current.clientHeight * layout.editorRatio)
+                    : '35%',
+                  minHeight: 120,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  position: 'relative',
+                  minWidth: 0,
+                }),
               }}
-              className="bg-[#0c1322] border-b border-[#1e293b]"
+              className="border-b"
             >
               {/* Editor Multi-File Tab Bar */}
-              <div className="h-9 bg-[#090f1d] border-b border-[#1e293b] flex items-center justify-between px-2 shrink-0 gap-2 overflow-x-auto min-w-0">
+              <div
+                className="h-9 border-b flex items-center justify-between px-2 shrink-0 gap-2 overflow-x-auto min-w-0"
+                style={{
+                  backgroundColor: 'var(--bg-panel-header)',
+                  borderColor: 'var(--border-subtle)',
+                }}
+              >
                 <div className="flex items-center gap-1 min-w-0 flex-1 overflow-x-auto">
                   {/* Source Files Tabs */}
                   {sourceFiles.map((file, idx) => {
@@ -1072,10 +1086,10 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
                           setActiveSourceId(file.id);
                           setActiveEditorRole('source');
                         }}
-                        className={`flex items-center gap-1.5 px-3 py-1 text-xs font-mono rounded transition-colors group cursor-pointer shrink-0 border ${
+                        className={`flex items-center gap-1.5 px-3 py-1 text-xs font-mono rounded-[4px] transition-colors group cursor-pointer shrink-0 border ${
                           isActive
-                            ? 'bg-[#1e293b] text-blue-300 font-semibold border-blue-500/80 shadow-sm'
-                            : 'text-slate-400 hover:bg-[#111c33] hover:text-slate-200 border-transparent'
+                            ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] font-semibold border-[var(--accent-border)] shadow-xs'
+                            : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] border-transparent'
                         }`}
                         title={file.name}
                         data-editor-tab="source"
@@ -1089,7 +1103,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
                               e.stopPropagation();
                               handleRemoveSource(file.id);
                             }}
-                            className="text-slate-500 hover:text-red-400 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity ml-0.5"
+                            className="text-[var(--text-muted)] hover:text-rose-400 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity ml-0.5"
                             title={`Close ${file.name}`}
                           >
                             <X size={11} />
@@ -1102,30 +1116,30 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
                   {/* Quick Add Source Button in Tab Strip */}
                   <button
                     onClick={() => sourceInputRef.current?.click()}
-                    className="flex items-center gap-1 px-2 py-1 text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-950/30 rounded border border-dashed border-blue-500/30 transition-colors shrink-0"
+                    className="flex items-center gap-1 px-2 py-1 text-xs text-[var(--accent-primary)] hover:text-[var(--accent-hover)] hover:bg-[var(--accent-subtle)] rounded-[4px] border border-dashed border-[var(--accent-border)] transition-colors shrink-0"
                     title="Add or import another source file"
                   >
                     <Plus size={11} />
                     <span>Add Source</span>
                   </button>
 
-                  <div className="w-px h-4 bg-[#1e293b] mx-1 shrink-0" />
+                  <div className="w-px h-4 bg-[var(--border-subtle)] mx-1 shrink-0" />
 
-                  {/* Testbench Tab */}
+                  {/* Testbench Tab (Quiet informational distinction, zero amber) */}
                   <button
                     data-testid="wf-editor-tab-tb"
                     data-editor-tab="testbench"
                     data-filename={testbenchFile ? testbenchFile.name : 'testbench'}
                     onClick={() => setActiveEditorRole('testbench')}
-                    className={`flex items-center gap-1.5 px-3 py-1 text-xs font-mono rounded transition-colors shrink-0 border ${
+                    className={`flex items-center gap-1.5 px-3 py-1 text-xs font-mono rounded-[4px] transition-colors shrink-0 border ${
                       activeEditorRole === 'testbench'
-                        ? 'bg-[#1e293b] text-amber-300 font-semibold border-amber-500/80 shadow-sm'
-                        : 'text-slate-400 hover:bg-[#111c33] hover:text-slate-200 border-transparent'
+                        ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] font-semibold border-[var(--border-strong)] shadow-xs'
+                        : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] border-transparent'
                     }`}
                     title={testbenchFile ? testbenchFile.name : 'Testbench'}
                   >
                     <span className="truncate max-w-[150px]">{testbenchFile ? testbenchFile.name : 'testbench (empty)'}</span>
-                    <span className="text-[9px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 uppercase tracking-wider font-sans font-semibold">
+                    <span className="text-[9px] px-1 py-0.2 rounded bg-slate-800/40 text-slate-300 uppercase tracking-wider font-sans font-medium border border-slate-700/50">
                       testbench
                     </span>
                   </button>
@@ -1135,7 +1149,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
                   <button
                     onClick={() => handleMainViewChange('waveform')}
                     title="Maximize Waveform"
-                    className="text-slate-500 hover:text-slate-300 p-1 rounded transition-colors text-xs shrink-0"
+                    className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 rounded transition-colors text-xs shrink-0"
                   >
                     Hide Editor
                   </button>
@@ -1184,11 +1198,14 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
                     }}
                   />
                 ) : (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-[#0a1120]">
-                    <div className="text-slate-300 text-sm font-semibold mb-1">
+                  <div
+                    className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center"
+                    style={{ backgroundColor: 'var(--bg-surface)' }}
+                  >
+                    <div className="text-[var(--text-primary)] text-sm font-semibold mb-1">
                       No {activeEditorRole === 'source' ? 'Source Module' : 'Testbench'} Selected
                     </div>
-                    <div className="text-slate-500 text-xs font-mono max-w-sm mb-4 leading-relaxed">
+                    <div className="text-[var(--text-muted)] text-xs font-mono max-w-sm mb-4 leading-relaxed">
                       {activeEditorRole === 'source'
                         ? 'Import or add your Verilog / SystemVerilog design source files (.v, .sv).'
                         : 'Import your Verilog / SystemVerilog testbench ($dumpfile / $dumpvars) to drive simulation.'}
@@ -1196,7 +1213,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
                     <button
                       data-testid="wf-empty-editor-import-btn"
                       onClick={() => activeEditorRole === 'source' ? sourceInputRef.current?.click() : tbInputRef.current?.click()}
-                      className="px-3.5 py-1.5 rounded text-xs font-medium bg-blue-600 hover:bg-blue-500 text-white shadow-sm transition-colors"
+                      className="px-3.5 py-1.5 rounded-[4px] text-xs font-medium bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white shadow-xs transition-colors"
                     >
                       Import {activeEditorRole === 'source' ? 'Source File' : 'Testbench File'}
                     </button>
@@ -1239,7 +1256,10 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
 
             {/* ── Waveform Workspace Viewport (Active in Waveform and Split modes) ── */}
             {(mainView === 'waveform' || mainView === 'split') && (
-              <div className="flex-1 flex min-h-0 bg-black overflow-hidden relative min-w-0">
+              <div
+                className="flex-1 flex min-h-0 overflow-hidden relative min-w-0"
+                style={{ backgroundColor: 'var(--bg-canvas-waveform, #080C14)' }}
+              >
                 {/* Left Column: Signal Names Panel */}
                 <SignalNamePanel
                   width={layout.signalColumnWidth}
@@ -1340,16 +1360,28 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
       {/* ── Context Menu (Portal/Absolute) ────────────────────────── */}
       {contextMenu && (
         <div
-          className="fixed z-50 bg-[#0f172a] border border-[#334155] shadow-2xl py-1 rounded w-36 text-slate-200"
-          style={{ top: contextMenu.y, left: contextMenu.x }}
+          className="fixed z-50 border shadow-lg py-1 rounded-[4px] w-36 select-none"
+          style={{
+            top: contextMenu.y,
+            left: contextMenu.x,
+            backgroundColor: 'var(--bg-overlay)',
+            borderColor: 'var(--border-strong)',
+            color: 'var(--text-primary)',
+          }}
         >
           {contextMenu.type === 'radix' && (
             <>
-              <div className="px-3 py-1 text-[10px] text-slate-400 border-b border-[#1e293b] mb-1 font-bold">
-                RADIX
+              <div
+                className="px-3 py-1 text-[10px] border-b mb-1 font-bold tracking-wider uppercase font-mono"
+                style={{
+                  borderColor: 'var(--border-subtle)',
+                  color: 'var(--text-muted)',
+                }}
+              >
+                Radix
               </div>
               <button
-                className="w-full text-left px-3 py-1.5 text-xs hover:bg-blue-600 hover:text-white transition-colors"
+                className="w-full text-left px-3 py-1.5 text-xs hover:bg-[var(--accent-primary)] hover:text-white transition-colors"
                 onClick={() => {
                   setRadixes(prev => ({ ...prev, [contextMenu.signalName]: 'hex' }));
                   setContextMenu(null);
@@ -1358,7 +1390,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
                 Hexadecimal
               </button>
               <button
-                className="w-full text-left px-3 py-1.5 text-xs hover:bg-blue-600 hover:text-white transition-colors"
+                className="w-full text-left px-3 py-1.5 text-xs hover:bg-[var(--accent-primary)] hover:text-white transition-colors"
                 onClick={() => {
                   setRadixes(prev => ({ ...prev, [contextMenu.signalName]: 'dec' }));
                   setContextMenu(null);
@@ -1367,7 +1399,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
                 Decimal
               </button>
               <button
-                className="w-full text-left px-3 py-1.5 text-xs hover:bg-blue-600 hover:text-white transition-colors"
+                className="w-full text-left px-3 py-1.5 text-xs hover:bg-[var(--accent-primary)] hover:text-white transition-colors"
                 onClick={() => {
                   setRadixes(prev => ({ ...prev, [contextMenu.signalName]: 'bin' }));
                   setContextMenu(null);
@@ -1380,7 +1412,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
 
           {contextMenu.type === 'remove' && (
             <button
-              className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-red-950/40 hover:text-red-200 transition-colors"
+              className="w-full text-left px-3 py-1.5 text-xs text-rose-400 hover:bg-rose-500/20 hover:text-rose-200 transition-colors"
               onClick={() => {
                 setWaveSignalNames(prev => prev.filter(n => n !== contextMenu.signalName));
                 setContextMenu(null);

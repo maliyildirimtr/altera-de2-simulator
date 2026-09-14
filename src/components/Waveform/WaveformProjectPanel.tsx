@@ -98,14 +98,14 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
           {/* ── Group 1: Design Sources (Multi-File) ── */}
           <div data-testid="wf-slot-source" className="space-y-1.5 min-w-0">
             <div className="flex items-center justify-between px-1">
-              <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase flex items-center gap-1 min-w-0 truncate">
-                <Cpu size={11} className="text-blue-400 shrink-0" />
+              <span className="text-[10px] font-bold tracking-wider text-[var(--text-muted)] uppercase flex items-center gap-1 min-w-0 truncate">
+                <Cpu size={11} className="text-[var(--accent-primary)] shrink-0" />
                 <span className="truncate">Sources ({sources.length})</span>
               </span>
               <button
                 data-testid="wf-import-source-btn"
                 onClick={onImportSource}
-                className="text-[11px] text-blue-400 hover:text-blue-300 flex items-center gap-0.5 px-1.5 py-0.5 rounded hover:bg-blue-950/40 transition-colors"
+                className="text-[11px] text-[var(--accent-primary)] hover:text-[var(--accent-hover)] flex items-center gap-0.5 px-1.5 py-0.5 rounded hover:bg-[var(--bg-hover)] transition-colors"
                 title="Add design source file (.v, .sv)"
               >
                 <Plus size={11} />
@@ -114,13 +114,24 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
             </div>
 
             {sources.length === 0 ? (
-              <div className="rounded-lg border border-[#1e293b] bg-[#111c33]/40 p-3 text-center">
-                <div className="text-[11px] text-slate-500 mb-2 font-mono">
+              <div
+                className="rounded-[4px] border p-3 text-center"
+                style={{
+                  backgroundColor: 'var(--bg-surface)',
+                  borderColor: 'var(--border-subtle)',
+                }}
+              >
+                <div className="text-[11px] text-[var(--text-muted)] mb-2 font-mono">
                   No design sources loaded
                 </div>
                 <button
                   onClick={onImportSource}
-                  className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium bg-[#1e293b] hover:bg-blue-600/30 hover:text-blue-200 text-slate-300 border border-[#334155] transition-colors"
+                  className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-[4px] text-xs font-medium border transition-colors shadow-xs"
+                  style={{
+                    backgroundColor: 'var(--bg-panel)',
+                    borderColor: 'var(--border-subtle)',
+                    color: 'var(--text-primary)',
+                  }}
                 >
                   <Upload size={12} />
                   <span>Import Source</span>
@@ -141,23 +152,23 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
                         if (onSelectSourceFile) onSelectSourceFile(file.id);
                         onSelectSlot('source');
                       }}
-                      className={`group rounded-md border p-2 flex items-center justify-between gap-2 cursor-pointer transition-all ${
+                      className={`group rounded-[4px] border p-2 flex items-center justify-between gap-2 cursor-pointer transition-colors ${
                         isActive
-                          ? 'border-blue-500/80 bg-blue-950/30 shadow-sm'
-                          : 'border-[#1e293b] bg-[#111c33]/30 hover:border-[#334155] hover:bg-[#111c33]/60'
+                          ? 'border-[var(--accent-border)] bg-[var(--accent-subtle)] shadow-xs'
+                          : 'border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)]'
                       }`}
                       title={file.name}
                     >
                       <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <FileCode size={14} className={isActive ? 'text-blue-400 shrink-0' : 'text-slate-400 shrink-0'} />
+                        <FileCode size={14} className={isActive ? 'text-[var(--accent-primary)] shrink-0' : 'text-[var(--text-muted)] shrink-0'} />
                         <div className="min-w-0 flex-1">
                           <div className={`text-xs font-mono truncate font-medium ${
-                            isActive ? 'text-blue-200' : 'text-slate-200 group-hover:text-blue-300'
+                            isActive ? 'text-[var(--text-primary)] font-semibold' : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'
                           }`}>
                             {file.name}
                           </div>
-                          <div className="text-[10px] text-slate-500 flex items-center gap-1.5">
-                            <span>{file.content.split('\n').length}L</span>
+                          <div className="text-[10px] text-[var(--text-muted)] flex items-center gap-1.5">
+                            <span className="font-mono">{file.content.split('\n').length}L</span>
                             {isActive && (
                               <span className="text-emerald-400 flex items-center gap-0.5 text-[9px]">
                                 <CheckCircle2 size={8} /> Active
@@ -179,7 +190,7 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
                             onClearSlot('source');
                           }
                         }}
-                        className="text-slate-500 hover:text-red-400 p-1 rounded opacity-60 group-hover:opacity-100 transition-all shrink-0"
+                        className="text-[var(--text-muted)] hover:text-rose-400 p-1 rounded opacity-60 group-hover:opacity-100 transition-opacity shrink-0"
                         title={`Remove ${file.name}`}
                       >
                         <Trash2 size={12} />
@@ -191,18 +202,18 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
             )}
           </div>
 
-          {/* ── Group 2: Testbench (TB) ── */}
+          {/* ── Group 2: Testbench (TB) (Quiet informational/neutral styling, zero amber warning color) ── */}
           <div
             data-testid="wf-slot-testbench"
-            className={`rounded-lg border transition-all ${
+            className={`rounded-[4px] border transition-colors ${
               activeEditorSlot === 'testbench'
-                ? 'border-amber-500/80 bg-amber-950/20 shadow-sm'
-                : 'border-[#1e293b] bg-[#111c33]/40 hover:border-[#334155]'
+                ? 'border-[var(--border-strong)] bg-[var(--bg-hover)] shadow-xs'
+                : 'border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:border-[var(--border-strong)]'
             }`}
           >
-            <div className="px-2.5 py-1.5 flex items-center justify-between border-b border-[#1e293b]/60">
-              <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase flex items-center gap-1">
-                <Layers size={11} className="text-amber-400" />
+            <div className="px-2.5 py-1.5 flex items-center justify-between border-b border-[var(--border-subtle)]">
+              <span className="text-[10px] font-bold tracking-wider text-[var(--text-muted)] uppercase flex items-center gap-1">
+                <Layers size={11} className="text-slate-400" />
                 Testbench (TB)
               </span>
               {testbenchFile && (
@@ -212,7 +223,7 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
                     e.stopPropagation();
                     onClearSlot('testbench');
                   }}
-                  className="text-slate-500 hover:text-red-400 transition-colors p-0.5"
+                  className="text-[var(--text-muted)] hover:text-rose-400 transition-colors p-0.5"
                   title="Remove Testbench File"
                 >
                   <Trash2 size={12} />
@@ -226,28 +237,33 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
                 className="p-2.5 flex items-center gap-2 cursor-pointer group"
                 title="Click to edit Testbench file"
               >
-                <FileCode size={16} className="text-amber-400 shrink-0" />
+                <FileCode size={15} className="text-slate-400 shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs font-mono text-slate-200 truncate font-medium group-hover:text-amber-300">
+                  <div className="text-xs font-mono text-[var(--text-secondary)] truncate font-medium group-hover:text-[var(--text-primary)]">
                     {testbenchFile.name}
                   </div>
-                  <div className="text-[10px] text-slate-500 flex items-center gap-1.5">
-                    <span>{testbenchFile.content.split('\n').length} lines</span>
-                    <span className="text-emerald-400 flex items-center gap-0.5">
-                      <CheckCircle2 size={9} /> Assigned
+                  <div className="text-[10px] text-[var(--text-muted)] flex items-center gap-1.5">
+                    <span className="font-mono">{testbenchFile.content.split('\n').length} lines</span>
+                    <span className="text-slate-400 flex items-center gap-0.5 text-[9px] px-1 py-0.2 rounded border border-[var(--border-subtle)] bg-[var(--bg-input)]">
+                      <CheckCircle2 size={8} className="text-emerald-400" /> Assigned
                     </span>
                   </div>
                 </div>
               </div>
             ) : (
               <div className="p-3 text-center">
-                <div className="text-[11px] text-slate-500 mb-2 font-mono">
+                <div className="text-[11px] text-[var(--text-muted)] mb-2 font-mono">
                   No testbench loaded
                 </div>
                 <button
                   data-testid="wf-import-tb-btn"
                   onClick={onImportTestbench}
-                  className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium bg-[#1e293b] hover:bg-amber-600/30 hover:text-amber-200 text-slate-300 border border-[#334155] transition-colors"
+                  className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-[4px] text-xs font-medium border transition-colors shadow-xs"
+                  style={{
+                    backgroundColor: 'var(--bg-panel)',
+                    borderColor: 'var(--border-subtle)',
+                    color: 'var(--text-primary)',
+                  }}
                 >
                   <Upload size={12} />
                   <span>Import Testbench</span>
