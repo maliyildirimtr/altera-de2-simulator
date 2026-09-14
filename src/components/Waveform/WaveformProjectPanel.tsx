@@ -60,17 +60,36 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
   return (
     <aside
       data-testid="wf-project-panel"
-      className="shrink-0 flex flex-col bg-[#0f172a] border-r border-[#1e293b] select-none overflow-hidden h-full z-10 min-w-0"
-      style={{ width }}
+      className="shrink-0 flex flex-col select-none overflow-hidden h-full z-10 min-w-0 border-r"
+      style={{
+        width,
+        backgroundColor: 'var(--bg-panel)',
+        borderColor: 'var(--border-subtle)',
+        color: 'var(--text-primary)',
+      }}
     >
       {/* ── Section 1: Project Files & HDL Slots ─────────────────── */}
-      <div className="flex-1 min-h-[180px] flex flex-col border-b border-[#1e293b] overflow-hidden">
-        <div className="px-3 py-2 bg-[#0a1120] text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-[#1e293b] flex items-center justify-between shrink-0">
+      <div className="flex-1 min-h-[180px] flex flex-col border-b border-[var(--border-subtle)] overflow-hidden">
+        <div
+          className="h-9 px-3 text-[11px] font-bold uppercase tracking-wider border-b flex items-center justify-between shrink-0"
+          style={{
+            backgroundColor: 'var(--bg-panel-header)',
+            borderColor: 'var(--border-subtle)',
+            color: 'var(--text-muted)',
+          }}
+        >
           <span className="flex items-center gap-1.5 min-w-0 truncate">
-            <FolderOpen size={13} className="text-blue-400 shrink-0" />
+            <FolderOpen size={13} className="text-blue-500 shrink-0" />
             <span className="truncate">Project Files</span>
           </span>
-          <span className="text-[10px] px-1.5 py-0.2 bg-[#1e293b] text-slate-400 rounded font-mono shrink-0 ml-1">
+          <span
+            className="text-[10px] px-1.5 py-0.2 rounded font-mono shrink-0 ml-1 border"
+            style={{
+              backgroundColor: 'var(--bg-surface)',
+              borderColor: 'var(--border-subtle)',
+              color: 'var(--text-muted)',
+            }}
+          >
             {totalFiles}
           </span>
         </div>
@@ -274,9 +293,19 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
       </div>
 
       {/* ── Section 2: Hardware Hierarchy ───────────────────────── */}
-      <div className="flex-1 min-h-[140px] flex flex-col overflow-hidden bg-[#0f172a]">
-        <div className="px-3 py-2 bg-[#0a1120] text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-[#1e293b] flex items-center gap-1.5 shrink-0">
-          <Cpu size={13} className="text-slate-400" />
+      <div
+        className="flex-1 min-h-[140px] flex flex-col overflow-hidden"
+        style={{ backgroundColor: 'var(--bg-panel)' }}
+      >
+        <div
+          className="h-9 px-3 text-[11px] font-bold uppercase tracking-wider border-b flex items-center gap-1.5 shrink-0"
+          style={{
+            backgroundColor: 'var(--bg-panel-header)',
+            borderColor: 'var(--border-subtle)',
+            color: 'var(--text-muted)',
+          }}
+        >
+          <Cpu size={13} style={{ color: 'var(--text-muted)' }} />
           <span>Hardware Hierarchy</span>
         </div>
 
@@ -288,7 +317,7 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
               onScopeSelect={onScopeSelect}
             />
           ) : (
-            <div className="px-3 py-6 text-center text-xs text-slate-500 italic">
+            <div className="px-3 py-6 text-center text-xs italic" style={{ color: 'var(--text-muted)' }}>
               Compile HDL to inspect design instance hierarchy.
             </div>
           )}

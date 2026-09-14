@@ -171,11 +171,11 @@ export const ResizableDivider: React.FC<ResizableDividerProps> = ({
       className={`
         relative shrink-0 select-none outline-none focus-visible:ring-1 focus-visible:ring-blue-400
         ${isVertical ? 'w-[1px] h-full cursor-col-resize' : 'h-[1px] w-full cursor-row-resize'}
-        ${isDragging 
-          ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.9)] z-40' 
-          : isHovered 
-            ? 'bg-blue-400/80 shadow-[0_0_4px_rgba(59,130,246,0.5)] z-30' 
-            : 'bg-[#1e293b] z-20'}
+        ${isDragging
+          ? 'bg-[var(--accent-primary)] shadow-[0_0_8px_rgba(37,99,235,0.8)] z-40'
+          : isHovered
+            ? 'bg-[var(--accent-hover)] shadow-[0_0_4px_rgba(37,99,235,0.4)] z-30'
+            : 'bg-[var(--border-subtle)] z-20'}
         ${className}
       `}
     >

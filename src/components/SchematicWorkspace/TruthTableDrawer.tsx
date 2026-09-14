@@ -84,30 +84,27 @@ export const TruthTableDrawer: React.FC<TruthTableDrawerProps> = ({
 
       {/* Drawer Header */}
       <div
+        className="h-9 px-3 flex items-center justify-between shrink-0 border-b select-none"
         style={{
-          padding: '8px 12px',
           borderBottom: '1px solid var(--border-subtle)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexShrink: 0,
           backgroundColor: 'var(--bg-panel-header)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Table2 size={15} className="text-sky-400" />
-          <span style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+        <div className="flex items-center gap-2 min-w-0">
+          <Table2 size={14} className="text-blue-500 shrink-0" />
+          <span
+            className="text-[11px] font-bold uppercase tracking-wider truncate"
+            style={{ color: 'var(--text-muted)' }}
+          >
             Truth Table
           </span>
           {hasData && (
             <span
+              className="text-[10px] px-1.5 py-0.2 rounded font-mono shrink-0 border font-medium"
               style={{
-                fontSize: '0.7rem',
-                padding: '2px 6px',
-                borderRadius: '10px',
-                background: 'rgba(56, 189, 248, 0.15)',
-                color: '#38bdf8',
-                fontWeight: 600,
+                backgroundColor: 'var(--accent-subtle)',
+                borderColor: 'var(--accent-border)',
+                color: 'var(--accent-primary)',
               }}
             >
               {truthTableData.length} rows (2^{totalBits})
@@ -118,19 +115,10 @@ export const TruthTableDrawer: React.FC<TruthTableDrawerProps> = ({
           data-testid="truth-table-close-btn"
           onClick={onClose}
           title="Close Truth Table"
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: 'var(--text-secondary)',
-            cursor: 'pointer',
-            padding: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: '4px',
-          }}
+          className="p-1 rounded-[4px] hover:bg-[var(--bg-hover)] transition-colors"
+          style={{ color: 'var(--text-muted)' }}
         >
-          <X size={15} />
+          <X size={14} />
         </button>
       </div>
 

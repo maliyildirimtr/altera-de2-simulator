@@ -392,7 +392,7 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
         height: '100vh',
         display: 'flex',
         flexDirection: 'column',
-        backgroundColor: 'var(--bg-primary)',
+        backgroundColor: 'var(--bg-app)',
         color: 'var(--text-primary)',
         overflow: 'hidden',
         userSelect: 'none',

@@ -67,100 +67,78 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
       case 'ready':
         return {
           text: 'Schematic Ready',
-          bg: 'rgba(34, 197, 94, 0.15)',
-          color: '#22c55e',
-          border: 'rgba(34, 197, 94, 0.3)',
-          dot: '#22c55e',
+          bg: 'rgba(34, 197, 94, 0.12)',
+          color: '#16a34a',
+          border: 'rgba(34, 197, 94, 0.25)',
+          dot: '#16a34a',
         };
       case 'modified':
         return {
           text: 'Needs Synthesis',
-          bg: 'rgba(245, 158, 11, 0.15)',
-          color: '#f59e0b',
-          border: 'rgba(245, 158, 11, 0.3)',
-          dot: '#f59e0b',
+          bg: 'rgba(234, 179, 8, 0.12)',
+          color: '#ca8a04',
+          border: 'rgba(234, 179, 8, 0.25)',
+          dot: '#ca8a04',
         };
       case 'synthesizing':
         return {
           text: 'Synthesizing...',
-          bg: 'rgba(56, 189, 248, 0.15)',
-          color: '#38bdf8',
-          border: 'rgba(56, 189, 248, 0.3)',
-          dot: '#38bdf8',
+          bg: 'rgba(37, 99, 235, 0.12)',
+          color: 'var(--accent-primary)',
+          border: 'rgba(37, 99, 235, 0.25)',
+          dot: 'var(--accent-primary)',
         };
       case 'error':
         return {
           text: 'Error',
-          bg: 'rgba(239, 68, 68, 0.15)',
+          bg: 'rgba(239, 68, 68, 0.12)',
           color: '#ef4444',
-          border: 'rgba(239, 68, 68, 0.3)',
+          border: 'rgba(239, 68, 68, 0.25)',
           dot: '#ef4444',
         };
       case 'no_source':
       default:
         return {
           text: 'No Source',
-          bg: 'rgba(148, 163, 184, 0.15)',
-          color: '#94a3b8',
-          border: 'rgba(148, 163, 184, 0.3)',
-          dot: '#94a3b8',
+          bg: 'var(--bg-surface)',
+          color: 'var(--text-muted)',
+          border: 'var(--border-subtle)',
+          dot: 'var(--text-muted)',
         };
     }
   };
 
   const badge = getStatusBadge();
 
-  const btnBaseStyle: React.CSSProperties = {
-    padding: '4px 8px',
-    background: 'transparent',
-    border: '1px solid transparent',
-    color: 'var(--text-primary)',
-    borderRadius: '5px',
-    cursor: 'pointer',
-    fontSize: '0.8rem',
-    fontWeight: '500',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '5px',
-    transition: 'all 0.15s ease',
-  };
-
   return (
     <header
       data-testid="schematic-toolbar"
+      className="h-[42px] px-3 flex items-center justify-between shrink-0 z-20 select-none border-b min-w-0"
       style={{
-        height: '42px',
-        background: 'var(--bg-toolbar, var(--bg-surface))',
-        borderBottom: '1px solid var(--border-subtle)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0 12px',
-        userSelect: 'none',
-        zIndex: 20,
-        flexShrink: 0,
+        backgroundColor: 'var(--bg-toolbar)',
+        borderColor: 'var(--border-subtle)',
+        color: 'var(--text-primary)',
       }}
     >
       {/* Left: Branding & Status & Panels */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div className="flex items-center gap-2">
         <button
           data-testid="schematic-project-toggle"
           title={isProjectOpen ? 'Collapse Project Explorer' : 'Expand Project Explorer'}
           onClick={onToggleProject}
-          style={{
-            ...btnBaseStyle,
-            border: isProjectOpen ? '1px solid var(--border-strong)' : '1px solid transparent',
-            background: isProjectOpen ? 'var(--accent-subtle)' : 'transparent',
-            color: isProjectOpen ? 'var(--accent-primary)' : 'var(--text-secondary)',
-            padding: '4px 6px',
-          }}
+          className={`flex items-center gap-1.5 px-2 py-1 rounded-[4px] text-xs font-medium border transition-colors ${
+            isProjectOpen
+              ? 'bg-[var(--accent-subtle)] text-[var(--accent-primary)] border-[var(--accent-border)] font-semibold shadow-xs'
+              : 'border-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+          }`}
         >
-          <FolderTree size={15} />
+          <FolderTree size={14} />
+          <span className="hidden md:inline">Project</span>
         </button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <GitGraph size={16} style={{ color: 'var(--tool-schematic-accent, #2dd4bf)' }} />
-          <span style={{ fontWeight: 600, fontSize: '0.88rem', letterSpacing: '-0.01em', color: 'var(--text-primary)' }}>
+        <div className="flex items-center gap-1.5 ml-1">
+          <GitGraph size={15} style={{ color: 'var(--accent-primary)' }} />
+          <span className="font-semibold text-xs tracking-tight" style={{ color: 'var(--text-primary)' }}>
             Schematic
           </span>
         </div>
@@ -168,83 +146,57 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
         {/* Status Badge */}
         <div
           data-testid="schematic-status"
+          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[4px] text-[11px] font-medium border"
           style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '2px 8px',
-            borderRadius: '12px',
             background: badge.bg,
-            border: `1px solid ${badge.border}`,
+            borderColor: badge.border,
             color: badge.color,
-            fontSize: '0.75rem',
-            fontWeight: 600,
           }}
         >
           <span
-            style={{
-              width: '6px',
-              height: '6px',
-              borderRadius: '50%',
-              backgroundColor: badge.dot,
-            }}
+            className="w-1.5 h-1.5 rounded-full shrink-0"
+            style={{ backgroundColor: badge.dot }}
           />
           <span>{badge.text}</span>
         </div>
       </div>
 
       {/* Center: View Modes & Reset Layout */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+      <div className="flex items-center gap-1.5">
         <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            background: 'var(--bg-app)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: '6px',
-            padding: '2px',
-            gap: '2px',
-          }}
+          className="flex items-center p-0.5 rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-input)] gap-0.5"
+          role="tablist"
         >
           <button
             data-testid="view-mode-schematic"
             onClick={() => onViewModeChange('schematic')}
-            style={{
-              ...btnBaseStyle,
-              padding: '3px 10px',
-              fontSize: '0.78rem',
-              background: viewMode === 'schematic' ? 'var(--accent-primary)' : 'transparent',
-              color: viewMode === 'schematic' ? '#fff' : 'var(--text-secondary)',
-              fontWeight: viewMode === 'schematic' ? 600 : 500,
-            }}
+            className={`px-2.5 py-1 rounded-[3px] text-xs transition-colors ${
+              viewMode === 'schematic'
+                ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-transparent'
+            }`}
           >
             Schematic
           </button>
           <button
             data-testid="view-mode-split"
             onClick={() => onViewModeChange('split')}
-            style={{
-              ...btnBaseStyle,
-              padding: '3px 10px',
-              fontSize: '0.78rem',
-              background: viewMode === 'split' ? 'var(--accent-primary)' : 'transparent',
-              color: viewMode === 'split' ? '#fff' : 'var(--text-secondary)',
-              fontWeight: viewMode === 'split' ? 600 : 500,
-            }}
+            className={`px-2.5 py-1 rounded-[3px] text-xs transition-colors ${
+              viewMode === 'split'
+                ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-transparent'
+            }`}
           >
             Split View
           </button>
           <button
             data-testid="view-mode-code"
             onClick={() => onViewModeChange('code')}
-            style={{
-              ...btnBaseStyle,
-              padding: '3px 10px',
-              fontSize: '0.78rem',
-              background: viewMode === 'code' ? 'var(--accent-primary)' : 'transparent',
-              color: viewMode === 'code' ? '#fff' : 'var(--text-secondary)',
-              fontWeight: viewMode === 'code' ? 600 : 500,
-            }}
+            className={`px-2.5 py-1 rounded-[3px] text-xs transition-colors ${
+              viewMode === 'code'
+                ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-transparent'
+            }`}
           >
             Code
           </button>
@@ -255,13 +207,7 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
             data-testid="schematic-reset-layout-btn"
             onClick={onResetLayout}
             title="Reset Workspace Layout"
-            style={{
-              ...btnBaseStyle,
-              padding: '5px',
-              border: '1px solid var(--border-subtle)',
-              color: 'var(--text-muted)',
-              background: 'transparent',
-            }}
+            className="p-1.5 rounded-[4px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors border border-transparent"
           >
             <RotateCcw size={13} />
           </button>
@@ -269,20 +215,20 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
       </div>
 
       {/* Right: Actions, Zoom/Pan & Toggle Utilities */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+      <div className="flex items-center gap-1.5">
         <button
           data-testid="schematic-upload-btn"
           onClick={onUploadClick}
           title="Upload Verilog/SystemVerilog files"
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-xs font-medium border transition-colors shadow-xs"
           style={{
-            ...btnBaseStyle,
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border-subtle)',
+            backgroundColor: 'var(--bg-surface)',
+            borderColor: 'var(--border-subtle)',
             color: 'var(--text-primary)',
           }}
         >
-          <Upload size={14} />
-          <span>Upload</span>
+          <Upload size={13} />
+          <span className="hidden sm:inline">Upload</span>
         </button>
 
         <button
@@ -290,56 +236,41 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
           onClick={onSynthesize}
           disabled={status === 'synthesizing'}
           title="Synthesize HDL into Logic Schematic"
-          style={{
-            ...btnBaseStyle,
-            background: status === 'synthesizing' ? 'rgba(56, 189, 248, 0.4)' : 'var(--accent-primary)',
-            color: '#fff',
-            border: 'none',
-            fontWeight: 600,
-            cursor: status === 'synthesizing' ? 'not-allowed' : 'pointer',
-          }}
+          className={`flex items-center gap-1.5 px-3 py-1 rounded-[4px] text-xs font-medium transition-all shadow-xs ${
+            status === 'synthesizing'
+              ? 'opacity-60 cursor-not-allowed bg-[var(--accent-primary)] text-white'
+              : 'bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white shadow-[0_0_10px_rgba(37,99,235,0.25)]'
+          }`}
         >
           {status === 'synthesizing' ? (
-            <Loader2 size={14} className="animate-spin" />
+            <Loader2 size={13} className="animate-spin" />
           ) : (
-            <Cpu size={14} />
+            <Cpu size={13} />
           )}
           <span>{status === 'synthesizing' ? 'Synthesizing...' : 'Synthesize'}</span>
         </button>
 
-        <div style={{ width: '1px', height: '18px', background: 'var(--border-subtle)', margin: '0 4px' }} />
+        <div className="w-px h-4 bg-[var(--border-subtle)] mx-0.5 hidden sm:block" />
 
         {/* Zoom Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+        <div className="hidden sm:flex items-center rounded-[4px] border border-[var(--border-subtle)] p-0.5 bg-[var(--bg-input)]">
           <button
             data-testid="schematic-zoom-out-btn"
             onClick={onZoomOut}
             disabled={!hasCircuit}
             title="Zoom Out (Ctrl -)"
-            style={{
-              ...btnBaseStyle,
-              background: 'var(--bg-surface)',
-              border: '1px solid var(--border-subtle)',
-              opacity: hasCircuit ? 1 : 0.4,
-              padding: '5px',
-            }}
+            className="p-1 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] rounded-[3px] text-[var(--text-muted)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            <ZoomOut size={14} />
+            <ZoomOut size={13} />
           </button>
           <button
             data-testid="schematic-fit-btn"
             onClick={onFit}
             disabled={!hasCircuit}
             title="Fit Schematic to Viewport"
-            style={{
-              ...btnBaseStyle,
-              background: 'var(--bg-surface)',
-              border: '1px solid var(--border-subtle)',
-              opacity: hasCircuit ? 1 : 0.4,
-              fontSize: '0.78rem',
-            }}
+            className="flex items-center gap-1 px-1.5 py-0.5 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] rounded-[3px] text-[var(--text-muted)] transition-colors text-[10px] font-medium disabled:opacity-40 disabled:cursor-not-allowed border-x border-[var(--border-subtle)]"
           >
-            <Maximize2 size={13} />
+            <Maximize2 size={11} />
             <span>Fit</span>
           </button>
           <button
@@ -347,34 +278,22 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
             onClick={onZoomIn}
             disabled={!hasCircuit}
             title="Zoom In (Ctrl +)"
-            style={{
-              ...btnBaseStyle,
-              background: 'var(--bg-surface)',
-              border: '1px solid var(--border-subtle)',
-              opacity: hasCircuit ? 1 : 0.4,
-              padding: '5px',
-            }}
+            className="p-1 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] rounded-[3px] text-[var(--text-muted)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            <ZoomIn size={14} />
+            <ZoomIn size={13} />
           </button>
           <button
             data-testid="schematic-reset-view-btn"
             onClick={onResetView}
             disabled={!hasCircuit}
             title="Reset Pan & Zoom"
-            style={{
-              ...btnBaseStyle,
-              background: 'var(--bg-surface)',
-              border: '1px solid var(--border-subtle)',
-              opacity: hasCircuit ? 1 : 0.4,
-              fontSize: '0.78rem',
-            }}
+            className="px-1.5 py-0.5 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] rounded-[3px] text-[var(--text-muted)] transition-colors text-[10px] font-mono font-medium disabled:opacity-40 disabled:cursor-not-allowed border-l border-[var(--border-subtle)]"
           >
             <span>1:1</span>
           </button>
         </div>
 
-        <div style={{ width: '1px', height: '18px', background: 'var(--border-subtle)', margin: '0 4px' }} />
+        <div className="w-px h-4 bg-[var(--border-subtle)] mx-0.5 hidden md:block" />
 
         {/* Truth Table Toggle */}
         <button
@@ -382,16 +301,14 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
           onClick={onToggleTruthTable}
           disabled={!hasCircuit}
           title={isTruthTableOpen ? 'Close Truth Table' : 'Open Interactive Truth Table'}
-          style={{
-            ...btnBaseStyle,
-            background: isTruthTableOpen ? 'rgba(56, 189, 248, 0.15)' : 'var(--bg-surface)',
-            border: isTruthTableOpen ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid var(--border-subtle)',
-            color: isTruthTableOpen ? '#38bdf8' : 'var(--text-primary)',
-            opacity: hasCircuit ? 1 : 0.4,
-          }}
+          className={`flex items-center gap-1.5 px-2 py-1 rounded-[4px] text-xs font-medium border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+            isTruthTableOpen
+              ? 'bg-[var(--accent-subtle)] text-[var(--accent-primary)] border-[var(--accent-border)] font-semibold shadow-xs'
+              : 'border-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+          }`}
         >
-          <Table2 size={14} />
-          <span>Truth Table</span>
+          <Table2 size={13} />
+          <span className="hidden lg:inline">Truth Table</span>
         </button>
 
         {/* Inspector Toggle */}
@@ -399,15 +316,14 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
           data-testid="schematic-inspector-toggle"
           onClick={onToggleInspector}
           title={isInspectorOpen ? 'Collapse Inspector' : 'Expand Inspector'}
-          style={{
-            ...btnBaseStyle,
-            background: isInspectorOpen ? 'rgba(255,255,255,0.06)' : 'var(--bg-surface)',
-            border: '1px solid var(--border-subtle)',
-            color: isInspectorOpen ? 'var(--text-primary)' : 'var(--text-secondary)',
-          }}
+          className={`flex items-center gap-1.5 px-2 py-1 rounded-[4px] text-xs font-medium border transition-colors ${
+            isInspectorOpen
+              ? 'bg-[var(--accent-subtle)] text-[var(--accent-primary)] border-[var(--accent-border)] font-semibold shadow-xs'
+              : 'border-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+          }`}
         >
-          <Info size={14} />
-          <span>Inspector</span>
+          <Info size={13} />
+          <span className="hidden lg:inline">Inspector</span>
         </button>
 
         {/* Console Toggle */}
@@ -415,27 +331,16 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
           data-testid="schematic-console-toggle"
           onClick={onToggleConsole}
           title={isConsoleOpen ? 'Close Console / Problems' : 'Open Console / Problems'}
-          style={{
-            ...btnBaseStyle,
-            background: isConsoleOpen ? 'rgba(255,255,255,0.06)' : 'var(--bg-surface)',
-            border: '1px solid var(--border-subtle)',
-            color: isConsoleOpen ? 'var(--text-primary)' : 'var(--text-secondary)',
-          }}
+          className={`flex items-center gap-1.5 px-2 py-1 rounded-[4px] text-xs font-medium border transition-colors ${
+            isConsoleOpen
+              ? 'bg-[var(--accent-subtle)] text-[var(--accent-primary)] border-[var(--accent-border)] font-semibold shadow-xs'
+              : 'border-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+          }`}
         >
-          <Terminal size={14} />
-          <span>Console</span>
+          <Terminal size={13} />
+          <span className="hidden sm:inline">Console</span>
           {errorCount > 0 && (
-            <span
-              style={{
-                background: '#ef4444',
-                color: '#fff',
-                fontSize: '0.68rem',
-                borderRadius: '8px',
-                padding: '1px 5px',
-                lineHeight: 1,
-                fontWeight: 700,
-              }}
-            >
+            <span className="text-[10px] font-mono px-1 py-0.2 bg-red-500/10 text-red-500 rounded font-semibold border border-red-500/20">
               {errorCount}
             </span>
           )}
