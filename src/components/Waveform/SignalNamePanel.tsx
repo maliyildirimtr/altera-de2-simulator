@@ -95,25 +95,37 @@ export function SignalNamePanel({
   return (
     <div
       data-testid="wf-signal-name-panel"
-      className="shrink-0 border-r border-[#222222] bg-[#1e1e1e] flex flex-col z-10 shadow-[2px_0_5px_rgba(0,0,0,0.5)]"
-      style={{ width: width !== undefined ? width : nameW + 3 + valW }}
+      className="shrink-0 border-r flex flex-col z-10 select-none"
+      style={{
+        width: width !== undefined ? width : nameW + 3 + valW,
+        backgroundColor: 'var(--bg-panel)',
+        borderColor: 'var(--border-subtle)',
+      }}
     >
 
       {/* ── Column Headers (Resizable) ── */}
-      <div className="h-6 shrink-0 bg-[#16171d] border-b border-[#222222] flex text-[11px] font-semibold text-gray-400 select-none relative">
+      <div
+        className="h-6 shrink-0 border-b flex text-[10px] font-bold tracking-wider uppercase select-none relative"
+        style={{
+          backgroundColor: 'var(--bg-panel-header)',
+          borderColor: 'var(--border-subtle)',
+          color: 'var(--text-muted)',
+        }}
+      >
         {/* Name header */}
-        <div className="flex items-center px-3 text-[10px] font-bold tracking-wider text-gray-400 uppercase shrink-0" style={{ width: nameW }}>
+        <div className="flex items-center px-3 truncate shrink-0" style={{ width: nameW }}>
           Signal
         </div>
 
         {/* Drag handle */}
         <div
-          className="w-[3px] h-full shrink-0 cursor-col-resize hover:bg-blue-500 active:bg-blue-600 bg-[#333] z-10 transition-colors"
+          className="w-[3px] h-full shrink-0 cursor-col-resize hover:bg-[var(--accent-primary)] active:bg-[var(--accent-hover)] transition-colors"
+          style={{ backgroundColor: 'var(--border-subtle)' }}
           {...getHandleProps(0)}
         />
 
         {/* Value header */}
-        <div className="flex-1 h-full flex items-center px-3 text-[10px] font-bold tracking-wider text-gray-400 uppercase overflow-hidden">
+        <div className="flex-1 h-full flex items-center px-3 truncate overflow-hidden">
           Value
         </div>
       </div>
@@ -131,36 +143,39 @@ export function SignalNamePanel({
                 key={idx}
                 data-testid="wf-name-row"
                 data-signal-id={row.id}
-                className={`h-[40px] flex group border-b border-[#222222]/50 cursor-pointer transition-colors
-                  ${isSelected ? 'bg-[#1e3a5f]/40' : 'hover:bg-[#2a2d3e]/30'}`}
+                className={`h-[40px] flex group border-b cursor-pointer transition-colors ${
+                  isSelected
+                    ? 'bg-blue-600/15 border-blue-500/25'
+                    : 'hover:bg-[var(--bg-hover)] border-slate-800/30'
+                }`}
                 onClick={() => onSelectSignal(row.id)}
                 onContextMenu={e => onContextMenu(e, row.type === 'bit' ? row.parentName! : row.signal.name, isBus ? 'radix' : 'remove')}
               >
                 {/* ── Name Column ── */}
                 <div
-                  className="shrink-0 border-r border-[#222222] flex items-center px-2 overflow-hidden"
+                  className="shrink-0 border-r border-slate-800/40 flex items-center px-2 overflow-hidden"
                   style={{ width: nameW, paddingLeft: `${row.indent + 8}px` }}
                   title={row.signal.name}
                 >
                   <div className="flex items-center gap-1.5 w-full min-w-0">
                     {isBus ? (
                       <div
-                        className="p-0.5 rounded hover:bg-white/10 text-gray-400 cursor-pointer shrink-0"
+                        className="p-0.5 rounded hover:bg-white/10 text-slate-400 cursor-pointer shrink-0"
                         onClick={e => { e.stopPropagation(); onToggleBusExpand(row.signal.name); }}
                       >
-                        {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                        {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
                       </div>
                     ) : (
-                      <div className="w-[18px] shrink-0" />
+                      <div className="w-[17px] shrink-0" />
                     )}
-                    <Binary size={12} className={`shrink-0 ${row.type === 'bit' ? 'text-gray-500' : 'text-blue-400'}`} />
+                    <Binary size={12} className={`shrink-0 ${row.type === 'bit' ? 'text-slate-500' : 'text-blue-400'}`} />
                     <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
                       <div className="flex items-center gap-1 min-w-0 leading-tight">
-                        <span className={`text-[11px] font-mono truncate select-none ${row.type === 'bit' ? 'text-gray-400' : 'text-gray-200 font-semibold'}`}>
+                        <span className={`text-[11px] font-mono truncate select-none ${row.type === 'bit' ? 'text-slate-400' : 'text-slate-200 font-medium'}`}>
                           {row.displayName}
                         </span>
                         {row.type === 'signal' && row.signal.width > 1 && (
-                          <span className="text-[10px] text-gray-500 font-mono shrink-0">
+                          <span className="text-[10px] text-slate-500 font-mono shrink-0">
                             [{row.signal.width - 1}:0]
                           </span>
                         )}
@@ -175,24 +190,24 @@ export function SignalNamePanel({
                 </div>
 
                 {/* Splitter visual bar */}
-                <div className="w-[3px] shrink-0 bg-[#222]" />
+                <div className="w-[3px] shrink-0 border-r border-slate-800/30" />
 
                 {/* ── Value Column ── */}
                 <div className="flex-1 flex items-center justify-between px-3 text-[12px] font-mono font-bold tracking-tight overflow-hidden">
-                  <div className="truncate">
+                  <div className="truncate tabular-nums">
                     {renderValue(row)}
                   </div>
                   {/* Edge Navigation (on hover) */}
                   <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                     <button
-                      className="p-1 rounded bg-[#2a2d3e] hover:bg-[#37373d] text-gray-400 hover:text-white border border-[#444] shadow-sm"
+                      className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 shadow-xs transition-colors"
                       onClick={e => handleEdgeSearch(e, row, 'prev')}
                       title="Previous Edge"
                     >
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 18l-6-6 6-6"/></svg>
                     </button>
                     <button
-                      className="p-1 rounded bg-[#2a2d3e] hover:bg-[#37373d] text-gray-400 hover:text-white border border-[#444] shadow-sm"
+                      className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 shadow-xs transition-colors"
                       onClick={e => handleEdgeSearch(e, row, 'next')}
                       title="Next Edge"
                     >

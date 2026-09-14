@@ -53,24 +53,41 @@ export function ObjectsPanel({
   };
 
   return (
-    <div className="border-r border-[#1e293b] flex flex-col bg-[#0c0d0e] shrink-0 h-full select-none min-w-0">
-      {/* Header */}
-      <div className="h-7 bg-[#0a1120] border-b border-[#1e293b] flex items-center justify-between px-2.5 shrink-0">
-        <span className="text-xs font-bold text-slate-300 tracking-wide uppercase text-[10px]">Objects</span>
-        {selectedObjects.length > 0 && (
+    <div
+      className="flex flex-col shrink-0 h-full select-none min-w-0"
+      style={{
+        backgroundColor: 'var(--bg-panel)',
+        color: 'var(--text-primary)',
+      }}
+    >
+      {/* Dynamic Action Bar (only visible when multiple objects are selected) */}
+      {selectedObjects.length > 0 && (
+        <div
+          className="h-7 border-b flex items-center justify-between px-2.5 shrink-0"
+          style={{
+            backgroundColor: 'var(--accent-subtle)',
+            borderColor: 'var(--accent-border)',
+          }}
+        >
+          <span className="text-[10px] font-mono text-[var(--accent-primary)] font-semibold">
+            {selectedObjects.length} selected
+          </span>
           <button
             onClick={handleAddSelected}
-            className="text-[10px] bg-blue-600 hover:bg-blue-500 text-white px-2 py-0.5 rounded font-medium shadow-sm transition-colors"
+            className="text-[10px] bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white px-2 py-0.5 rounded font-medium shadow-xs transition-colors"
           >
-            + Add {selectedObjects.length} to Wave
+            + Add to Wave
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Signal rows or Empty state */}
       {signals.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-slate-500 text-xs bg-[#0c0d0e] select-none">
-          <Layers size={26} className="mb-2.5 opacity-30 text-blue-400" />
+        <div
+          className="flex-1 flex flex-col items-center justify-center p-6 text-center select-none"
+          style={{ backgroundColor: 'var(--bg-panel)' }}
+        >
+          <Layers size={24} className="mb-2.5 opacity-30 text-blue-400" />
           <p className="font-semibold text-slate-300 mb-1 text-xs">No signals loaded</p>
           <p className="text-[11px] text-slate-500 max-w-[210px] leading-relaxed">
             Compile an HDL project or import a VCD file to inspect design signals.
@@ -79,28 +96,40 @@ export function ObjectsPanel({
       ) : (
         <>
           {/* ── Responsive Column Header Row ── */}
-          <div className="grid grid-cols-[minmax(80px,1.5fr)_minmax(50px,1fr)_minmax(50px,1fr)] bg-[#090e1a] border-b border-[#1e293b] text-[10px] font-bold tracking-wider text-slate-400 uppercase h-6 shrink-0 px-2 items-center gap-1.5">
+          <div
+            className="grid grid-cols-[minmax(80px,1.5fr)_minmax(50px,1fr)_minmax(50px,1fr)] border-b text-[10px] font-bold tracking-wider uppercase h-6 shrink-0 px-2 items-center gap-1.5"
+            style={{
+              backgroundColor: 'var(--bg-panel-header)',
+              borderColor: 'var(--border-subtle)',
+              color: 'var(--text-muted)',
+            }}
+          >
             <div className="truncate">Name</div>
             <div className="truncate">Value</div>
             <div className="truncate">Type</div>
           </div>
 
           {/* ── Responsive Signal Rows ── */}
-          <div className="flex-1 overflow-auto text-gray-200 font-mono text-[12px] py-0.5 bg-[#0c0d0e]">
+          <div
+            className="flex-1 overflow-auto text-slate-200 font-mono text-[11px] py-0.5"
+            style={{ backgroundColor: 'var(--bg-panel)' }}
+          >
             {signals.map((sig, idx) => {
               const isSelected = selectedObjects.includes(sig.name);
               return (
                 <div
                   key={idx}
                   onClick={e => handleSelect(e, sig)}
-                  className={`grid grid-cols-[minmax(80px,1.5fr)_minmax(50px,1fr)_minmax(50px,1fr)] items-center px-2 h-7 hover:bg-[#1e3a5f]/40 border-b border-[#1e293b]/40 group cursor-pointer gap-1.5 transition-colors ${
-                    isSelected ? 'bg-blue-950/40 border-blue-500/40' : ''
+                  className={`grid grid-cols-[minmax(80px,1.5fr)_minmax(50px,1fr)_minmax(50px,1fr)] items-center px-2 h-7 border-b group cursor-pointer gap-1.5 transition-colors ${
+                    isSelected
+                      ? 'bg-blue-600/15 border-blue-500/30'
+                      : 'hover:bg-[var(--bg-hover)] border-[var(--border-subtle)]/40'
                   }`}
                 >
                   {/* Name */}
                   <div className="flex items-center gap-1 min-w-0 overflow-hidden" title={sig.name}>
                     {sig.width > 1 ? (
-                      <div className="w-1.5 h-1.5 rounded-sm bg-purple-500 shrink-0" />
+                      <div className="w-1.5 h-1.5 rounded-xs bg-purple-400 shrink-0" />
                     ) : (
                       <div className="w-1.5 h-1.5 rotate-45 bg-cyan-400 shrink-0" />
                     )}
@@ -113,7 +142,7 @@ export function ObjectsPanel({
                   </div>
 
                   {/* Value */}
-                  <div className="min-w-0 overflow-hidden font-bold text-yellow-300 truncate text-[11px]">
+                  <div className="min-w-0 overflow-hidden font-semibold text-yellow-300 truncate text-[11px] tabular-nums">
                     {getSignalValueAtTime(sig, currentTime)}
                   </div>
 
@@ -122,7 +151,7 @@ export function ObjectsPanel({
                     <span className="truncate">{sig.type}</span>
                     <button
                       onClick={e => handleAddOne(e, sig.name)}
-                      className="opacity-0 group-hover:opacity-100 shrink-0 px-1.5 py-0.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-[9px] cursor-pointer shadow-sm transition-opacity ml-1 font-sans"
+                      className="opacity-0 group-hover:opacity-100 shrink-0 px-1.5 py-0.5 bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white rounded text-[9px] cursor-pointer shadow-xs transition-opacity ml-1 font-sans"
                       title="Add to Waveform"
                     >
                       + Add

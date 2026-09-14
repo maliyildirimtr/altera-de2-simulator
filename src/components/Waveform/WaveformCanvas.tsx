@@ -15,7 +15,7 @@
 
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import type { MouseEvent as ReactMouseEvent } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Activity } from 'lucide-react';
 import type { SimulationData } from '../../services/vcdParser';
 import {
   renderSignalWaveform,
@@ -155,11 +155,12 @@ export function WaveformCanvas({
       <div
         ref={setContainerRefs}
         data-testid="wf-canvas-container"
-        className="flex-1 overflow-x-auto overflow-y-hidden relative cursor-crosshair bg-[#090b10]"
+        className="flex-1 overflow-x-auto overflow-y-hidden relative cursor-crosshair"
+        style={{ backgroundColor: 'var(--bg-canvas-waveform, #080C14)' }}
       >
         <div data-testid="wf-error-state" className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center select-none">
-          <div className="w-12 h-12 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mb-3 text-rose-400 shadow-sm">
-            <AlertTriangle size={24} />
+          <div className="w-10 h-10 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mb-3 text-rose-400 shadow-xs">
+            <AlertTriangle size={20} />
           </div>
           <div className="text-slate-200 font-semibold text-sm mb-1">
             Compilation Failed
@@ -177,10 +178,11 @@ export function WaveformCanvas({
       <div
         ref={setContainerRefs}
         data-testid="wf-canvas-container"
-        className="flex-1 overflow-x-auto overflow-y-hidden relative cursor-crosshair bg-black"
+        className="flex-1 overflow-x-auto overflow-y-hidden relative cursor-crosshair"
+        style={{ backgroundColor: 'var(--bg-canvas-waveform, #080C14)' }}
       >
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 font-mono text-sm gap-2 select-none">
-          <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 font-mono text-xs gap-2.5 select-none">
+          <div className="w-5 h-5 border-2 border-[var(--accent-primary)] border-t-transparent rounded-full animate-spin" />
           <span>Compiling HDL &amp; Generating VCD...</span>
         </div>
       </div>
@@ -192,10 +194,30 @@ export function WaveformCanvas({
       <div
         ref={setContainerRefs}
         data-testid="wf-canvas-container"
-        className="flex-1 overflow-x-auto overflow-y-hidden relative cursor-crosshair"
+        className="flex-1 overflow-x-auto overflow-y-hidden relative cursor-crosshair select-none"
+        style={{ backgroundColor: 'var(--bg-canvas-waveform, #080C14)' }}
       >
-        <div className="absolute inset-0 flex items-center justify-center text-gray-400 font-mono text-sm bg-black select-none">
-          Load a project and click Compile to begin.
+        {/* Inactive logic analyzer grid background */}
+        <div className="absolute inset-0 pointer-events-none opacity-40">
+          <div className="h-6 border-b border-slate-800/40 bg-slate-900/30" />
+          <div className="h-[40px] border-b border-slate-800/25" />
+          <div className="h-[40px] border-b border-slate-800/25" />
+          <div className="h-[40px] border-b border-slate-800/25" />
+          <div className="h-[40px] border-b border-slate-800/25" />
+          <div className="absolute top-0 bottom-0 left-1/4 border-l border-slate-800/30" />
+          <div className="absolute top-0 bottom-0 left-2/4 border-l border-slate-800/30" />
+          <div className="absolute top-0 bottom-0 left-3/4 border-l border-slate-800/30" />
+        </div>
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
+          <div className="w-10 h-10 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-3 text-blue-400 shadow-xs">
+            <Activity size={20} />
+          </div>
+          <div className="text-slate-200 font-semibold text-sm mb-1">
+            No Simulation Data
+          </div>
+          <div className="text-slate-400 text-xs max-w-sm font-sans leading-relaxed">
+            Add HDL sources and a testbench in the Project panel, then click Compile to generate timing waveforms.
+          </div>
         </div>
       </div>
     );
@@ -207,9 +229,15 @@ export function WaveformCanvas({
         ref={setContainerRefs}
         data-testid="wf-canvas-container"
         className="flex-1 overflow-x-auto overflow-y-hidden relative cursor-crosshair"
+        style={{ backgroundColor: 'var(--bg-canvas-waveform, #080C14)' }}
       >
-        <div className="absolute inset-0 flex items-center justify-center text-gray-400 font-mono text-sm bg-black select-none">
-          Simulation Compiled. Select signals and click &apos;Run&apos;.
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-slate-400 font-mono text-xs select-none">
+          <div className="text-slate-200 font-semibold text-sm mb-1 font-sans">
+            Simulation Compiled
+          </div>
+          <div className="text-slate-400 text-xs max-w-sm font-sans">
+            Select signals from the Objects panel and click &apos;Run&apos; to view waveforms.
+          </div>
         </div>
       </div>
     );
@@ -248,6 +276,7 @@ export function WaveformCanvas({
         ref={setContainerRefs}
         data-testid="wf-canvas-container"
         className="flex-1 overflow-x-auto overflow-y-hidden relative cursor-crosshair group"
+        style={{ backgroundColor: 'var(--bg-canvas-waveform, #080C14)' }}
         onClick={handleClick}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
@@ -257,7 +286,11 @@ export function WaveformCanvas({
 
           {/* ── Top Ruler (ΔT badge + tick marks + double-click markers) ── */}
           <div
-            className="absolute top-0 left-0 right-0 h-6 border-b border-[#333333]"
+            className="absolute top-0 left-0 right-0 h-6 border-b"
+            style={{
+              backgroundColor: 'rgba(10, 16, 30, 0.95)',
+              borderColor: 'rgba(51, 65, 85, 0.35)',
+            }}
             onDoubleClick={handleRulerDoubleClick}  // F2.4
           >
             {/* ΔT indicator */}
@@ -269,7 +302,7 @@ export function WaveformCanvas({
                   width: Math.abs(cursorB - currentTime) * scale,
                 }}
               >
-                <div className="bg-[#ff8800]/80 text-white text-[9px] font-mono px-1.5 py-0.5 rounded whitespace-nowrap shadow">
+                <div className="bg-amber-500/90 text-white text-[9px] font-mono px-1.5 py-0.5 rounded whitespace-nowrap shadow-xs">
                   ΔT = {formatTime(Math.abs(cursorB - currentTime), ts)}
                 </div>
               </div>
@@ -277,10 +310,10 @@ export function WaveformCanvas({
             {/* Ruler ticks */}
             {rulerTicks.map(t => (
               <div key={t}
-                className="absolute top-0 bottom-0 border-l border-[#444444] pointer-events-none"
-                style={{ left: t * scale }}
+                className="absolute top-0 bottom-0 border-l pointer-events-none"
+                style={{ left: t * scale, borderColor: 'rgba(148, 163, 184, 0.25)' }}
               >
-                <span className="text-[9px] text-gray-500 font-mono ml-1 top-1 absolute">
+                <span className="text-[9px] text-slate-400 font-mono ml-1 top-1 absolute tabular-nums">
                   {formatTime(t, ts)}
                 </span>
               </div>
@@ -300,7 +333,7 @@ export function WaveformCanvas({
                   }}
                 >
                   <div
-                    className="text-[10px] font-bold px-1 py-0.5 rounded-sm shadow-sm whitespace-nowrap leading-none"
+                    className="text-[10px] font-bold px-1 py-0.5 rounded-sm shadow-xs whitespace-nowrap leading-none font-mono"
                     style={{ backgroundColor: mk.color, color: '#000' }}
                   >
                     {mk.label}
@@ -310,12 +343,12 @@ export function WaveformCanvas({
             ))}
           </div>
 
-          {/* ── Vertical tick lines (full height) ───────────────────── */}
+          {/* ── Vertical tick lines (full height subtle grid) ───────── */}
           <div className="absolute top-6 bottom-6 left-0 right-0 pointer-events-none">
             {rulerTicks.map(t => (
               <div key={t}
-                className="absolute top-0 bottom-0 border-l border-[#222222]"
-                style={{ left: t * scale }}
+                className="absolute top-0 bottom-0 border-l"
+                style={{ left: t * scale, borderColor: 'rgba(148, 163, 184, 0.08)' }}
               />
             ))}
           </div>
@@ -325,7 +358,11 @@ export function WaveformCanvas({
             {rows.map((row, idx) => (
               <div key={idx}
                 data-testid="wf-row-highlight"
-                className={`h-[40px] w-full border-b border-[#222222] ${selectedSignal === row.id ? 'bg-[#1e3a5f]/30' : ''}`}
+                className={`h-[40px] w-full border-b ${
+                  selectedSignal === row.id
+                    ? 'bg-blue-600/15 border-blue-500/25'
+                    : 'border-slate-800/30'
+                }`}
               />
             ))}
           </div>
@@ -359,7 +396,6 @@ export function WaveformCanvas({
               style={{
                 left:           mk.time * scale,
                 borderLeft:     `1.5px dashed ${mk.color}`,
-                boxShadow:      `0 0 3px ${mk.color}55`,
               }}
             />
           ))}
@@ -370,7 +406,7 @@ export function WaveformCanvas({
               className="absolute top-0 bottom-6 border-l border-white/20 z-10 pointer-events-none"
               style={{ left: hoverTime * scale }}
             >
-              <div className="absolute -top-1 -translate-x-1/2 bg-white/10 text-white/80 text-[9px] px-1 rounded backdrop-blur-sm whitespace-nowrap">
+              <div className="absolute -top-1 -translate-x-1/2 bg-slate-900/90 text-slate-300 text-[9px] px-1 py-0.5 rounded border border-slate-700 whitespace-nowrap font-mono tabular-nums">
                 {formatTime(hoverTime, ts)}
               </div>
             </div>
@@ -379,14 +415,14 @@ export function WaveformCanvas({
           {/* ── Cursor B (orange) — Shift+Click ─────────────────────── */}
           {cursorB !== null && (
             <div
-              className="absolute top-0 bottom-0 border-l border-[#ff8800] z-20 pointer-events-none transition-all duration-75 ease-out shadow-[0_0_2px_rgba(255,136,0,0.6)]"
+              className="absolute top-0 bottom-0 border-l border-amber-500 z-20 pointer-events-none transition-all duration-75 ease-out"
               style={{ left: cursorB * scale }}
             >
-              <div className="absolute top-[2px] -translate-x-1/2 bg-[#ff8800] text-white text-[10px] px-1.5 py-0.5 font-mono font-bold whitespace-nowrap rounded-sm shadow-sm flex items-center gap-1">
+              <div className="absolute top-[2px] -translate-x-1/2 bg-amber-500 text-white text-[10px] px-1.5 py-0.5 font-mono font-bold whitespace-nowrap rounded-sm shadow-xs flex items-center gap-1">
                 <span>B</span>
-                <span>{formatTime(cursorB, ts)}</span>
+                <span className="tabular-nums">{formatTime(cursorB, ts)}</span>
                 <button
-                  className="pointer-events-auto text-white/70 hover:text-white leading-none"
+                  className="pointer-events-auto text-white/70 hover:text-white leading-none ml-0.5"
                   onClick={e => { e.stopPropagation(); onCursorBChange(null); }}
                   title="Clear Cursor B"
                 >×</button>
@@ -396,27 +432,33 @@ export function WaveformCanvas({
 
           {/* ── Cursor A (yellow) ────────────────────────────────────── */}
           <div
-            className="absolute top-0 bottom-0 border-l border-[#ffff00] z-20 pointer-events-none transition-all duration-75 ease-out shadow-[0_0_2px_rgba(255,255,0,0.5)]"
+            className="absolute top-0 bottom-0 border-l border-yellow-400 z-20 pointer-events-none transition-all duration-75 ease-out"
             style={{ left: currentTime * scale }}
           >
-            <div className="absolute top-[2px] -translate-x-1/2 bg-[#ffff00] text-black text-[10px] px-1.5 py-0.5 font-mono font-bold whitespace-nowrap rounded-sm shadow-sm">
+            <div className="absolute top-[2px] -translate-x-1/2 bg-yellow-400 text-black text-[10px] px-1.5 py-0.5 font-mono font-bold whitespace-nowrap rounded-sm shadow-xs tabular-nums">
               {formatTime(currentTime, ts)}
             </div>
           </div>
 
-          {/* ── Bottom Ruler ─────────────────────────────────────────── */}
-          <div className="absolute bottom-0 left-0 right-0 h-6 border-t border-[#00ff00] bg-[#111]">
+          {/* ── Bottom Ruler (Restrained technical timeline) ─────────── */}
+          <div
+            className="absolute bottom-0 left-0 right-0 h-6 border-t"
+            style={{
+              backgroundColor: 'rgba(10, 16, 30, 0.95)',
+              borderColor: 'rgba(51, 65, 85, 0.35)',
+            }}
+          >
             {rulerTicks.map((t, i) => {
               const showLabel = zoomLevel < 0.5 ? i % 4 === 0 : zoomLevel < 1 ? i % 2 === 0 : true;
               return (
                 <React.Fragment key={t}>
                   <div
-                    className="absolute top-0 h-2 border-l border-[#00ff00]/50"
-                    style={{ left: t * scale }}
+                    className="absolute top-0 h-2 border-l"
+                    style={{ left: t * scale, borderColor: 'rgba(148, 163, 184, 0.25)' }}
                   />
                   {showLabel && (
                     <div
-                      className="absolute top-1 text-[#00ff00] text-[10px] font-mono whitespace-nowrap"
+                      className="absolute top-1 text-slate-400 text-[9px] font-mono whitespace-nowrap tabular-nums"
                       style={{ left: t * scale + 2 }}
                     >
                       {formatTime(t, ts)}
@@ -432,7 +474,7 @@ export function WaveformCanvas({
                 style={{ left: mk.time * scale + 2 }}
               >
                 <span
-                  className="text-[9px] font-bold"
+                  className="text-[9px] font-bold font-mono"
                   style={{ color: mk.color }}
                 >
                   {mk.label}
