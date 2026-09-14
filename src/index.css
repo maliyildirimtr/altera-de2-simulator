@@ -52,10 +52,13 @@ body {
   color: var(--text-primary);
 }
 
-/* Global focus accessibility */
+/* Global focus accessibility — 2px accent ring with 2px offset, hidden on pointer-only clicks */
 :focus-visible {
   outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
+}
+:focus:not(:focus-visible) {
+  outline: none;
 }
 
 /* Global selection */
@@ -64,21 +67,342 @@ body {
   color: var(--text-primary);
 }
 
-/* Normalized subtle scrollbars */
+/* Global disabled state — reduced contrast, not-allowed cursor, no semantic glow */
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled,
+[aria-disabled="true"],
+.is-disabled {
+  opacity: 0.45 !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+  filter: grayscale(0.25);
+}
+
+/* Normalized subtle scrollbars that adhere to the active theme */
 ::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--border-strong);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
 }
+
+/* =============================================
+   PHASE 13A — BASE CONTROL LANGUAGE & FOUNDATION
+   ============================================= */
+
+/* Primary Action: Solid engineering blue, white text, minimal border */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1-5);
+  height: var(--height-control);
+  padding: 0 var(--space-3);
+  background-color: var(--accent-primary);
+  color: #ffffff;
+  border: 1px solid var(--accent-primary);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: var(--transition-colors);
+  user-select: none;
+  white-space: nowrap;
+}
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+.btn-primary:active:not(:disabled) {
+  background-color: #1a42a0;
+}
+
+/* Secondary Action: Semantic surface, subtle border, primary text */
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1-5);
+  height: var(--height-control);
+  padding: 0 var(--space-3);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: var(--transition-colors);
+  user-select: none;
+  white-space: nowrap;
+}
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--bg-hover);
+  border-color: var(--border-strong);
+}
+.btn-secondary:active:not(:disabled) {
+  background-color: var(--bg-active);
+}
+
+/* Quiet Utility: Transparent, secondary text, hover surface */
+.btn-quiet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1-5);
+  height: var(--height-control);
+  padding: 0 var(--space-2);
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: var(--transition-colors);
+  user-select: none;
+  white-space: nowrap;
+}
+.btn-quiet:hover:not(:disabled) {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-subtle);
+}
+.btn-quiet:active:not(:disabled) {
+  background-color: var(--bg-active);
+}
+
+/* Icon Button: Consistent square dimensions, centered icon, clear hover/focus */
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--height-control);
+  height: var(--height-control);
+  padding: 0;
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: var(--transition-colors);
+  user-select: none;
+  flex-shrink: 0;
+}
+.btn-icon:hover:not(:disabled) {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-subtle);
+}
+.btn-icon:active:not(:disabled) {
+  background-color: var(--bg-active);
+}
+
+/* Semantic Actions: Restrained status tints (success/warning/error) */
+.btn-semantic-success {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1-5);
+  height: var(--height-control);
+  padding: 0 var(--space-3);
+  background-color: rgba(16, 185, 129, 0.12);
+  color: var(--state-success);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: var(--transition-colors);
+}
+.btn-semantic-success:hover:not(:disabled) {
+  background-color: rgba(16, 185, 129, 0.22);
+}
+
+.btn-semantic-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1-5);
+  height: var(--height-control);
+  padding: 0 var(--space-3);
+  background-color: rgba(239, 68, 68, 0.12);
+  color: var(--state-error);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: var(--transition-colors);
+}
+.btn-semantic-danger:hover:not(:disabled) {
+  background-color: rgba(239, 68, 68, 0.22);
+}
+
+.btn-semantic-warning {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1-5);
+  height: var(--height-control);
+  padding: 0 var(--space-3);
+  background-color: rgba(245, 158, 11, 0.12);
+  color: var(--state-warning);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: var(--transition-colors);
+}
+.btn-semantic-warning:hover:not(:disabled) {
+  background-color: rgba(245, 158, 11, 0.22);
+}
+
+/* Status Badges */
+.badge-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-radius: var(--radius-xs);
+  line-height: 1.2;
+}
+.badge-status.badge-success {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: var(--state-success);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+.badge-status.badge-warning {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: var(--state-warning);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+.badge-status.badge-error {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: var(--state-error);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.badge-status.badge-info {
+  background-color: rgba(56, 189, 248, 0.15);
+  color: var(--state-info);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+/* Segmented Control */
+.segmented-control {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  gap: 2px;
+}
+.segmented-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  border-radius: var(--radius-xs);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: var(--transition-colors);
+  user-select: none;
+  white-space: nowrap;
+}
+.segmented-item:hover:not(.active):not(:disabled) {
+  color: var(--text-primary);
+  background-color: var(--bg-hover);
+}
+.segmented-item.active {
+  background-color: var(--bg-panel);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-xs);
+  font-weight: var(--font-semibold);
+}
+
+/* =============================================
+   PHASE 13A — TYPOGRAPHY SYSTEM UTILITIES
+   ============================================= */
+.typography-display {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+.typography-page-title {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+}
+.typography-section-title {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.typography-headline {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.typography-body {
+  font-size: 13px;
+  line-height: 1.5;
+}
+.typography-control {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.typography-panel-header {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.typography-subsection-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.typography-caption {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+.typography-badge {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.typography-mono-meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: -0.01em;
+}
+
 
 /* =============================================
    ALTERA DE2 CYCLONE II PCB BOARD

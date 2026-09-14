@@ -1,10 +1,7 @@
 /*
  * ============================================================
- *  EELab — Design Tokens
- *  Platform: Electrical & Electronics Engineering Learning Lab
- *
- *  STATUS: DEFINED — not yet consumed by components.
- *  Phase 2 will replace ad-hoc Tailwind classes with these tokens.
+ *  Engineering Lab — Design Tokens (Phase 13A)
+ *  Platform: Electrical & Computer Engineering Virtual Laboratory
  *
  *  Layers:
  *    1. Primitive palette   — raw colour values
@@ -12,15 +9,17 @@
  *    3. Typography          — scale + families
  *    4. Spacing             — scale tokens
  *    5. Border radius       — consistent curves
- *    6. Shadow              — elevation system
- *    7. Transition          — motion tokens
- *    8. Z-index             — stacking order
+ *    6. Standard heights    — shell geometry
+ *    7. Shadow              — elevation system
+ *    8. Transition          — motion tokens
+ *    9. Z-index             — stacking order
+ *   10. Landing Page themes — light & dark overrides
  * ============================================================
  */
 
 /* ── 1. Primitive Palette ───────────────────────────────────── */
 :root {
-  /* Canonical Brand Tokens */
+  /* Canonical Brand Primitives */
   --brand-navy-deep:   #070B14;
   --brand-navy:        #0D1627;
   --brand-blue:        #2563EB;
@@ -28,20 +27,7 @@
   --brand-warm-bg:     #F9F7F4;
   --brand-warm-alt:    #F3F0EA;
 
-  /* Landing Page Brand Tokens (Default / Light) */
-  --landing-bg: #F9F7F4;
-  --landing-surface: #FFFFFF;
-  --landing-surface-alt: #F3F0EA;
-  --landing-text: #0C1225;
-  --landing-text-secondary: #4B5563;
-  --landing-text-muted: #64748b;
-  --landing-border: #d4cfc9;
-  --landing-border-subtle: #e8e4dc;
-  --landing-navy: #0D1627;
-  --landing-navy-deep: #070B14;
-  --landing-accent: #2563EB;
-
-  /* Neutral (dark-first) */
+  /* Neutral Scale (dark-first) */
   --color-neutral-950: #050508;
   --color-neutral-900: #0a0a0f;
   --color-neutral-850: #0f0f16;
@@ -57,11 +43,13 @@
   --color-neutral-50:  #f4f4f8;
   --color-neutral-0:   #ffffff;
 
-  /* Navy (deep dark surfaces) */
-  --color-navy-950: #07080f;
-  --color-navy-900: #0d1627;
+  /* Navy (deep technical surfaces) */
+  --color-navy-950: #070B14;
+  --color-navy-900: #0D1627;
+  --color-navy-850: #0F172A;
+  --color-navy-800: #14223E;
 
-  /* Blue (primary accent) */
+  /* Blue (primary engineering accent) */
   --color-blue-900: #0c1a3d;
   --color-blue-800: #142251;
   --color-blue-700: #1a3170;
@@ -91,12 +79,12 @@
   --color-red-400: #f87171;
   --color-red-300: #fca5a5;
 
-  /* Amber (warning / clock) */
+  /* Amber (warning / clock / undefined logic) */
   --color-amber-600: #d97706;
   --color-amber-500: #f59e0b;
   --color-amber-400: #fbbf24;
 
-  /* Emerald (waveform / active simulation) */
+  /* Emerald (active simulation / waveform) */
   --color-emerald-600: #059669;
   --color-emerald-500: #10b981;
   --color-emerald-400: #34d399;
@@ -106,7 +94,7 @@
   --color-teal-500: #14b8a6;
   --color-teal-400: #2dd4bf;
 
-  /* PCB board — kept for DE2 simulator fidelity */
+  /* Altera DE2 Cyclone II PCB authentic colors */
   --color-pcb-blue:      #0d3b66;
   --color-pcb-mid:       #0f4880;
   --color-pcb-dark:      #0a2d50;
@@ -117,171 +105,192 @@
 }
 
 /* ── 2. Semantic Aliases — Dark Theme (default) ─────────────── */
-[data-theme='dark'], :root {
+[data-theme='dark'],
+.dark,
+:root {
   /* Canvas & Application Surfaces */
-  --bg-app:            #070B14;
-  --bg-surface:        #0D1627;
-  --bg-panel:          #0F172A;
-  --bg-panel-header:   #0A1120;
-  --bg-canvas:         #070A12;
-  --bg-toolbar:        #0A1120;
-  --bg-input:          #070B14;
+  --bg-app:             #070B14;
+  --bg-surface:         #0D1627;
+  --bg-panel:           #0F172A;
+  --bg-panel-header:    #0A1120;
+  --bg-toolbar:         #0A1120;
+  --bg-canvas:          #070A12;
+  --bg-canvas-waveform: #080C14;
+  --bg-input:           #080D18;
+  --bg-hover:           rgba(255, 255, 255, 0.05);
+  --bg-active:          rgba(37, 99, 235, 0.15);
+  --bg-overlay:         #0F172A;
 
   /* Typography */
-  --text-primary:      #F8FAFC;
-  --text-secondary:    #94A3B8;
-  --text-muted:        #64748B;
-  --text-inverse:      #070B14;
+  --text-primary:       #F8FAFC;
+  --text-secondary:     #94A3B8;
+  --text-muted:         #64748B;
+  --text-disabled:      #475569;
+  --text-inverse:       #070B14;
 
   /* Borders & Dividers */
-  --border-subtle:     #1E293B;
-  --border-strong:     #334155;
-  --border-active:     #3B82F6;
+  --border-subtle:      #1E293B;
+  --border-strong:      #334155;
+  --border-active:      #3B82F6;
 
   /* Primary Accent & Hover */
-  --accent-primary:    #2563EB;
-  --accent-hover:      #3B82F6;
-  --accent-subtle:     rgba(37, 99, 235, 0.15);
-  --accent-border:     rgba(37, 99, 235, 0.35);
+  --accent-primary:     #2563EB;
+  --accent-hover:       #1D4ED8;
+  --accent-subtle:      rgba(37, 99, 235, 0.12);
+  --accent-border:      rgba(37, 99, 235, 0.35);
 
   /* Secondary Accent (Indigo) */
   --accent-secondary:       #6366f1;
   --accent-secondary-hover: #818cf8;
 
-  /* Status Tokens */
-  --state-success:     #10B981;
-  --state-warning:     #F59E0B;
-  --state-error:       #EF4444;
-  --state-info:        #3B82F6;
+  /* Semantic Status Tokens */
+  --state-success:      #10B981;
+  --state-warning:      #F59E0B;
+  --state-error:        #EF4444;
+  --state-info:         #38BDF8;
 
   /* Canvas Grid & Elevation */
-  --canvas-grid:       rgba(255, 255, 255, 0.04);
-  --shadow-panel:      0 4px 20px rgba(0, 0, 0, 0.5);
+  --canvas-grid:        rgba(255, 255, 255, 0.04);
+  --shadow-panel:       0 4px 20px rgba(0, 0, 0, 0.5);
 
   /* Tool-specific accents */
-  --tool-de2-accent:      #3b82f6;
-  --tool-waveform-accent: #34d399;
-  --tool-schematic-accent:#2dd4bf;
-  --tool-examples-accent: #818cf8;
+  --tool-de2-accent:       #3b82f6;
+  --tool-waveform-accent:  #34d399;
+  --tool-schematic-accent: #2dd4bf;
+  --tool-examples-accent:  #818cf8;
 
   /* Backward-compatibility aliases */
-  --surface-base:      var(--bg-app);
-  --surface-raised:    var(--bg-surface);
-  --surface-overlay:   var(--bg-panel);
-  --surface-sunken:    var(--bg-input);
-  --border-default:    var(--border-subtle);
-  --bg-primary:        var(--bg-app);
-  --bg-secondary:      var(--bg-panel);
-  --border-color:      var(--border-subtle);
-  --accent-color:      var(--accent-primary);
-  --grid-color:        var(--canvas-grid);
+  --surface-base:       var(--bg-app);
+  --surface-raised:     var(--bg-surface);
+  --surface-overlay:    var(--bg-panel);
+  --surface-sunken:     var(--bg-input);
+  --surface-page:       var(--bg-app);
+  --surface-primary:    var(--bg-surface);
+  --surface-secondary:  var(--bg-panel-header);
+  --surface-elevated:   var(--bg-surface);
+  --surface-navy:       #0D1627;
+  --surface-navy-dark:  #070B14;
+  --border-default:     var(--border-subtle);
+  --bg-primary:         var(--bg-app);
+  --bg-secondary:       var(--bg-panel);
+  --border-color:       var(--border-subtle);
+  --accent-color:       var(--accent-primary);
+  --grid-color:         var(--canvas-grid);
 
-  /* Landing Page Dark Overrides */
-  --landing-bg:           #070B14;
-  --landing-surface:      #0D1627;
-  --landing-surface-alt:  #0F172A;
-  --landing-text:         #F8FAFC;
+  /* Landing Page Dark Tokens */
+  --landing-bg:            #070B14;
+  --landing-surface:       #0D1627;
+  --landing-surface-alt:   #0F172A;
+  --landing-text:          #F8FAFC;
   --landing-text-secondary:#94A3B8;
-  --landing-text-muted:   #64748B;
-  --landing-border:       #1E293B;
-  --landing-border-subtle:#334155;
-  --landing-navy:         #0D1627;
-  --landing-navy-deep:    #070B14;
-  --landing-accent:       #3B82F6;
+  --landing-text-muted:    #64748B;
+  --landing-border:        #1E293B;
+  --landing-border-subtle: #334155;
+  --landing-navy:          #0D1627;
+  --landing-navy-deep:     #070B14;
+  --landing-accent:        #3B82F6;
 }
 
 /* ── 2b. Semantic Aliases — Light Theme ─────────────────────── */
-[data-theme='light'] {
-  /* Canvas & Application Surfaces */
-  --bg-app:            #F9F7F4;
-  --bg-surface:        #FFFFFF;
-  --bg-panel:          #FFFFFF;
-  --bg-panel-header:   #F3F0EA;
-  --bg-canvas:         #F3F0EA;
-  --bg-toolbar:        #FFFFFF;
-  --bg-input:          #FFFFFF;
+[data-theme='light'],
+.light {
+  /* Canvas & Application Surfaces (Warm Engineering Paper) */
+  --bg-app:             #F9F7F4;
+  --bg-surface:         #FFFFFF;
+  --bg-panel:           #FFFFFF;
+  --bg-panel-header:    #F3F0EA;
+  --bg-toolbar:         #FFFFFF;
+  --bg-canvas:          #F3F0EA;
+  --bg-canvas-waveform: #0A0F1D; /* Technical dark canvas preserved for waveform timing readability */
+  --bg-input:           #F8FAFC;
+  --bg-hover:           rgba(0, 0, 0, 0.04);
+  --bg-active:          rgba(37, 99, 235, 0.08);
+  --bg-overlay:         #FFFFFF;
 
-  /* Typography */
-  --text-primary:      #0C1225;
-  --text-secondary:    #4B5563;
-  --text-muted:        #64748B;
-  --text-inverse:      #F8FAFC;
+  /* Typography (Deep Navy / Charcoal) */
+  --text-primary:       #0C1225;
+  --text-secondary:     #475569;
+  --text-muted:         #64748B;
+  --text-disabled:      #94A3B8;
+  --text-inverse:       #FFFFFF;
 
   /* Borders & Dividers */
-  --border-subtle:     #E2E8F0;
-  --border-strong:     #CBD5E1;
-  --border-active:     #2563EB;
+  --border-subtle:      #E2E8F0;
+  --border-strong:      #CBD5E1;
+  --border-active:      #2563EB;
 
   /* Primary Accent & Hover */
-  --accent-primary:    #2563EB;
-  --accent-hover:      #1D4ED8;
-  --accent-subtle:     rgba(37, 99, 235, 0.08);
-  --accent-border:     rgba(37, 99, 235, 0.25);
+  --accent-primary:     #2563EB;
+  --accent-hover:       #1D4ED8;
+  --accent-subtle:      rgba(37, 99, 235, 0.08);
+  --accent-border:      rgba(37, 99, 235, 0.25);
 
   /* Secondary Accent (Indigo) */
   --accent-secondary:       #4f46e5;
   --accent-secondary-hover: #6366f1;
 
-  /* Status Tokens */
-  --state-success:     #059669;
-  --state-warning:     #D97706;
-  --state-error:       #DC2626;
-  --state-info:        #2563EB;
+  /* Semantic Status Tokens */
+  --state-success:      #059669;
+  --state-warning:      #D97706;
+  --state-error:        #DC2626;
+  --state-info:         #2563EB;
 
   /* Canvas Grid & Elevation */
-  --canvas-grid:       rgba(0, 0, 0, 0.06);
-  --shadow-panel:      0 4px 16px rgba(0, 0, 0, 0.08);
+  --canvas-grid:        rgba(0, 0, 0, 0.06);
+  --shadow-panel:       0 4px 16px rgba(0, 0, 0, 0.08);
 
   /* Tool-specific accents */
-  --tool-de2-accent:      #2563eb;
-  --tool-waveform-accent: #059669;
-  --tool-schematic-accent:#0d9488;
-  --tool-examples-accent: #4f46e5;
+  --tool-de2-accent:       #2563eb;
+  --tool-waveform-accent:  #059669;
+  --tool-schematic-accent: #0d9488;
+  --tool-examples-accent:  #4f46e5;
 
   /* Backward-compatibility aliases */
-  --surface-base:      var(--bg-app);
-  --surface-raised:    var(--bg-surface);
-  --surface-overlay:   var(--bg-panel);
-  --surface-sunken:    var(--bg-input);
-  --surface-page:      var(--bg-app);
-  --surface-primary:   var(--bg-surface);
-  --surface-secondary: var(--bg-panel-header);
-  --surface-elevated:  var(--bg-surface);
-  --surface-navy:      #0D1627;
-  --surface-navy-dark: #070B14;
-  --border-default:    var(--border-subtle);
-  --bg-primary:        var(--bg-app);
-  --bg-secondary:      var(--bg-panel);
-  --border-color:      var(--border-subtle);
-  --accent-color:      var(--accent-primary);
-  --grid-color:        var(--canvas-grid);
+  --surface-base:       var(--bg-app);
+  --surface-raised:     var(--bg-surface);
+  --surface-overlay:    var(--bg-panel);
+  --surface-sunken:     var(--bg-input);
+  --surface-page:       var(--bg-app);
+  --surface-primary:    var(--bg-surface);
+  --surface-secondary:  var(--bg-panel-header);
+  --surface-elevated:   var(--bg-surface);
+  --surface-navy:       #0D1627;
+  --surface-navy-dark:  #070B14;
+  --border-default:     var(--border-subtle);
+  --bg-primary:         var(--bg-app);
+  --bg-secondary:       var(--bg-panel);
+  --border-color:       var(--border-subtle);
+  --accent-color:       var(--accent-primary);
+  --grid-color:         var(--canvas-grid);
 
   /* Landing Page Light Tokens */
-  --landing-bg:           #F9F7F4;
-  --landing-surface:      #FFFFFF;
-  --landing-surface-alt:  #F3F0EA;
-  --landing-text:         #0C1225;
-  --landing-text-secondary:#4B5563;
-  --landing-text-muted:   #64748B;
-  --landing-border:       #d4cfc9;
-  --landing-border-subtle:#e8e4dc;
-  --landing-navy:         #0D1627;
-  --landing-navy-deep:    #070B14;
-  --landing-accent:       #2563EB;
+  --landing-bg:            #F9F7F4;
+  --landing-surface:       #FFFFFF;
+  --landing-surface-alt:   #F3F0EA;
+  --landing-text:          #0C1225;
+  --landing-text-secondary:#475569;
+  --landing-text-muted:    #64748B;
+  --landing-border:        #d4cfc9;
+  --landing-border-subtle: #e8e4dc;
+  --landing-navy:          #0D1627;
+  --landing-navy-deep:     #070B14;
+  --landing-accent:        #2563EB;
 }
 
 /* ── 3. Typography ──────────────────────────────────────────── */
 :root {
-  /* Families */
-  --font-sans:  'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-mono:  'JetBrains Mono', 'Fira Code', ui-monospace, 'Cascadia Code',
-                'Courier New', monospace;
+  /* Families (System / bundled fonts without external CDNs) */
+  --font-sans:    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+                  Helvetica, Arial, sans-serif;
+  --font-mono:    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+                  'Liberation Mono', 'Courier New', monospace;
   --font-display: 'Inter', var(--font-sans);
 
-  /* Scale (rem, 16px base) */
+  /* Scale */
+  --text-2xs:  0.6875rem; /* 11px */
   --text-xs:   0.75rem;   /* 12px */
   --text-sm:   0.8125rem; /* 13px */
-  --text-base: 0.875rem;  /* 14px  — default UI text */
+  --text-base: 0.875rem;  /* 14px — standard workstation text */
   --text-md:   1rem;      /* 16px */
   --text-lg:   1.125rem;  /* 18px */
   --text-xl:   1.25rem;   /* 20px */
@@ -290,27 +299,28 @@
   --text-4xl:  2.25rem;   /* 36px */
 
   /* Weight */
-  --font-normal:   400;
-  --font-medium:   500;
-  --font-semibold: 600;
-  --font-bold:     700;
-  --font-extrabold:800;
+  --font-normal:    400;
+  --font-medium:    500;
+  --font-semibold:  600;
+  --font-bold:      700;
+  --font-extrabold: 800;
 
   /* Line height */
-  --leading-tight:  1.25;
-  --leading-snug:   1.375;
-  --leading-normal: 1.5;
-  --leading-relaxed:1.625;
+  --leading-tight:   1.15;
+  --leading-snug:    1.3;
+  --leading-normal:  1.5;
+  --leading-relaxed: 1.625;
 
   /* Letter spacing */
-  --tracking-tight:  -0.025em;
-  --tracking-normal:  0;
-  --tracking-wide:    0.025em;
-  --tracking-wider:   0.05em;
-  --tracking-widest:  0.1em;
+  --tracking-tighter: -0.03em;
+  --tracking-tight:   -0.02em;
+  --tracking-normal:   0;
+  --tracking-wide:     0.025em;
+  --tracking-wider:    0.05em;
+  --tracking-widest:   0.08em;
 }
 
-/* ── 4. Spacing ─────────────────────────────────────────────── */
+/* ── 4. Spacing (4px grid) ──────────────────────────────────── */
 :root {
   --space-0:   0;
   --space-px:  1px;
@@ -331,96 +341,104 @@
   --space-24:  6rem;      /* 96px */
 
   /* Semantic spacing */
-  --space-nav-height:     4rem;    /* 64px — fixed navbar */
-  --space-panel-padding:  var(--space-4);
-  --space-card-padding:   var(--space-6);
+  --space-nav-height:     52px;
+  --space-panel-padding:  var(--space-3);
+  --space-card-padding:   var(--space-5);
   --space-section-gap:    var(--space-8);
 }
 
-/* ── 5. Border Radius ───────────────────────────────────────── */
+/* ── 5. Standard Sizing & Heights ───────────────────────────── */
+:root {
+  --height-navbar:        52px;
+  --height-toolbar:       42px;
+  --height-panel-header:  36px;
+  --height-console-tab:   32px;
+  --height-control:       30px;
+}
+
+/* ── 6. Border Radius (Restrained Engineering Geometry) ─────── */
 :root {
   --radius-none: 0;
-  --radius-sm:   0.25rem;  /* 4px  */
-  --radius-md:   0.375rem; /* 6px  */
-  --radius-lg:   0.5rem;   /* 8px  */
-  --radius-xl:   0.75rem;  /* 12px */
-  --radius-2xl:  1rem;     /* 16px */
+  --radius-xs:   2px;      /* 2px  — micro indicators & tags */
+  --radius-sm:   4px;      /* 4px  — standard buttons, inputs, tabs */
+  --radius-md:   6px;      /* 6px  — panels, cards, segmented controls */
+  --radius-lg:   8px;      /* 8px  — modals, floating drawers */
+  --radius-xl:   10px;     /* 10px — outer dialog framing */
+  --radius-2xl:  12px;     /* 12px — hero preview frames only */
   --radius-full: 9999px;
 
-  /* Semantic */
-  --radius-btn:    var(--radius-md);
-  --radius-card:   var(--radius-xl);
-  --radius-panel:  var(--radius-lg);
-  --radius-badge:  var(--radius-full);
-  --radius-input:  var(--radius-md);
+  /* Semantic aliases */
+  --radius-btn:    var(--radius-sm);
+  --radius-card:   var(--radius-md);
+  --radius-panel:  var(--radius-md);
+  --radius-badge:  var(--radius-xs);
+  --radius-input:  var(--radius-sm);
 }
 
-/* ── 6. Shadow / Elevation ──────────────────────────────────── */
+/* ── 7. Shadow / Elevation ──────────────────────────────────── */
 :root {
-  --shadow-xs:  0 1px 2px rgba(0,0,0,0.40);
-  --shadow-sm:  0 1px 4px rgba(0,0,0,0.50), 0 1px 2px rgba(0,0,0,0.30);
-  --shadow-md:  0 4px 12px rgba(0,0,0,0.55), 0 2px 4px rgba(0,0,0,0.40);
-  --shadow-lg:  0 10px 30px rgba(0,0,0,0.65), 0 4px 8px rgba(0,0,0,0.40);
-  --shadow-xl:  0 20px 60px rgba(0,0,0,0.75), 0 8px 16px rgba(0,0,0,0.50);
+  --shadow-xs:  0 1px 2px rgba(0,0,0,0.25);
+  --shadow-sm:  0 1px 4px rgba(0,0,0,0.30), 0 1px 2px rgba(0,0,0,0.20);
+  --shadow-md:  0 4px 12px rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.20);
+  --shadow-lg:  0 10px 24px rgba(0,0,0,0.45), 0 4px 8px rgba(0,0,0,0.25);
+  --shadow-xl:  0 20px 48px rgba(0,0,0,0.55), 0 8px 16px rgba(0,0,0,0.35);
 
-  /* Glow (signal / accent) */
-  --glow-blue:    0 0 10px rgba(37, 99, 235, 0.50),
-                  0 0 30px rgba(37, 99, 235, 0.20);
-  --glow-green:   0 0 10px rgba(34, 197, 94, 0.60),
-                  0 0 25px rgba(34, 197, 94, 0.25);
-  --glow-red:     0 0 10px rgba(239, 68, 68, 0.60),
-                  0 0 25px rgba(239, 68, 68, 0.25);
+  /* Glow (specialized active signal highlights) */
+  --glow-blue:    0 0 8px rgba(37, 99, 235, 0.40);
+  --glow-green:   0 0 8px rgba(34, 197, 94, 0.50);
+  --glow-red:     0 0 8px rgba(239, 68, 68, 0.50);
 }
 
-/* ── 7. Transition / Motion ─────────────────────────────────── */
+/* ── 8. Transition / Motion ─────────────────────────────────── */
 :root {
   --ease-default:   cubic-bezier(0.4, 0, 0.2, 1);
   --ease-in:        cubic-bezier(0.4, 0, 1, 1);
   --ease-out:       cubic-bezier(0, 0, 0.2, 1);
   --ease-spring:    cubic-bezier(0.34, 1.56, 0.64, 1);
 
-  --duration-instant: 80ms;
-  --duration-fast:    150ms;
-  --duration-normal:  250ms;
-  --duration-slow:    400ms;
-  --duration-panel:   280ms;
+  --duration-instant: 60ms;
+  --duration-fast:    120ms;
+  --duration-normal:  200ms;
+  --duration-slow:    320ms;
+  --duration-panel:   240ms;
 
   /* Composed tokens */
   --transition-colors:   color var(--duration-fast) var(--ease-default),
                          background-color var(--duration-fast) var(--ease-default),
-                         border-color var(--duration-fast) var(--ease-default),
-                         box-shadow var(--duration-fast) var(--ease-default);
+                         border-color var(--duration-fast) var(--ease-default);
   --transition-transform: transform var(--duration-normal) var(--ease-default);
   --transition-panel:    width var(--duration-panel) var(--ease-default),
                          opacity var(--duration-normal) var(--ease-default),
                          min-width var(--duration-panel) var(--ease-default);
 }
 
-/* ── 8. Z-index ─────────────────────────────────────────────── */
+/* ── 9. Z-index Stacking ────────────────────────────────────── */
 :root {
-  --z-base:    0;
-  --z-raised:  10;
-  --z-dropdown:200;
-  --z-sticky:  300;
-  --z-overlay: 400;
-  --z-modal:   500;
-  --z-toast:   600;
-  --z-tooltip: 700;
+  --z-base:     0;
+  --z-raised:   10;
+  --z-drawer:   25;
+  --z-dropdown: 200;
+  --z-sticky:   300;
+  --z-overlay:  400;
+  --z-modal:    500;
+  --z-toast:    600;
+  --z-tooltip:  700;
 
   /* Named */
-  --z-navbar:  var(--z-sticky);     /* 300 */
-  --z-sidebar: var(--z-raised);     /* 10  */
-  --z-panel:   var(--z-raised);     /* 10  */
+  --z-navbar:   var(--z-sticky);     /* 300 */
+  --z-sidebar:  var(--z-raised);     /* 10  */
+  --z-panel:    var(--z-raised);     /* 10  */
 }
 
-/* ── 9. Landing Page Explicit Surface & Text Classes ───────── */
+/* ── 10. Landing Page Explicit Classes (Respecting active theme) ─ */
 .landing-page {
   background-color: var(--landing-bg) !important;
   color: var(--landing-text) !important;
 }
 
 .landing-navbar {
-  background-color: var(--landing-navy) !important;
+  background-color: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
 }
 
 .landing-hero {

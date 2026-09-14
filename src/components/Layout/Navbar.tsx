@@ -25,41 +25,40 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
 
   const desktopLinkClass = ({ isActive }: { isActive: boolean }) =>
     [
-      'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
+      'flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-[12.5px] font-medium transition-colors select-none',
       isActive
         ? 'text-[var(--accent-primary)] bg-[var(--accent-subtle)] border border-[var(--accent-border)] font-semibold'
-        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--accent-subtle)]',
+        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-transparent',
     ].join(' ');
 
   const mobileLinkClass = ({ isActive }: { isActive: boolean }) =>
     [
-      'flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors border-b border-[var(--border-subtle)]',
+      'flex items-center gap-3 px-4 py-2.5 text-[13px] font-medium transition-colors border-b border-[var(--border-subtle)] select-none',
       isActive
         ? 'text-[var(--accent-primary)] bg-[var(--accent-subtle)] font-semibold'
-        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--accent-subtle)]',
+        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]',
     ].join(' ');
 
   return (
     <>
       {/* ── Main bar ── */}
       <nav
-        className="landing-navbar w-full h-16 flex items-center justify-between px-4 sm:px-6 z-40 sticky top-0 shrink-0 transition-colors"
+        className="w-full h-[52px] flex items-center justify-between px-4 sm:px-6 z-40 sticky top-0 shrink-0 select-none transition-colors border-b border-[var(--border-subtle)]"
         style={{
           backgroundColor: 'var(--bg-surface)',
-          borderBottom: '1px solid var(--border-subtle)',
         }}
       >
         {/* Brand */}
         <Link
           to="/"
-          className="flex items-center gap-2.5 group mr-6 sm:mr-8"
+          className="flex items-center gap-2 group mr-6 sm:mr-8 shrink-0"
           aria-label={`${PLATFORM_NAME} — go to home`}
         >
-          <div className="w-7 h-7 rounded-md bg-blue-600 flex items-center justify-center shadow-md shadow-blue-700/40 transition-opacity group-hover:opacity-85">
-            <Zap size={14} className="text-white" strokeWidth={2.5} />
+          <div className="w-6 h-6 rounded-[4px] bg-blue-600 flex items-center justify-center shadow-sm shadow-blue-700/30 transition-opacity group-hover:opacity-90">
+            <Zap size={13} className="text-white" strokeWidth={2.5} />
           </div>
           <span
-            className="text-sm tracking-wide hidden sm:block font-semibold"
+            className="text-[14px] tracking-tight hidden sm:block font-semibold"
             style={{ color: 'var(--text-primary)' }}
           >
             {PLATFORM_NAME}
@@ -67,28 +66,28 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
         </Link>
 
         {/* Desktop nav */}
-        <div className="hidden lg:flex items-center gap-5 xl:gap-6 flex-1">
+        <div className="hidden lg:flex items-center gap-4 xl:gap-5 flex-1">
           <div className="flex items-center gap-1">
-            <div
-              className="text-[10px] font-bold uppercase tracking-wider mr-2"
+            <span
+              className="text-[10px] font-bold uppercase tracking-wider mr-2 select-none"
               style={{ color: 'var(--text-muted)' }}
             >
               Tools
-            </div>
+            </span>
             {TOOL_LINKS.map(({ to, label }) => (
               <NavLink key={to} to={to} className={desktopLinkClass}>
                 {label}
               </NavLink>
             ))}
           </div>
-          <div className="w-px h-5" style={{ backgroundColor: 'var(--border-subtle)' }} />
+          <div className="w-px h-4 shrink-0" style={{ backgroundColor: 'var(--border-subtle)' }} />
           <div className="flex items-center gap-1">
-            <div
-              className="text-[10px] font-bold uppercase tracking-wider mr-2"
+            <span
+              className="text-[10px] font-bold uppercase tracking-wider mr-2 select-none"
               style={{ color: 'var(--text-muted)' }}
             >
               Explore
-            </div>
+            </span>
             {EXPLORE_LINKS.map(({ to, label }) => (
               <NavLink key={to} to={to} className={desktopLinkClass}>
                 {label}
@@ -98,12 +97,12 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
         </div>
 
         {/* Right actions */}
-        <div className="flex items-center gap-2 ml-auto lg:ml-0">
+        <div className="flex items-center gap-1.5 ml-auto lg:ml-0 shrink-0">
           {/* Theme toggle */}
           <button
             data-testid="theme-toggle"
             onClick={() => setIsDarkMode(!isDarkMode)}
-            className="w-8 h-8 flex items-center justify-center rounded-md border border-transparent hover:border-[var(--border-subtle)] transition-colors"
+            className="w-7 h-7 flex items-center justify-center rounded-[4px] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] transition-colors cursor-pointer"
             style={{
               color: 'var(--text-secondary)',
               backgroundColor: 'var(--bg-panel)',
@@ -111,13 +110,13 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
             title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             aria-label={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           >
-            {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
+            {isDarkMode ? <Sun size={14} /> : <Moon size={14} />}
           </button>
 
           {/* Mobile menu button */}
           <button
             onClick={() => setMobileOpen((o) => !o)}
-            className="lg:hidden w-8 h-8 flex items-center justify-center rounded-md border border-transparent hover:border-[var(--border-subtle)] transition-colors"
+            className="lg:hidden w-7 h-7 flex items-center justify-center rounded-[4px] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] transition-colors cursor-pointer"
             style={{
               color: 'var(--text-secondary)',
               backgroundColor: 'var(--bg-panel)',
@@ -125,7 +124,7 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
             aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={mobileOpen}
           >
-            {mobileOpen ? <X size={18} /> : <Menu size={18} />}
+            {mobileOpen ? <X size={15} /> : <Menu size={15} />}
           </button>
         </div>
       </nav>
@@ -133,16 +132,15 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
       {/* ── Mobile drawer ── */}
       {mobileOpen && (
         <div
-          className="lg:hidden fixed top-16 left-0 right-0 z-30 flex flex-col h-[calc(100vh-64px)] overflow-y-auto"
+          className="lg:hidden fixed top-[52px] left-0 right-0 z-30 flex flex-col h-[calc(100vh-52px)] overflow-y-auto border-b border-[var(--border-subtle)]"
           style={{
             backgroundColor: 'var(--bg-surface)',
-            borderBottom: '1px solid var(--border-subtle)',
           }}
           role="navigation"
           aria-label="Mobile navigation"
         >
           <div
-            className="px-4 py-2 mt-2 text-[10px] font-bold uppercase tracking-wider"
+            className="px-4 py-2 mt-2 text-[10px] font-bold uppercase tracking-wider select-none"
             style={{ color: 'var(--text-muted)' }}
           >
             Tools
@@ -154,12 +152,12 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
               className={mobileLinkClass}
               onClick={() => setMobileOpen(false)}
             >
-              <Icon size={16} className="shrink-0" />
+              <Icon size={15} className="shrink-0 text-[var(--text-secondary)]" />
               {label}
             </NavLink>
           ))}
           <div
-            className="px-4 py-2 mt-4 text-[10px] font-bold uppercase tracking-wider border-t pt-4"
+            className="px-4 py-2 mt-3 text-[10px] font-bold uppercase tracking-wider border-t pt-3 select-none"
             style={{
               color: 'var(--text-muted)',
               borderColor: 'var(--border-subtle)',
@@ -174,7 +172,7 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
               className={mobileLinkClass}
               onClick={() => setMobileOpen(false)}
             >
-              <Icon size={16} className="shrink-0" />
+              <Icon size={15} className="shrink-0 text-[var(--text-secondary)]" />
               {label}
             </NavLink>
           ))}
