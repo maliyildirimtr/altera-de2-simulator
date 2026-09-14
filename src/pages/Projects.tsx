@@ -148,7 +148,7 @@ export default function Projects() {
               className="text-sm mt-1 max-w-2xl"
               style={{ color: 'var(--text-secondary)' }}
             >
-              Curated hardware designs with clean SystemVerilog source code, automated testbenches, and interactive simulation support.
+              {EXAMPLES_LIST.length} curated Verilog/SystemVerilog reference designs with simulation and schematic workflows, including {categoryCounts.de2} designs ready for the virtual DE2 board.
             </p>
           </div>
 

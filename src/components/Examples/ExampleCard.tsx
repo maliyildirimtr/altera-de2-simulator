@@ -19,7 +19,7 @@ export const ExampleCard: React.FC<ExampleCardProps> = ({
   return (
     <div
       data-testid={`example-card-${example.id}`}
-      className="group flex flex-col justify-between p-5 rounded-lg border transition-all duration-150 min-h-[250px] shadow-sm font-sans"
+      className="group flex flex-col justify-between p-4 sm:p-5 rounded-md border transition-all duration-150 min-h-[240px] font-sans"
       style={{
         backgroundColor: 'var(--bg-panel)',
         borderColor: 'var(--border-subtle)',
@@ -34,32 +34,77 @@ export const ExampleCard: React.FC<ExampleCardProps> = ({
       }}
     >
       <div>
-        {/* Card Header: Category & Subtle Difficulty Badge */}
-        <div className="flex items-center justify-between mb-2.5">
-          <span
-            className="text-[11px] font-mono uppercase tracking-wider font-semibold"
-            style={{ color: 'var(--accent-primary)' }}
-          >
-            {example.category}
-          </span>
+        {/* Card Header: Category, Difficulty & Tool Badges */}
+        <div className="flex items-center justify-between gap-2 mb-2.5 flex-wrap">
+          <div className="flex items-center gap-2">
+            <span
+              className="text-[10px] font-mono uppercase tracking-wider font-semibold"
+              style={{ color: 'var(--accent-primary)' }}
+            >
+              {example.category}
+            </span>
 
-          <span
-            data-testid={`difficulty-badge-${example.id}`}
-            className="text-[11px] font-mono px-2 py-0.5 rounded border font-medium"
-            style={{
-              backgroundColor: 'var(--bg-surface)',
-              borderColor: 'var(--border-subtle)',
-              color: 'var(--text-secondary)',
-            }}
-          >
-            {isBeginner ? 'Beginner' : 'Intermediate'}
-          </span>
+            <span
+              data-testid={`difficulty-badge-${example.id}`}
+              className="text-[10px] font-mono px-1.5 py-0.5 rounded border font-medium"
+              style={{
+                backgroundColor: 'var(--bg-surface)',
+                borderColor: 'var(--border-subtle)',
+                color: 'var(--text-secondary)',
+              }}
+            >
+              {isBeginner ? 'Beginner' : 'Intermediate'}
+            </span>
+          </div>
+
+          {/* Tool Compatibility Badges */}
+          <div className="flex items-center gap-1">
+            {example.tools.waveform && (
+              <span
+                className="text-[9px] font-mono px-1.5 py-0.5 rounded border font-semibold"
+                style={{
+                  backgroundColor: 'rgba(16,185,129,0.08)',
+                  borderColor: 'rgba(16,185,129,0.25)',
+                  color: 'var(--state-success, #10b981)',
+                }}
+                title="Compatible with Waveform Simulator"
+              >
+                WAVEFORM
+              </span>
+            )}
+            {example.tools.schematic && (
+              <span
+                className="text-[9px] font-mono px-1.5 py-0.5 rounded border font-semibold"
+                style={{
+                  backgroundColor: 'rgba(13,148,136,0.08)',
+                  borderColor: 'rgba(13,148,136,0.25)',
+                  color: 'var(--tool-schematic-accent, #0d9488)',
+                }}
+                title="Compatible with Schematic Workspace"
+              >
+                SCHEMATIC
+              </span>
+            )}
+            {example.tools.de2 && (
+              <span
+                className="text-[9px] font-mono px-1.5 py-0.5 rounded border font-semibold"
+                style={{
+                  backgroundColor: 'rgba(245,158,11,0.08)',
+                  borderColor: 'rgba(245,158,11,0.25)',
+                  color: 'var(--state-warning, #f59e0b)',
+                }}
+                title="Ready for virtual DE2 board"
+              >
+                DE2
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Title */}
         <h3
           data-testid={`example-title-${example.id}`}
-          className="text-base font-bold mb-1.5 leading-snug group-hover:text-[var(--accent-primary)] transition-colors"
+          className="text-sm sm:text-base font-bold mb-1 leading-snug group-hover:text-[var(--accent-primary)] transition-colors"
           style={{ color: 'var(--text-primary)' }}
         >
           {example.title}
@@ -67,31 +112,33 @@ export const ExampleCard: React.FC<ExampleCardProps> = ({
 
         {/* Description */}
         <p
-          className="text-xs mb-3.5 leading-relaxed line-clamp-2"
+          className="text-xs mb-3 leading-relaxed line-clamp-2"
           style={{ color: 'var(--text-secondary)' }}
         >
           {example.description}
         </p>
 
-        {/* Concept Chips */}
-        <div className="flex flex-wrap gap-1.5 mb-4">
-          {example.topics.map((topic) => (
-            <span
-              key={topic}
-              className="text-[10px] font-mono px-2 py-0.5 rounded border"
-              style={{
-                backgroundColor: 'var(--bg-surface)',
-                borderColor: 'var(--border-subtle)',
-                color: 'var(--text-muted)',
-              }}
-            >
-              {topic}
-            </span>
-          ))}
-        </div>
+        {/* Concept Chips from authoritative registry topics */}
+        {example.topics && example.topics.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-3.5">
+            {example.topics.map((topic) => (
+              <span
+                key={topic}
+                className="text-[10px] font-mono px-2 py-0.5 rounded border"
+                style={{
+                  backgroundColor: 'var(--bg-surface)',
+                  borderColor: 'var(--border-subtle)',
+                  color: 'var(--text-muted)',
+                }}
+              >
+                {topic}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Card Footer: Restrained Engineering Lab Controls */}
+      {/* Card Footer: Clear Action Controls */}
       <div
         className="pt-3 border-t flex items-center justify-between gap-2 flex-wrap"
         style={{ borderColor: 'var(--border-subtle)' }}
@@ -103,7 +150,7 @@ export const ExampleCard: React.FC<ExampleCardProps> = ({
               data-testid={`open-schematic-btn-${example.id}`}
               onClick={() => onOpenTool(example, 'schematic')}
               title="Open in Schematic Workspace"
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded border transition-colors shadow-xs"
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded border transition-colors"
               style={{
                 backgroundColor: 'var(--bg-surface)',
                 borderColor: 'var(--border-subtle)',
@@ -111,9 +158,11 @@ export const ExampleCard: React.FC<ExampleCardProps> = ({
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.borderColor = 'var(--border-strong)';
+                e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                e.currentTarget.style.backgroundColor = 'var(--bg-surface)';
               }}
             >
               <GitGraph size={12} style={{ color: 'var(--tool-schematic-accent, #0d9488)' }} />
@@ -127,7 +176,7 @@ export const ExampleCard: React.FC<ExampleCardProps> = ({
               data-testid={`open-waveform-btn-${example.id}`}
               onClick={() => onOpenTool(example, 'waveform')}
               title="Open in Waveform Workspace"
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded border transition-colors shadow-xs"
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded border transition-colors"
               style={{
                 backgroundColor: 'var(--bg-surface)',
                 borderColor: 'var(--border-subtle)',
@@ -135,9 +184,11 @@ export const ExampleCard: React.FC<ExampleCardProps> = ({
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.borderColor = 'var(--border-strong)';
+                e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                e.currentTarget.style.backgroundColor = 'var(--bg-surface)';
               }}
             >
               <Activity size={12} style={{ color: 'var(--state-success, #10B981)' }} />
@@ -145,13 +196,13 @@ export const ExampleCard: React.FC<ExampleCardProps> = ({
             </button>
           )}
 
-          {/* Open in DE2 Button */}
+          {/* Open in DE2 Button (Strictly only when supported) */}
           {example.tools.de2 && (
             <button
               data-testid={`open-de2-btn-${example.id}`}
               onClick={() => onOpenTool(example, 'de2')}
               title="Open in DE2 Simulator"
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded border transition-colors shadow-xs"
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded border transition-colors"
               style={{
                 backgroundColor: 'var(--bg-surface)',
                 borderColor: 'var(--border-subtle)',
@@ -159,9 +210,11 @@ export const ExampleCard: React.FC<ExampleCardProps> = ({
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.borderColor = 'var(--border-strong)';
+                e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                e.currentTarget.style.backgroundColor = 'var(--bg-surface)';
               }}
             >
               <Cpu size={12} style={{ color: 'var(--state-warning, #f59e0b)' }} />
@@ -175,17 +228,20 @@ export const ExampleCard: React.FC<ExampleCardProps> = ({
           data-testid={`view-source-btn-${example.id}`}
           onClick={() => onViewSource(example)}
           title="View SystemVerilog source code"
-          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-colors"
+          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded border transition-colors"
           style={{
+            borderColor: 'transparent',
             color: 'var(--text-secondary)',
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.color = 'var(--text-primary)';
-            e.currentTarget.style.backgroundColor = 'var(--bg-surface)';
+            e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+            e.currentTarget.style.borderColor = 'var(--border-subtle)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.color = 'var(--text-secondary)';
             e.currentTarget.style.backgroundColor = 'transparent';
+            e.currentTarget.style.borderColor = 'transparent';
           }}
         >
           <Code2 size={12} />

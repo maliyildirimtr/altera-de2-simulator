@@ -63,9 +63,9 @@ export const ExampleFilterBar: React.FC<ExampleFilterBarProps> = ({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
-                padding: '6px 14px',
-                borderRadius: '6px',
-                fontSize: '0.85rem',
+                padding: '5px 12px',
+                borderRadius: '4px',
+                fontSize: '0.8rem',
                 fontWeight: isSelected ? 600 : 500,
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
@@ -81,9 +81,10 @@ export const ExampleFilterBar: React.FC<ExampleFilterBarProps> = ({
               <span>{cat.label}</span>
               <span
                 style={{
-                  fontSize: '0.72rem',
-                  padding: '1px 6px',
-                  borderRadius: '10px',
+                  fontSize: '0.7rem',
+                  fontFamily: 'var(--font-mono)',
+                  padding: '1px 5px',
+                  borderRadius: '3px',
                   backgroundColor: isSelected
                     ? 'var(--accent-subtle)'
                     : 'var(--bg-surface)',
@@ -101,16 +102,16 @@ export const ExampleFilterBar: React.FC<ExampleFilterBarProps> = ({
       <div
         style={{
           position: 'relative',
-          minWidth: '260px',
-          maxWidth: '340px',
-          flex: '1 1 240px',
+          minWidth: '240px',
+          maxWidth: '320px',
+          flex: '1 1 220px',
         }}
       >
         <Search
-          size={16}
+          size={14}
           style={{
             position: 'absolute',
-            left: '12px',
+            left: '10px',
             top: '50%',
             transform: 'translateY(-50%)',
             color: 'var(--text-secondary)',
@@ -122,15 +123,15 @@ export const ExampleFilterBar: React.FC<ExampleFilterBarProps> = ({
           data-testid="example-search-input"
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Search by title, concept, or opcode..."
+          placeholder="Filter by title, module, or topic..."
           style={{
             width: '100%',
-            padding: '8px 12px 8px 36px',
+            padding: '6px 10px 6px 32px',
             background: 'var(--bg-input)',
             border: '1px solid var(--border-subtle)',
-            borderRadius: '6px',
+            borderRadius: '4px',
             color: 'var(--text-primary)',
-            fontSize: '0.85rem',
+            fontSize: '0.8rem',
             outline: 'none',
             transition: 'border-color 0.15s ease',
           }}

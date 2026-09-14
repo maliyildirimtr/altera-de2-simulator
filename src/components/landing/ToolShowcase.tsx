@@ -124,10 +124,11 @@ function SchematicVisual() {
 function ExamplesVisual() {
   const lines = [
     [{ t: 'module ', c: '#93c5fd' }, { t: 'half_adder', c: '#fbbf24' }, { t: ' (', c: '#e2e8f0' }],
-    [{ t: '  input  ', c: '#93c5fd' }, { t: 'A, B,', c: '#cbd5e1' }],
-    [{ t: '  output ', c: '#93c5fd' }, { t: 'S, C', c: '#cbd5e1' }],
+    [{ t: '    input  ', c: '#93c5fd' }, { t: 'logic ', c: '#67e8f9' }, { t: 'a, b,', c: '#cbd5e1' }],
+    [{ t: '    output ', c: '#93c5fd' }, { t: 'logic ', c: '#67e8f9' }, { t: 'sum, carry', c: '#cbd5e1' }],
     [{ t: ');', c: '#cbd5e1' }],
-    [{ t: '  assign ', c: '#93c5fd' }, { t: 'S', c: '#cbd5e1' }, { t: ' = A^B;', c: '#94a3b8' }],
+    [{ t: 'assign ', c: '#93c5fd' }, { t: 'sum   = a ^ b;', c: '#cbd5e1' }],
+    [{ t: 'assign ', c: '#93c5fd' }, { t: 'carry = a & b;', c: '#cbd5e1' }],
     [{ t: 'endmodule', c: '#93c5fd' }],
   ];
   return (
@@ -147,142 +148,182 @@ function ExamplesVisual() {
   );
 }
 
-/* ─────────────────────────────────────────────────────────────
- * Tool definitions
- * ───────────────────────────────────────────────────────────── */
-const TOOLS = [
-  {
-    name: 'DE2 Simulator',
-    to: '/de2-simulator',
-    badge: 'Digital Logic',
-    accent: 'var(--tool-de2-accent)',
-    description:
-      'Upload Verilog or SystemVerilog, toggle switches, and observe LED states, 7-segment displays, and the LCD — all on a virtual Altera DE2 board. No physical hardware required.',
-    Visual: DE2Visual,
-  },
-  {
-    name: 'Waveform',
-    to: '/waveform',
-    badge: 'Timing Analysis',
-    accent: 'var(--tool-waveform-accent)',
-    description:
-      'Write a testbench, compile it with Icarus Verilog (WebAssembly) in the browser, and inspect how signal values change over time in an interactive timing diagram.',
-    Visual: WaveformVisual,
-  },
-  {
-    name: 'Schematic',
-    to: '/schematic',
-    badge: 'RTL Visualisation',
-    accent: 'var(--tool-schematic-accent)',
-    description:
-      'Synthesise your HDL with Yosys and view the resulting gate-level schematic. See how logic gates, multiplexers, decoders, and flip-flops connect to implement your design.',
-    Visual: SchematicVisual,
-  },
-  {
-    name: 'Examples',
-    to: '/examples',
-    badge: 'Ready to Run',
-    accent: 'var(--accent-primary)',
-    description:
-      'Open curated, working designs with a single click — Half Adder, Full Adder, D Flip-Flop, and more. Use them as a starting point or as teaching references.',
-    Visual: ExamplesVisual,
-  },
-] as const;
+import { EXAMPLES_LIST } from '../../examples/registry';
 
 /* ─────────────────────────────────────────────────────────────
- * Tool Showcase section
+ * Tool definitions with source-backed claims & derived counts
  * ───────────────────────────────────────────────────────────── */
 export function ToolShowcase() {
+  const totalExamples = EXAMPLES_LIST.length;
+  const de2ExamplesCount = EXAMPLES_LIST.filter(ex => ex.tools.de2).length;
+
+  const tools = [
+    {
+      name: 'DE2 Simulator',
+      to: '/de2-simulator',
+      badge: 'Virtual Hardware',
+      accent: 'var(--tool-de2-accent, #2563eb)',
+      description:
+        'Upload Verilog or SystemVerilog, toggle switches, press keys, and observe real-time red/green LEDs and 7-segment displays on a virtual Altera DE2 board. No physical hardware required.',
+      meta: '18 SW · 18 LEDR · 9 LEDG · 4 KEY · 8 HEX',
+      Visual: DE2Visual,
+    },
+    {
+      name: 'Waveform',
+      to: '/waveform',
+      badge: 'Timing Analysis',
+      accent: 'var(--tool-waveform-accent, #10b981)',
+      description:
+        'Write a testbench, compile it with Icarus Verilog in the browser, and inspect signal transitions, clock edges, and bus states over time in an interactive timing diagram.',
+      meta: 'WebAssembly Icarus · Signal Timing · Value Inspection',
+      Visual: WaveformVisual,
+    },
+    {
+      name: 'Schematic',
+      to: '/schematic',
+      badge: 'RTL Synthesis',
+      accent: 'var(--tool-schematic-accent, #0d9488)',
+      description:
+        'RTL synthesis via Yosys with interactive DigitalJS logic visualization. Inspect synthesized logic gates, multiplexers, decoders, and flip-flops with live truth-table evaluation.',
+      meta: 'Yosys WebAssembly · DigitalJS Graph · Truth Table',
+      Visual: SchematicVisual,
+    },
+    {
+      name: 'Examples',
+      to: '/examples',
+      badge: 'Reference Library',
+      accent: 'var(--accent-primary, #2563eb)',
+      description:
+        `${totalExamples} curated Verilog/SystemVerilog reference designs with simulation and schematic workflows, including ${de2ExamplesCount} designs ready for the virtual DE2 board.`,
+      meta: `${totalExamples} Reference Designs · ${de2ExamplesCount} DE2-Ready · Verified HDL`,
+      Visual: ExamplesVisual,
+    },
+  ];
+
   return (
     <section
-      className="landing-tools w-full py-20 lg:py-28"
+      className="landing-tools w-full py-16 lg:py-24"
       style={{ background: 'var(--landing-surface)' }}
       aria-labelledby="tools-heading"
     >
       <div className="max-w-6xl mx-auto px-6">
 
         {/* Heading */}
-        <div className="text-center mb-14">
-          <p
-            className="text-xs font-semibold tracking-widest uppercase mb-4"
-            style={{ color: 'var(--landing-accent)' }}
+        <div className="text-center mb-12">
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              padding: '4px 12px',
+              borderRadius: 4,
+              border: '1px solid var(--accent-border)',
+              background: 'var(--accent-subtle)',
+              marginBottom: 16,
+            }}
           >
-            The Toolset
-          </p>
+            <span
+              style={{
+                color: 'var(--accent-primary)',
+                fontSize: 11,
+                fontFamily: 'var(--font-mono)',
+                fontWeight: 600,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+              }}
+            >
+              The Toolset
+            </span>
+          </div>
           <h2
             id="tools-heading"
-            className="text-3xl sm:text-4xl font-bold"
-            style={{ color: 'var(--landing-text)', letterSpacing: '-0.02em' }}
+            className="text-2xl sm:text-3xl font-bold tracking-tight"
+            style={{ color: 'var(--landing-text)' }}
           >
-            Four tools. One workspace.
+            Four tools. One integrated workspace.
           </h2>
-          <p className="mt-4 text-base max-w-xl mx-auto" style={{ color: 'var(--landing-text-secondary)' }}>
-            Each tool covers a distinct part of the engineering learning workflow —
-            from interactive board simulation to RTL gate visualisation.
+          <p className="mt-3 text-sm max-w-xl mx-auto" style={{ color: 'var(--landing-text-secondary)' }}>
+            Each tool covers a distinct phase of the digital engineering workflow &mdash;
+            from virtual board simulation to signal timing and RTL logic synthesis.
           </p>
         </div>
 
         {/* Cards grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {TOOLS.map(({ name, to, badge, accent, description, Visual }) => (
+          {tools.map(({ name, to, badge, accent, description, meta, Visual }) => (
             <div
               key={name}
-              className="rounded-xl flex flex-col overflow-hidden"
-                style={{
-                  border: '1px solid var(--landing-border-subtle)',
-                  background: 'var(--landing-surface)',
-                }}
+              className="rounded-md flex flex-col overflow-hidden border transition-colors"
+              style={{
+                borderColor: 'var(--landing-border-subtle)',
+                background: 'var(--landing-surface-alt)',
+              }}
             >
-              {/* Card top — accent band */}
+              {/* Card top bar */}
               <div
-                className="px-5 py-4 flex items-center justify-between"
+                className="px-5 py-3.5 flex items-center justify-between border-b"
                 style={{
-                  background: 'var(--landing-surface-alt)',
-                  borderBottom: '1px solid var(--landing-border-subtle)',
+                  background: 'var(--landing-surface)',
+                  borderColor: 'var(--landing-border-subtle)',
                 }}
               >
                 <div className="flex items-center gap-2.5">
                   <div
-                    className="w-2 h-2 rounded-full"
+                    className="w-2 h-2 rounded-xs"
                     style={{ background: accent }}
                     aria-hidden="true"
                   />
                   <span
-                    className="text-sm font-semibold"
+                    className="text-sm font-semibold tracking-tight"
                     style={{ color: 'var(--landing-text)' }}
                   >
                     {name}
                   </span>
                 </div>
                 <span
-                  className="text-xs font-medium px-2 py-0.5 rounded-full"
-                  style={{ background: 'var(--landing-surface)', color: 'var(--landing-text-secondary)', border: '1px solid var(--landing-border-subtle)' }}
+                  className="text-[11px] font-mono px-2 py-0.5 rounded border"
+                  style={{
+                    background: 'var(--landing-surface-alt)',
+                    color: 'var(--landing-text-secondary)',
+                    borderColor: 'var(--landing-border-subtle)',
+                  }}
                 >
                   {badge}
                 </span>
               </div>
 
               {/* Card body */}
-              <div className="p-5 flex flex-col gap-4 flex-1">
+              <div className="p-5 flex flex-col gap-3.5 flex-1">
                 {/* Mini visual */}
                 <Visual />
 
                 {/* Description */}
-                <p className="text-sm leading-relaxed" style={{ color: 'var(--landing-text-secondary)' }}>
+                <p className="text-xs leading-relaxed" style={{ color: 'var(--landing-text-secondary)' }}>
                   {description}
                 </p>
 
+                {/* Technical Meta Tag */}
+                <div
+                  className="text-[10px] font-mono px-2.5 py-1 rounded border mt-auto"
+                  style={{
+                    background: 'var(--landing-surface)',
+                    borderColor: 'var(--landing-border-subtle)',
+                    color: 'var(--landing-text-muted)',
+                  }}
+                >
+                  {meta}
+                </div>
+
                 {/* CTA */}
-                <div className="mt-auto">
+                <div className="pt-2">
                   <Link
                     to={to}
-                    className="inline-flex items-center gap-1.5 text-sm font-medium transition-colors"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold transition-opacity"
                     style={{ color: accent }}
                     onMouseEnter={e => (e.currentTarget.style.opacity = '0.75')}
                     onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
                   >
                     Open {name}
-                    <ArrowRight size={14} />
+                    <ArrowRight size={13} />
                   </Link>
                 </div>
               </div>
