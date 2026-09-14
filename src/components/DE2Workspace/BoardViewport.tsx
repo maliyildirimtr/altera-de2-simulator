@@ -307,81 +307,58 @@ export const BoardViewport: React.FC<BoardViewportProps> = ({ isSplitView }) => 
         <Board />
       </div>
 
-      {/* Floating Canvas Controls (bottom-right) */}
+      {/* Floating Canvas Controls (bottom-right) - Precision instrument chrome */}
       <div
-        className="canvas-controls absolute bottom-3 right-3 flex items-center gap-1.5 backdrop-blur-md rounded-md px-2.5 py-1.5 shadow-lg z-20 border"
+        className="canvas-controls absolute bottom-3 right-3 flex items-center gap-1 rounded-[4px] px-2 py-1 z-20 border shadow-xs select-none"
         style={{
-          backgroundColor: 'var(--bg-surface, #0d1627)',
-          borderColor: 'var(--border-subtle, rgba(255, 255, 255, 0.1))',
-          color: 'var(--text-secondary, #94a3b8)',
+          backgroundColor: 'var(--bg-surface)',
+          borderColor: 'var(--border-subtle)',
+          color: 'var(--text-secondary)',
+          boxShadow: 'var(--shadow-sm)',
         }}
       >
         <span
           data-testid="de2-zoom-label"
-          className="text-[11px] font-mono select-none mr-1"
-          style={{ color: 'var(--text-secondary, #94a3b8)' }}
+          className="text-[11px] font-mono select-none mr-1 font-medium"
+          style={{ color: 'var(--text-secondary)' }}
         >
           {Math.round(scale * 100)}%
         </span>
         <button
           onClick={() => handleZoomStep('out')}
           title="Zoom Out"
-          className="p-1 rounded transition-colors"
+          className="p-1 rounded-[3px] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
           style={{
-            color: 'var(--text-secondary, #94a3b8)',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = 'var(--text-primary, #ffffff)';
-            e.currentTarget.style.backgroundColor = 'var(--bg-hover, rgba(255, 255, 255, 0.1))';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = 'var(--text-secondary, #94a3b8)';
-            e.currentTarget.style.backgroundColor = 'transparent';
+            color: 'var(--text-secondary)',
           }}
           aria-label="Zoom Out"
           data-testid="de2-zoom-out"
         >
-          <ZoomOut size={14} />
+          <ZoomOut size={13} />
         </button>
         <button
           onClick={handleFitToScreen}
           title="Fit to Screen"
-          className="p-1 rounded transition-colors"
+          className="p-1 rounded-[3px] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
           style={{
-            color: 'var(--text-secondary, #94a3b8)',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = 'var(--text-primary, #ffffff)';
-            e.currentTarget.style.backgroundColor = 'var(--bg-hover, rgba(255, 255, 255, 0.1))';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = 'var(--text-secondary, #94a3b8)';
-            e.currentTarget.style.backgroundColor = 'transparent';
+            color: 'var(--text-secondary)',
           }}
           aria-label="Fit to Screen"
           data-testid="de2-fit-view"
         >
-          <Maximize2 size={14} />
+          <Maximize2 size={13} />
         </button>
         <button
           onClick={() => handleZoomStep('in')}
           title="Zoom In"
-          className="p-1 rounded transition-colors"
+          className="p-1 rounded-[3px] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
           style={{
-            color: 'var(--text-secondary, #94a3b8)',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = 'var(--text-primary, #ffffff)';
-            e.currentTarget.style.backgroundColor = 'var(--bg-hover, rgba(255, 255, 255, 0.1))';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = 'var(--text-secondary, #94a3b8)';
-            e.currentTarget.style.backgroundColor = 'transparent';
+            color: 'var(--text-secondary)',
           }}
           aria-label="Zoom In"
           data-testid="de2-zoom-in"
         >
-          <ZoomIn size={14} />
+          <ZoomIn size={13} />
         </button>
       </div>
     </div>

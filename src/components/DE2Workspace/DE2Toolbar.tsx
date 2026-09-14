@@ -129,7 +129,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
             data-testid="engine-status"
             data-status={hasEngine ? 'ready' : 'uncompiled'}
             className={`w-2 h-2 rounded-full shrink-0 ${
-              hasEngine ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.7)]' : 'bg-slate-500'
+              hasEngine ? 'bg-emerald-500' : 'bg-slate-500'
             }`}
             title={hasEngine ? 'Simulation Engine Ready' : 'Engine not compiled'}
           />
@@ -260,21 +260,21 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
             <span className="hidden lg:inline">{isSimRunning ? 'Pause' : 'Run'}</span>
           </button>
 
-          {/* Step Clock */}
+          {/* Step Clock - Secondary quiet technical action */}
           <button
             data-testid="de2-clock-step"
             onClick={() => tickClock()}
             disabled={!hasEngine}
-            className="flex items-center gap-1 px-2 h-[30px] rounded-[4px] border font-medium transition-colors disabled:opacity-40 disabled:pointer-events-none text-xs"
+            className="flex items-center gap-1.5 px-2.5 h-[30px] rounded-[4px] border font-medium transition-colors disabled:opacity-40 disabled:pointer-events-none text-xs"
             style={{
-              backgroundColor: 'rgba(245, 158, 11, 0.12)',
-              borderColor: 'rgba(245, 158, 11, 0.25)',
-              color: 'var(--state-warning)',
+              backgroundColor: 'var(--bg-surface)',
+              borderColor: 'var(--border-subtle)',
+              color: 'var(--text-primary)',
             }}
             title="Manual Clock Pulse (tickClock)"
             aria-label="Step Clock"
           >
-            <Clock size={12} />
+            <Clock size={12} className="text-[var(--text-secondary)]" />
             <span className="hidden xl:inline">Step Clk</span>
           </button>
 
@@ -434,7 +434,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
                   className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded text-left transition-colors hover:bg-[var(--accent-subtle)] disabled:opacity-40 disabled:pointer-events-none"
                   style={{ color: 'var(--text-primary)' }}
                 >
-                  <Clock size={14} style={{ color: 'var(--state-warning)' }} />
+                  <Clock size={14} style={{ color: 'var(--text-secondary)' }} />
                   <span>Step Clock Pulse</span>
                 </button>
 
