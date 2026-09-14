@@ -146,21 +146,32 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
   return (
     <aside
       data-testid="inspector-panel"
-      style={{ width: width ?? 300 }}
-      className="bg-[#0d1627] flex flex-col shrink-0 select-none z-10 overflow-hidden"
+      style={{
+        width: width ?? 300,
+        backgroundColor: 'var(--bg-panel)',
+        color: 'var(--text-primary)',
+      }}
+      className="border-l border-[var(--border-subtle)] flex flex-col shrink-0 select-none z-10 overflow-hidden"
       aria-label="Inspector Panel"
     >
       {/* Header */}
-      <div className="h-10 px-3 flex items-center justify-between border-b border-[#1e293b] bg-[#0a1120]">
+      <div
+        className="h-[36px] px-3 flex items-center justify-between border-b border-[var(--border-subtle)] shrink-0"
+        style={{ backgroundColor: 'var(--bg-panel-header)' }}
+      >
         <div className="flex items-center gap-2">
-          <Cpu size={14} className="text-blue-400" />
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
+          <Cpu size={14} className="text-[var(--accent-primary)]" />
+          <span
+            className="text-[11px] font-bold uppercase tracking-wider select-none"
+            style={{ color: 'var(--text-muted)' }}
+          >
             Inspector
           </span>
         </div>
         <button
           onClick={onToggle}
-          className="p-1 rounded text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+          className="w-6 h-6 rounded-[4px] flex items-center justify-center transition-colors border border-transparent hover:border-[var(--border-subtle)] hover:bg-[var(--bg-hover)]"
+          style={{ color: 'var(--text-secondary)' }}
           title="Collapse Inspector"
           aria-label="Collapse Inspector"
         >
@@ -169,17 +180,25 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
       </div>
 
       {/* Sections List */}
-      <div className="flex-1 overflow-y-auto divide-y divide-[#1e293b]">
+      <div className="flex-1 overflow-y-auto divide-y divide-[var(--border-subtle)]">
 
         {/* 1. PIN MAPPING SECTION */}
         <div data-testid="inspector-pins-section">
           <button
             onClick={() => toggleSection('pins')}
-            className="w-full h-9 px-3 flex items-center justify-between bg-[#0a1120]/60 hover:bg-[#0a1120] text-slate-300 text-xs font-semibold transition-colors"
+            className="w-full h-[36px] px-3 flex items-center justify-between text-xs font-semibold transition-colors hover:bg-[var(--bg-hover)] select-none border-b border-[var(--border-subtle)]"
+            style={{ backgroundColor: 'var(--bg-panel-header)', color: 'var(--text-primary)' }}
           >
             <span className="flex items-center gap-1.5">
               <span>Pin Mapping</span>
-              <span className="text-[10px] font-mono font-normal text-slate-400 bg-white/5 px-1.5 py-0.5 rounded">
+              <span
+                className="text-[10px] font-mono font-normal px-1.5 py-0.2 rounded border"
+                style={{
+                  backgroundColor: 'var(--bg-surface)',
+                  borderColor: 'var(--border-subtle)',
+                  color: 'var(--text-muted)',
+                }}
+              >
                 {pinMappings.length}
               </span>
             </span>
@@ -187,26 +206,39 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
           </button>
 
           {openSections.pins && (
-            <div className="p-3 bg-[#0d1627] space-y-2">
+            <div className="p-3 space-y-2.5" style={{ backgroundColor: 'var(--bg-panel)' }}>
               <div className="flex items-center justify-between text-xs mb-1">
-                <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
+                <span
+                  className="text-[10px] uppercase font-bold tracking-wider select-none"
+                  style={{ color: 'var(--text-muted)' }}
+                >
                   HDL Port → Board
                 </span>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <button
                     data-testid="copy-qsf-btn"
                     data-copied-text={copiedQsfText}
                     onClick={handleCopyQsf}
-                    className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 transition-colors"
+                    className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-[4px] border transition-colors"
+                    style={{
+                      backgroundColor: 'var(--bg-surface)',
+                      borderColor: 'var(--border-subtle)',
+                      color: copiedQsf ? 'var(--state-success, #10b981)' : 'var(--text-secondary)',
+                    }}
                     title="Copy QSF constraints"
                   >
                     <Copy size={11} />
-                    {copiedQsf ? <span className="text-emerald-400">Copied!</span> : 'Copy QSF'}
+                    {copiedQsf ? <span>Copied!</span> : 'Copy QSF'}
                   </button>
                   <button
                     data-testid="add-pin-btn"
                     onClick={addPin}
-                    className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 transition-colors"
+                    className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-[4px] border transition-colors font-medium"
+                    style={{
+                      backgroundColor: 'var(--accent-subtle)',
+                      borderColor: 'var(--accent-border)',
+                      color: 'var(--accent-primary)',
+                    }}
                     title="Add new pin mapping"
                   >
                     <Plus size={11} /> Add
@@ -217,70 +249,105 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
               {/* Pin Mappings Table with dynamic adjustable height */}
               <div
                 data-testid="pin-mapping-scroll-area"
-                style={{ height: pinMappingHeight ?? 220 }}
-                className="overflow-y-auto border border-[#1e293b] rounded-md bg-[#080d18]"
+                style={{
+                  height: pinMappingHeight ?? 220,
+                  backgroundColor: 'var(--bg-input)',
+                  borderColor: 'var(--border-subtle)',
+                }}
+                className="overflow-y-auto border rounded-[4px]"
               >
                 {pinMappings.length > 0 ? (
-                  <div className="divide-y divide-[#1e293b]/70">
-                    {pinMappings.map((pin, i) => (
-                      <div key={i} data-testid={`pin-row-${i}`} className="p-1.5 flex flex-col gap-1 text-xs group hover:bg-white/[0.02]">
-                        <div className="flex items-center gap-1.5">
-                          {/* Port name in HDL */}
-                          <input
-                            data-testid={`pin-port-${i}`}
-                            type="text"
-                            value={pin.portName}
-                            onChange={e => updatePin(i, 'portName', e.target.value)}
-                            placeholder="Port (e.g. SW[0])"
-                            className="flex-1 min-w-0 bg-[#0d1627] border border-[#1e293b] rounded px-1.5 py-0.5 text-xs font-mono text-blue-300 focus:outline-none focus:border-blue-500"
-                          />
-                          {/* Physical pin */}
-                          <input
-                            data-testid={`pin-physical-${i}`}
-                            type="text"
-                            value={pin.physicalPin || ''}
-                            onChange={e => updatePin(i, 'physicalPin', e.target.value)}
-                            placeholder="PIN_N25"
-                            className="w-20 bg-[#0d1627] border border-[#1e293b] rounded px-1.5 py-0.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500"
-                          />
-                          {/* Delete */}
-                          <button
-                            data-testid={`pin-delete-${i}`}
-                            onClick={() => deletePin(i)}
-                            className="p-1 text-slate-400 hover:text-red-400 transition-colors"
-                            title="Delete mapping"
-                          >
-                            <Trash2 size={12} />
-                          </button>
+                  <div className="divide-y divide-[var(--border-subtle)]/70">
+                    {pinMappings.map((pin, i) => {
+                      const isAssigned = !!pin.virtualComponent && pin.virtualComponent !== 'Unmapped';
+                      return (
+                        <div
+                          key={i}
+                          data-testid={`pin-row-${i}`}
+                          className="p-2 flex flex-col gap-1.5 text-xs group hover:bg-[var(--bg-hover)] transition-colors"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            {/* Port name in HDL */}
+                            <input
+                              data-testid={`pin-port-${i}`}
+                              type="text"
+                              value={pin.portName}
+                              onChange={e => updatePin(i, 'portName', e.target.value)}
+                              placeholder="Port (e.g. SW[0])"
+                              style={{
+                                backgroundColor: 'var(--bg-panel)',
+                                borderColor: 'var(--border-subtle)',
+                                color: 'var(--accent-primary)',
+                              }}
+                              className="flex-1 min-w-0 border rounded-[3px] px-2 py-1 text-xs font-mono focus:outline-none focus:border-[var(--accent-primary)]"
+                            />
+                            {/* Physical pin */}
+                            <input
+                              data-testid={`pin-physical-${i}`}
+                              type="text"
+                              value={pin.physicalPin || ''}
+                              onChange={e => updatePin(i, 'physicalPin', e.target.value)}
+                              placeholder="PIN_N25"
+                              style={{
+                                backgroundColor: 'var(--bg-panel)',
+                                borderColor: 'var(--border-subtle)',
+                                color: 'var(--text-primary)',
+                              }}
+                              className="w-24 border rounded-[3px] px-2 py-1 text-xs font-mono focus:outline-none focus:border-[var(--accent-primary)]"
+                            />
+                            {/* Delete */}
+                            <button
+                              data-testid={`pin-delete-${i}`}
+                              onClick={() => deletePin(i)}
+                              className="p-1 rounded text-[var(--text-muted)] hover:text-red-500 hover:bg-[var(--bg-hover)] transition-colors"
+                              title="Delete mapping"
+                              aria-label="Delete mapping"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+
+                          {/* Virtual component target with status indicator */}
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                isAssigned ? 'bg-emerald-500' : 'bg-amber-500/70'
+                              }`}
+                              title={isAssigned ? 'Assigned' : 'Unmapped'}
+                            />
+                            <select
+                              data-testid={`pin-virtual-${i}`}
+                              value={pin.virtualComponent || 'Unmapped'}
+                              onChange={e =>
+                                updatePin(
+                                  i,
+                                  'virtualComponent',
+                                  e.target.value === 'Unmapped' ? '' : e.target.value
+                                )
+                              }
+                              style={{
+                                backgroundColor: 'var(--bg-panel)',
+                                borderColor: 'var(--border-subtle)',
+                                color: isAssigned ? 'var(--text-primary)' : 'var(--text-muted)',
+                              }}
+                              className="flex-1 border rounded-[3px] px-2 py-1 text-[11px] font-mono focus:outline-none focus:border-[var(--accent-primary)]"
+                            >
+                              {VIRTUAL_BOARD_OPTIONS.map(opt => (
+                                <option key={opt} value={opt}>
+                                  {opt} ({getComponentLabel(opt)})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
-                        {/* Virtual component target */}
-                        <div className="flex items-center gap-1.5">
-                          <select
-                            data-testid={`pin-virtual-${i}`}
-                            value={pin.virtualComponent || 'Unmapped'}
-                            onChange={e =>
-                              updatePin(
-                                i,
-                                'virtualComponent',
-                                e.target.value === 'Unmapped' ? '' : e.target.value
-                              )
-                            }
-                            className={`flex-1 bg-[#0d1627] border border-[#1e293b] rounded px-1.5 py-0.5 text-[11px] font-mono focus:outline-none focus:border-blue-500 ${
-                              !pin.virtualComponent ? 'text-amber-400' : 'text-emerald-400'
-                            }`}
-                          >
-                            {VIRTUAL_BOARD_OPTIONS.map(opt => (
-                              <option key={opt} value={opt}>
-                                {opt} ({getComponentLabel(opt)})
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
-                  <div className="p-4 text-center text-xs text-slate-400 italic">
+                  <div
+                    className="p-4 text-center text-xs italic"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
                     No pin assignments loaded. Import a .qsf file or add pins above.
                   </div>
                 )}
@@ -308,55 +375,61 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
         <div>
           <button
             onClick={() => toggleSection('clock')}
-            className="w-full h-9 px-3 flex items-center justify-between bg-[#0a1120]/60 hover:bg-[#0a1120] text-slate-300 text-xs font-semibold transition-colors"
+            className="w-full h-[36px] px-3 flex items-center justify-between text-xs font-semibold transition-colors hover:bg-[var(--bg-hover)] select-none border-b border-[var(--border-subtle)]"
+            style={{ backgroundColor: 'var(--bg-panel-header)', color: 'var(--text-primary)' }}
           >
             <span className="flex items-center gap-2">
-              <Clock size={13} className="text-amber-400" />
+              <Clock size={13} className="text-[var(--accent-primary)]" />
               <span>Clock &amp; Timing</span>
             </span>
             {openSections.clock ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </button>
 
           {openSections.clock && (
-            <div className="p-3 bg-[#0d1627] space-y-3 text-xs">
+            <div className="p-3 space-y-3 text-xs" style={{ backgroundColor: 'var(--bg-panel)' }}>
               {/* Clock Status & Single Tick */}
               <div
                 data-testid="clock-indicator"
                 data-clock={clockState}
-                className="flex items-center justify-between bg-[#080d18] border border-[#1e293b] rounded-md p-2"
+                className="flex items-center justify-between rounded-[4px] p-2.5 border"
+                style={{
+                  backgroundColor: 'var(--bg-input)',
+                  borderColor: 'var(--border-subtle)',
+                }}
               >
                 <div className="flex items-center gap-2">
                   <div
-                    className={`w-2.5 h-2.5 rounded-full ${
-                      clockState === 1
-                        ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]'
-                        : 'bg-slate-700'
+                    className={`w-2 h-2 rounded-full shrink-0 ${
+                      clockState === 1 ? 'bg-amber-500' : 'bg-slate-400'
                     }`}
                   />
-                  <span className="font-mono text-slate-300">CLOCK_50: {clockState}</span>
+                  <span className="font-mono text-[var(--text-primary)] text-xs font-medium">
+                    CLOCK_50: {clockState}
+                  </span>
                 </div>
                 <button
                   onClick={() => tickClock()}
-                  className="px-2.5 py-1 bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 rounded font-medium text-xs transition-colors"
+                  className="px-2.5 py-1 rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] text-xs font-medium transition-colors flex items-center gap-1.5 shadow-xs"
                   title="Pulse Clock Signal"
                 >
+                  <Clock size={11} className="text-[var(--text-muted)]" />
                   Step Clock
                 </button>
               </div>
 
               {/* Continuous Auto-Simulation */}
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400">Continuous Run</span>
+                  <span className="text-[var(--text-secondary)] font-medium">Continuous Run</span>
                   <button
                     onClick={() => {
                       if (isSimRunning) stopAutoSimulation();
                       else startAutoSimulation();
                     }}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-xs font-medium border transition-colors shadow-xs ${
                       isSimRunning
-                        ? 'bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/30'
-                        : 'bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30'
+                        ? 'bg-rose-500/10 text-rose-500 border-rose-500/25 hover:bg-rose-500/20'
+                        : 'bg-[var(--bg-surface)] text-[var(--text-primary)] border-[var(--border-subtle)] hover:bg-[var(--bg-hover)]'
                     }`}
                   >
                     {isSimRunning ? (
@@ -373,9 +446,11 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
 
                 {/* Frequency Slider */}
                 <div className="pt-1">
-                  <div className="flex justify-between text-[11px] text-slate-400 mb-1">
+                  <div className="flex justify-between text-[11px] text-[var(--text-muted)] mb-1.5">
                     <span>Frequency</span>
-                    <span className="font-mono text-slate-300">{simFrequency} Hz</span>
+                    <span className="font-mono text-[var(--text-primary)] font-semibold">
+                      {simFrequency} Hz
+                    </span>
                   </div>
                   <input
                     type="range"
@@ -384,7 +459,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                     step="1"
                     value={simFrequency}
                     onChange={e => setSimFrequency(parseInt(e.target.value, 10))}
-                    className="w-full accent-blue-500 cursor-pointer"
+                    className="w-full accent-[var(--accent-primary)] cursor-pointer"
                   />
                 </div>
               </div>
@@ -396,23 +471,24 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
         <div>
           <button
             onClick={() => toggleSection('reset')}
-            className="w-full h-9 px-3 flex items-center justify-between bg-[#0a1120]/60 hover:bg-[#0a1120] text-slate-300 text-xs font-semibold transition-colors"
+            className="w-full h-[36px] px-3 flex items-center justify-between text-xs font-semibold transition-colors hover:bg-[var(--bg-hover)] select-none border-b border-[var(--border-subtle)]"
+            style={{ backgroundColor: 'var(--bg-panel-header)', color: 'var(--text-primary)' }}
           >
             <span className="flex items-center gap-2">
-              <RotateCcw size={13} className="text-blue-400" />
+              <RotateCcw size={13} className="text-[var(--text-secondary)]" />
               <span>Board Reset</span>
             </span>
             {openSections.reset ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </button>
 
           {openSections.reset && (
-            <div className="p-3 bg-[#0d1627] space-y-2 text-xs">
-              <p className="text-slate-400 text-[11px] leading-relaxed">
+            <div className="p-3 space-y-2.5 text-xs" style={{ backgroundColor: 'var(--bg-panel)' }}>
+              <p className="text-[11px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
                 Resets all switches to 0, push buttons to unpressed (active-low 1), clears LED and HEX outputs, and resets clock.
               </p>
               <button
                 onClick={resetBoard}
-                className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-[#1e293b] rounded font-medium transition-colors"
+                className="w-full h-[30px] flex items-center justify-center gap-1.5 px-3 rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] font-medium transition-colors shadow-xs"
               >
                 <RotateCcw size={13} />
                 Reset Board State
@@ -425,20 +501,28 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
         <div>
           <button
             onClick={() => toggleSection('io')}
-            className="w-full h-9 px-3 flex items-center justify-between bg-[#0a1120]/60 hover:bg-[#0a1120] text-slate-300 text-xs font-semibold transition-colors"
+            className="w-full h-[36px] px-3 flex items-center justify-between text-xs font-semibold transition-colors hover:bg-[var(--bg-hover)] select-none border-b border-[var(--border-subtle)]"
+            style={{ backgroundColor: 'var(--bg-panel-header)', color: 'var(--text-primary)' }}
           >
             <span className="flex items-center gap-2">
-              <Activity size={13} className="text-emerald-400" />
+              <Activity size={13} className="text-emerald-500" />
               <span>Live I/O Status</span>
             </span>
             {openSections.io ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </button>
 
           {openSections.io && (
-            <div data-testid="live-io-status" className="p-3 bg-[#0d1627] space-y-2 text-xs">
+            <div
+              data-testid="live-io-status"
+              className="p-3 space-y-2.5 text-xs"
+              style={{ backgroundColor: 'var(--bg-panel)' }}
+            >
               {/* Inputs */}
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                <span
+                  className="text-[10px] font-bold uppercase tracking-wider block mb-1 select-none"
+                  style={{ color: 'var(--text-muted)' }}
+                >
                   Active Inputs
                 </span>
                 <div className="flex flex-wrap gap-1">
@@ -447,7 +531,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                       {activeSwitches.map(sw => (
                         <span
                           key={sw}
-                          className="px-1.5 py-0.5 rounded bg-blue-500/15 border border-blue-400/25 text-blue-300 font-mono text-[10px]"
+                          className="px-1.5 py-0.5 rounded-[3px] bg-[var(--accent-subtle)] border border-[var(--accent-border)] text-[var(--accent-primary)] font-mono text-[10px] font-medium"
                         >
                           {sw}=1
                         </span>
@@ -455,21 +539,26 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                       {pressedKeys.map(k => (
                         <span
                           key={k}
-                          className="px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-400/25 text-amber-300 font-mono text-[10px]"
+                          className="px-1.5 py-0.5 rounded-[3px] bg-amber-500/10 border border-amber-500/25 text-amber-600 dark:text-amber-400 font-mono text-[10px] font-medium"
                         >
                           {k}=0 (pressed)
                         </span>
                       ))}
                     </>
                   ) : (
-                    <span className="text-slate-400 italic text-[11px]">All default (SW=0, KEY=1)</span>
+                    <span className="italic text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                      All default (SW=0, KEY=1)
+                    </span>
                   )}
                 </div>
               </div>
 
               {/* Outputs */}
-              <div className="pt-2 border-t border-[#1e293b]/60">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+              <div className="pt-2 border-t border-[var(--border-subtle)]/70">
+                <span
+                  className="text-[10px] font-bold uppercase tracking-wider block mb-1 select-none"
+                  style={{ color: 'var(--text-muted)' }}
+                >
                   Active Outputs
                 </span>
                 <div className="flex flex-wrap gap-1">
@@ -478,7 +567,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                       {activeLedR.map(led => (
                         <span
                           key={led}
-                          className="px-1.5 py-0.5 rounded bg-red-500/15 border border-red-400/25 text-red-300 font-mono text-[10px]"
+                          className="px-1.5 py-0.5 rounded-[3px] bg-rose-500/10 border border-rose-500/25 text-rose-600 dark:text-rose-400 font-mono text-[10px] font-medium"
                         >
                           {led}
                         </span>
@@ -486,14 +575,16 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                       {activeLedG.map(led => (
                         <span
                           key={led}
-                          className="px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-400/25 text-emerald-300 font-mono text-[10px]"
+                          className="px-1.5 py-0.5 rounded-[3px] bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 font-mono text-[10px] font-medium"
                         >
                           {led}
                         </span>
                       ))}
                     </>
                   ) : (
-                    <span className="text-slate-400 italic text-[11px]">No active LEDs</span>
+                    <span className="italic text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                      No active LEDs
+                    </span>
                   )}
                 </div>
               </div>
