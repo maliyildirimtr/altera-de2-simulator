@@ -45,61 +45,85 @@ const POINTS = [
 export function LearningSection() {
   return (
     <section
-      className="landing-learning w-full py-20 lg:py-28"
-      style={{ background: 'var(--landing-surface-alt)' }}
+      className="landing-learning w-full py-16 lg:py-24"
+      style={{ background: 'var(--landing-surface)' }}
       aria-labelledby="learning-heading"
     >
       <div className="max-w-6xl mx-auto px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
 
           {/* Left — heading */}
           <div>
-            <p
-              className="text-xs font-semibold tracking-widest uppercase mb-4"
-              style={{ color: 'var(--landing-accent)' }}
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '4px 12px',
+                borderRadius: 4,
+                border: '1px solid var(--accent-border)',
+                background: 'var(--accent-subtle)',
+                marginBottom: 16,
+              }}
             >
-              Philosophy
-            </p>
+              <span
+                style={{
+                  color: 'var(--accent-primary)',
+                  fontSize: 11,
+                  fontFamily: 'var(--font-mono)',
+                  fontWeight: 600,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Design Philosophy
+              </span>
+            </div>
             <h2
               id="learning-heading"
-              className="text-3xl sm:text-4xl font-bold leading-tight mb-6"
-              style={{ color: 'var(--landing-text)', letterSpacing: '-0.02em' }}
+              className="text-2xl sm:text-3xl font-bold tracking-tight mb-5"
+              style={{ color: 'var(--landing-text)' }}
             >
-              Built for learning,
+              Built for engineering education,
               <br />
-              not tool&nbsp;imitation.
+              not tool complexity.
             </h2>
-            <p className="text-base leading-relaxed" style={{ color: 'var(--landing-text-secondary)' }}>
-              Professional EDA tools are powerful — and complex. This platform
-              focuses intentionally on the parts that help students understand
-              digital logic concepts quickly, without the setup friction or
-              feature overload.
+            <p className="text-sm leading-relaxed" style={{ color: 'var(--landing-text-secondary)' }}>
+              Traditional EDA environments carry steep setup friction and heavy feature density. Engineering Lab focuses intentionally on making fundamental digital logic and computer engineering concepts immediately understandable.
             </p>
-            <p className="text-base leading-relaxed mt-4" style={{ color: 'var(--landing-text-secondary)' }}>
-              The goal is not to replace Quartus, ModelSim, or Vivado. It is
-              to make the underlying concepts visible, tangible, and immediately
-              interactive.
+            <p className="text-sm leading-relaxed mt-3" style={{ color: 'var(--landing-text-secondary)' }}>
+              By connecting source code, timing diagrams, synthesized gate schematics, and virtual board I/O into one browser workstation, students and engineers can iterate and verify behavior in seconds.
             </p>
           </div>
 
           {/* Right — points */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {POINTS.map((pt) => (
-              <div key={pt.heading} className="flex flex-col gap-3">
+              <div
+                key={pt.heading}
+                className="flex flex-col gap-2.5 p-4 rounded-md border"
+                style={{
+                  background: 'var(--landing-surface-alt)',
+                  borderColor: 'var(--landing-border-subtle)',
+                }}
+              >
                 <div
-                  className="w-9 h-9 rounded-lg flex items-center justify-center"
-                  style={{ background: 'var(--landing-surface)', color: 'var(--landing-accent)', border: '1px solid var(--landing-border-subtle)' }}
+                  className="w-8 h-8 rounded flex items-center justify-center border"
+                  style={{
+                    background: 'var(--landing-surface)',
+                    color: 'var(--accent-primary)',
+                    borderColor: 'var(--landing-border-subtle)',
+                  }}
                 >
                   {pt.icon}
                 </div>
                 <div>
-                  <p
-                    className="text-sm font-semibold mb-1"
+                  <h3
+                    className="text-xs font-bold mb-1"
                     style={{ color: 'var(--landing-text)' }}
                   >
                     {pt.heading}
-                  </p>
-                  <p className="text-sm leading-relaxed" style={{ color: 'var(--landing-text-secondary)' }}>
+                  </h3>
+                  <p className="text-xs leading-relaxed" style={{ color: 'var(--landing-text-secondary)' }}>
                     {pt.body}
                   </p>
                 </div>

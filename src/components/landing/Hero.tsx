@@ -384,11 +384,13 @@ function DE2Board() {
 
 const CODE = [
   [{ t: 'module ', c: '#93c5fd' }, { t: 'half_adder', c: '#fbbf24' }, { t: ' (', c: '#cbd5e1' }],
-  [{ t: '  input  ', c: '#93c5fd' }, { t: 'A, B,', c: '#e2e8f0' }],
-  [{ t: '  output ', c: '#93c5fd' }, { t: 'S, C', c: '#e2e8f0' }],
+  [{ t: '    input  ', c: '#93c5fd' }, { t: 'logic ', c: '#67e8f9' }, { t: 'a,', c: '#e2e8f0' }],
+  [{ t: '    input  ', c: '#93c5fd' }, { t: 'logic ', c: '#67e8f9' }, { t: 'b,', c: '#e2e8f0' }],
+  [{ t: '    output ', c: '#93c5fd' }, { t: 'logic ', c: '#67e8f9' }, { t: 'sum,', c: '#e2e8f0' }],
+  [{ t: '    output ', c: '#93c5fd' }, { t: 'logic ', c: '#67e8f9' }, { t: 'carry', c: '#e2e8f0' }],
   [{ t: ');', c: '#e2e8f0' }],
-  [{ t: '  assign ', c: '#93c5fd' }, { t: 'S = A^B;', c: '#e2e8f0' }, { t: ' // Sum', c: '#334155' }],
-  [{ t: '  assign ', c: '#93c5fd' }, { t: 'C = A&B;', c: '#e2e8f0' }, { t: ' // Carry', c: '#334155' }],
+  [{ t: 'assign ', c: '#93c5fd' }, { t: 'sum   = a ^ b;', c: '#e2e8f0' }],
+  [{ t: 'assign ', c: '#93c5fd' }, { t: 'carry = a & b;', c: '#e2e8f0' }],
   [{ t: 'endmodule', c: '#93c5fd' }],
 ] as const;
 
@@ -413,7 +415,7 @@ function CodePanel() {
           gap: 8,
         }}
       >
-        <span style={{ color: '#94a3b8', fontSize: 11, fontFamily: 'monospace' }}>main.sv</span>
+        <span style={{ color: '#94a3b8', fontSize: 11, fontFamily: 'monospace' }}>half_adder.sv</span>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
           <div style={{ padding: '2px 8px', background: '#1e2d40', borderRadius: 4, color: '#4a6080', fontSize: 10, fontFamily: 'monospace' }}>
             Compile
@@ -530,14 +532,38 @@ function InspectorPanel() {
           background: '#111520',
           borderBottom: '1px solid rgba(255,255,255,0.07)',
           padding: '6px 12px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
         }}
       >
-        <span style={{ color: '#94a3b8', fontSize: 11, fontFamily: 'monospace' }}>Pin Planner</span>
+        <span style={{ color: '#94a3b8', fontSize: 11, fontFamily: 'monospace', fontWeight: 600 }}>Pin Mapping</span>
+        <span style={{ color: '#475569', fontSize: 9, fontFamily: 'monospace' }}>DE2 Cyclone II</span>
       </div>
-      <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {['SW[0] : PIN_N25', 'SW[1] : PIN_N26', 'LEDR[0]: PIN_AE23', 'LEDR[1]: PIN_AF23'].map(pin => (
-          <div key={pin} style={{ fontSize: 11, fontFamily: 'monospace', color: '#64748b', background: '#111827', padding: '6px 10px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.03)' }}>
-            {pin}
+      <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {[
+          { port: 'a', pin: 'SW[0]', desc: 'Switch 0', color: '#60a5fa' },
+          { port: 'b', pin: 'SW[1]', desc: 'Switch 1', color: '#60a5fa' },
+          { port: 'sum', pin: 'LEDR[0]', desc: 'Red LED 0', color: '#ef4444' },
+          { port: 'carry', pin: 'LEDR[1]', desc: 'Red LED 1', color: '#ef4444' },
+        ].map(item => (
+          <div
+            key={item.port}
+            style={{
+              fontSize: 10,
+              fontFamily: 'monospace',
+              background: '#111827',
+              padding: '6px 8px',
+              borderRadius: 4,
+              border: '1px solid rgba(255,255,255,0.05)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <span style={{ color: item.color, fontWeight: 600 }}>{item.port}</span>
+            <span style={{ color: '#94a3b8' }}>&rarr;</span>
+            <span style={{ color: '#cbd5e1' }}>{item.pin}</span>
           </div>
         ))}
       </div>
@@ -546,7 +572,7 @@ function InspectorPanel() {
 }
 
 /* ─────────────────────────────────────────────────────────────────
- * Unified Workspace Frame
+ * Unified Workspace Frame — Authentic Engineering Lab Shell
  * ───────────────────────────────────────────────────────────────── */
 function WorkspaceFrame() {
   return (
@@ -555,57 +581,79 @@ function WorkspaceFrame() {
       style={{
         width: '100%',
         background: '#0d1117',
-        borderRadius: 12,
-        border: '1px solid rgba(255,255,255,0.1)',
-        boxShadow: '0 24px 80px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,0,0,0.8)',
+        borderRadius: 8,
+        border: '1px solid rgba(255,255,255,0.12)',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.45)',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
       }}
     >
-      {/* OS / IDE Window Header */}
+      {/* Authentic Workstation Header Bar (No OS traffic lights) */}
       <div
         style={{
-          background: '#161b22',
-          padding: '12px 16px',
+          background: '#121722',
+          padding: '8px 14px',
           display: 'flex',
           alignItems: 'center',
+          justifyContent: 'space-between',
           borderBottom: '1px solid rgba(255,255,255,0.08)',
         }}
       >
-        <div style={{ display: 'flex', gap: 8 }}>
-          <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ff5f56' }} />
-          <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ffbd2e' }} />
-          <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#27c93f' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: 2,
+              background: 'var(--accent-primary, #2563eb)',
+            }}
+          />
+          <span style={{ color: '#e2e8f0', fontSize: 11, fontFamily: 'monospace', fontWeight: 600, letterSpacing: '0.04em' }}>
+            DE2-SIMULATOR // WORKSPACE PREVIEW
+          </span>
+          <span
+            className="hidden sm:inline"
+            style={{
+              color: '#64748b',
+              fontSize: 10,
+              fontFamily: 'monospace',
+              borderLeft: '1px solid rgba(255,255,255,0.1)',
+              paddingLeft: 10,
+            }}
+          >
+            half_adder.sv
+          </span>
         </div>
-        <div style={{ margin: '0 auto', color: '#8b949e', fontSize: 13, fontWeight: 500, fontFamily: 'sans-serif' }}>
-          Engineering Lab Workspace
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span
+            style={{
+              fontSize: 10,
+              fontFamily: 'monospace',
+              padding: '2px 8px',
+              borderRadius: 3,
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              color: '#94a3b8',
+              letterSpacing: '0.04em',
+            }}
+          >
+            EXAMPLE: HALF ADDER
+          </span>
         </div>
-        <div style={{ width: 52 }} /> {/* Spacer to center the title */}
       </div>
 
       {/* Main layout: Code | Board | Inspector */}
-      <div style={{ display: 'grid' }} className="grid-cols-1 lg:grid-cols-[280px_1fr_220px]">
+      <div style={{ display: 'grid' }} className="grid-cols-1 lg:grid-cols-[280px_1fr_200px]">
         {/* Left: Code */}
         <div className="hidden lg:block border-r border-white/10">
           <CodePanel />
         </div>
         
         {/* Center: DE2 Board */}
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 24px', background: '#0d1117' }}>
-          {/* Spotlight */}
-          <div
-            aria-hidden="true"
-            style={{
-              position: 'absolute',
-              top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-              width: '80%', height: '80%',
-              background: 'radial-gradient(ellipse at center, rgba(37,99,235,0.12) 0%, transparent 70%)',
-              pointerEvents: 'none',
-              borderRadius: '50%',
-            }}
-          />
-          <div style={{ position: 'relative', width: '100%', maxWidth: 560 }}>
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 20px', background: '#090d14' }}>
+          <div style={{ position: 'relative', width: '100%', maxWidth: 540 }}>
             <DE2Board />
           </div>
         </div>
@@ -641,9 +689,10 @@ export function Hero() {
           position: 'absolute',
           inset: 0,
           backgroundImage:
-            'linear-gradient(rgba(0,0,0,0.022) 1px, transparent 1px), ' +
-            'linear-gradient(90deg, rgba(0,0,0,0.022) 1px, transparent 1px)',
-          backgroundSize: '44px 44px',
+            'linear-gradient(var(--border-subtle) 0.75px, transparent 0.75px), ' +
+            'linear-gradient(90deg, var(--border-subtle) 0.75px, transparent 0.75px)',
+          backgroundSize: '36px 36px',
+          opacity: 0.25,
           pointerEvents: 'none',
         }}
       />
@@ -651,9 +700,9 @@ export function Hero() {
       <div
         className="relative"
         style={{
-          maxWidth: 1280,
+          maxWidth: 1240,
           margin: '0 auto',
-          padding: '72px 24px 0 24px',
+          padding: '64px 24px 0 24px',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -661,94 +710,127 @@ export function Hero() {
         }}
       >
         {/* ── Top: copy ── */}
-        <div style={{ maxWidth: 800, marginBottom: 56 }}>
+        <div style={{ maxWidth: 840, marginBottom: 48 }}>
           {/* Eyebrow */}
-          <p
+          <div
             style={{
-              color: 'var(--landing-accent)',
-              fontSize: 12,
-              fontWeight: 700,
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '4px 12px',
+              borderRadius: 4,
+              border: '1px solid var(--accent-border)',
+              background: 'var(--accent-subtle)',
               marginBottom: 20,
             }}
           >
-            Engineering Learning Platform
-          </p>
+            <span
+              style={{
+                color: 'var(--accent-primary)',
+                fontSize: 11,
+                fontFamily: 'var(--font-mono)',
+                fontWeight: 600,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+              }}
+            >
+              Browser-Based Engineering Workspace
+            </span>
+          </div>
 
           {/* Headline */}
           <h1
             style={{
               color: 'var(--landing-text)',
-              fontSize: 'clamp(2.2rem, 4.5vw, 3.2rem)',
+              fontSize: 'clamp(2rem, 4vw, 2.75rem)',
               fontWeight: 800,
               lineHeight: 1.15,
-              letterSpacing: '-0.02em',
-              marginBottom: 24,
+              letterSpacing: '-0.025em',
+              marginBottom: 20,
             }}
           >
-            Learn digital systems by building and simulating them in your browser.
+            Design. Simulate. Inspect.
           </h1>
 
           {/* Body */}
           <p
             style={{
               color: 'var(--landing-text-secondary)',
-              fontSize: 18,
+              fontSize: 'clamp(0.95rem, 1.8vw, 1.1rem)',
               lineHeight: 1.6,
-              marginBottom: 36,
+              marginBottom: 32,
               marginLeft: 'auto',
               marginRight: 'auto',
-              maxWidth: 640,
+              maxWidth: 680,
             }}
           >
-            Write Verilog/SystemVerilog, inspect signals, visualize digital
-            logic, and interact with a virtual FPGA board.
+            Write Verilog/SystemVerilog, inspect timing waveforms, synthesize logic
+            schematics, and interact with a virtual DE2 FPGA board directly in the browser.
           </p>
 
           {/* CTAs */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'center', marginBottom: 20 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, justifyContent: 'center', marginBottom: 20 }}>
             <Link
-              to="/digital-logic"
-              className="inline-flex items-center gap-2 font-semibold rounded-lg transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-              style={{ background: '#2563eb', color: '#fff', fontSize: 15, padding: '12px 28px' }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#1d4ed8')}
-              onMouseLeave={e => (e.currentTarget.style.background = '#2563eb')}
+              to="/de2-simulator"
+              className="inline-flex items-center gap-2 font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+              style={{
+                background: 'var(--accent-primary)',
+                color: '#fff',
+                fontSize: 14,
+                padding: '10px 24px',
+                borderRadius: 4,
+                boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--accent-hover)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'var(--accent-primary)')}
             >
-              <Play size={16} strokeWidth={2.5} />
-              Start Building
+              <Play size={15} strokeWidth={2.5} />
+              Open DE2 Simulator
             </Link>
             <Link
               to="/examples"
-              className="inline-flex items-center gap-2 font-semibold rounded-lg transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-              style={{ background: 'transparent', color: 'var(--landing-navy)', fontSize: 15, padding: '12px 28px', border: '1px solid var(--landing-border)' }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'var(--landing-surface-alt)'; e.currentTarget.style.borderColor = 'var(--landing-navy)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'var(--landing-border)'; }}
+              className="inline-flex items-center gap-2 font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+              style={{
+                background: 'var(--bg-surface)',
+                color: 'var(--text-primary)',
+                fontSize: 14,
+                padding: '10px 24px',
+                borderRadius: 4,
+                border: '1px solid var(--border-subtle)',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = 'var(--border-strong)';
+                e.currentTarget.style.background = 'var(--bg-hover)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                e.currentTarget.style.background = 'var(--bg-surface)';
+              }}
             >
               Explore Examples
-              <ArrowRight size={16} />
+              <ArrowRight size={15} />
             </Link>
           </div>
 
           {/* Reassurance */}
-          <p style={{ color: 'var(--landing-text-muted)', fontSize: 13, fontWeight: 500 }}>
-            Runs directly in your browser&nbsp;·&nbsp;No complex setup
+          <p style={{ color: 'var(--landing-text-muted)', fontSize: 12, fontFamily: 'var(--font-mono)' }}>
+            Runs in your browser &middot; No local installation or physical FPGA required
           </p>
         </div>
 
         {/* ── Bottom: unified workspace frame ── */}
-        <div style={{ width: '100%', paddingBottom: 64, marginTop: 16 }}>
+        <div style={{ width: '100%', paddingBottom: 56, marginTop: 8 }}>
           <WorkspaceFrame />
         </div>
       </div>
 
-      {/* Hero → Tool Showcase transition gradient */}
+      {/* Hero → Tool Showcase transition */}
       <div
         aria-hidden="true"
         style={{
-          height: 120,
+          height: 60,
           background: 'linear-gradient(to bottom, var(--landing-bg), var(--landing-surface))',
-          marginTop: -60,
+          marginTop: -30,
         }}
       />
     </section>

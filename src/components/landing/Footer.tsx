@@ -81,13 +81,13 @@ export function Footer() {
         {/* Bottom bar */}
         <div
           className="mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3"
-          style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
+          style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}
         >
-          <p className="text-xs" style={{ color: '#1e293b' }}>
-            {PLATFORM_NAME}
+          <p className="text-xs font-mono" style={{ color: '#64748b' }}>
+            {PLATFORM_NAME} &middot; Browser-Based Digital Engineering
           </p>
-          <p className="text-xs" style={{ color: '#1e293b' }}>
-            Built for learning
+          <p className="text-xs font-mono" style={{ color: '#64748b' }}>
+            Laboratory &amp; Simulation Platform
           </p>
         </div>
       </div>

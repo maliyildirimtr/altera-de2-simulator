@@ -182,7 +182,7 @@ function BoardFocus() {
 export function TeachingSection() {
   return (
     <section
-      className="landing-teaching w-full py-20 lg:py-28"
+      className="landing-teaching w-full py-16 lg:py-24"
       style={{ background: 'var(--landing-navy)' }}
       aria-labelledby="teaching-heading"
     >
@@ -191,40 +191,56 @@ export function TeachingSection() {
 
           {/* Left — text */}
           <div>
-            <p
-              className="text-xs font-semibold tracking-widest uppercase mb-4"
-              style={{ color: '#60a5fa' }}
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '4px 12px',
+                borderRadius: 4,
+                border: '1px solid rgba(59, 130, 246, 0.3)',
+                background: 'rgba(59, 130, 246, 0.1)',
+                marginBottom: 16,
+              }}
             >
-              Classroom &amp; Demonstrations
-            </p>
+              <span
+                style={{
+                  color: '#60a5fa',
+                  fontSize: 11,
+                  fontFamily: 'var(--font-mono)',
+                  fontWeight: 600,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Demonstrations &amp; Lectures
+              </span>
+            </div>
             <h2
               id="teaching-heading"
-              className="text-3xl sm:text-4xl font-bold leading-tight mb-6"
-              style={{ color: '#f1f5f9', letterSpacing: '-0.02em' }}
+              className="text-2xl sm:text-3xl font-bold tracking-tight mb-5"
+              style={{ color: '#f8fafc' }}
             >
-              Built for explaining
+              Engineered for clear
               <br />
-              engineering concepts.
+              concept demonstrations.
             </h2>
-            <p className="text-base leading-relaxed mb-6" style={{ color: '#94a3b8' }}>
-              When teaching or recording, the workspace can focus entirely on
-              the board, schematic, or waveform — hiding panels that are not
-              needed for the current explanation.
+            <p className="text-sm leading-relaxed mb-5" style={{ color: '#94a3b8' }}>
+              Whether lecturing in a lab or studying independently, the workspace can focus on the active virtual board, gate schematic, or timing waveform &mdash; collapsing auxiliary panels to keep attention on circuit behavior.
             </p>
-            <ul className="space-y-3">
+            <ul className="space-y-2.5">
               {[
-                'Large, readable board interface suitable for projectors',
-                'Waveform view that makes timing visible at a glance',
-                'Gate schematics that explain how logic really works',
-                'No terminal, no filesystem, no irrelevant toolchain noise',
+                'High-contrast board interface suitable for classroom presentation',
+                'Interactive waveform diagram making signal causality immediately visible',
+                'Synthesized RTL logic schematics demonstrating physical gate equivalence',
+                'Zero local installation, driver setup, or toolchain configuration required',
               ].map((item) => (
                 <li key={item} className="flex items-start gap-2.5">
                   <span
-                    className="mt-1 w-1.5 h-1.5 rounded-full shrink-0"
-                    style={{ background: '#2563eb' }}
+                    className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0"
+                    style={{ background: '#3b82f6' }}
                     aria-hidden="true"
                   />
-                  <span className="text-sm leading-relaxed" style={{ color: '#64748b' }}>
+                  <span className="text-xs leading-relaxed" style={{ color: '#cbd5e1' }}>
                     {item}
                   </span>
                 </li>
