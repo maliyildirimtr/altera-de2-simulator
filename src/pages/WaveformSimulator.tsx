@@ -161,7 +161,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
   const [isCompiling,  setIsCompiling]  = useState<boolean>(false);
   const [compileStatus, setCompileStatus] = useState<'idle' | 'compiling' | 'success' | 'error'>('idle');
   const [consoleLogs,  setConsoleLogs]  = useState<string[]>([
-    '[EDA Studio] Waveform Workspace initialized. Load HDL files to begin.',
+    '[Waveform Engine] Waveform Workspace initialized. Load HDL files to begin.',
   ]);
 
   const simulationDataRef = useRef<SimulationData | null>(null);
@@ -238,7 +238,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
         clearSimulationState();
         setConsoleLogs(prev => [
           ...prev,
-          `[EDA Studio] Loaded example: ${ex.title} (${ex.source.filename})`,
+          `[Waveform Engine] Loaded example: ${ex.title} (${ex.source.filename})`,
         ]);
         markWorkspaceOrigin('waveform', 'example');
       }

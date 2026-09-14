@@ -579,7 +579,7 @@ function WorkspaceFrame() {
           <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#27c93f' }} />
         </div>
         <div style={{ margin: '0 auto', color: '#8b949e', fontSize: 13, fontWeight: 500, fontFamily: 'sans-serif' }}>
-          EELab Engineering Workspace
+          Engineering Lab Workspace
         </div>
         <div style={{ width: 52 }} /> {/* Spacer to center the title */}
       </div>
