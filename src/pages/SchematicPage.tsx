@@ -695,19 +695,35 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
 
       {/* Alert Modal */}
       {alertMessage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in" onClick={() => setAlertMessage(null)}>
-          <div className="relative flex flex-col w-full max-w-sm bg-[#0c1322] border border-amber-500/40 rounded-xl shadow-2xl overflow-hidden font-sans" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-800 bg-[#090f1c]">
-              <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400">
-                <AlertCircle className="w-5 h-5" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in" onClick={() => setAlertMessage(null)}>
+          <div
+            className="relative flex flex-col w-full max-w-sm rounded-xl shadow-2xl overflow-hidden font-sans border"
+            style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-strong)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div
+              className="flex items-center gap-3 px-5 py-3.5 border-b"
+              style={{ backgroundColor: 'var(--bg-panel-header)', borderColor: 'var(--border-subtle)' }}
+            >
+              <div className="p-1.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-500">
+                <AlertCircle className="w-4 h-4" />
               </div>
-              <h3 className="text-sm font-semibold text-slate-100">Action Blocked</h3>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Action Blocked</h3>
             </div>
-            <div className="p-6 text-xs text-slate-300">
+            <div className="p-5 text-xs" style={{ color: 'var(--text-secondary)' }}>
               {alertMessage}
             </div>
-            <div className="flex justify-end px-6 py-3.5 bg-[#090f1c] border-t border-slate-800">
-              <button onClick={() => setAlertMessage(null)} className="px-4 py-2 text-xs font-medium rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors">OK</button>
+            <div
+              className="flex justify-end px-5 py-3 border-t"
+              style={{ backgroundColor: 'var(--bg-panel-header)', borderColor: 'var(--border-subtle)' }}
+            >
+              <button
+                onClick={() => setAlertMessage(null)}
+                className="px-3 py-1.5 text-xs font-medium rounded-md border transition-colors hover:bg-[var(--bg-hover)]"
+                style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
+              >
+                OK
+              </button>
             </div>
           </div>
         </div>
@@ -715,16 +731,23 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
 
       {/* Create Prompt Modal */}
       {createPromptOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in" onClick={() => setCreatePromptOpen(false)}>
-          <div className="relative flex flex-col w-full max-w-sm bg-[#0c1322] border border-indigo-500/40 rounded-xl shadow-2xl overflow-hidden font-sans" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-800 bg-[#090f1c]">
-              <div className="p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
-                <FileCode className="w-5 h-5" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in" onClick={() => setCreatePromptOpen(false)}>
+          <div
+            className="relative flex flex-col w-full max-w-sm rounded-xl shadow-2xl overflow-hidden font-sans border"
+            style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-strong)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div
+              className="flex items-center gap-3 px-5 py-3.5 border-b"
+              style={{ backgroundColor: 'var(--bg-panel-header)', borderColor: 'var(--border-subtle)' }}
+            >
+              <div className="p-1.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-blue-500">
+                <FileCode className="w-4 h-4" />
               </div>
-              <h3 className="text-sm font-semibold text-slate-100">Create New Module</h3>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Create New Module</h3>
             </div>
-            <div className="p-6">
-              <label className="block text-xs font-medium text-slate-400 mb-2">Enter HDL module file name:</label>
+            <div className="p-5">
+              <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Enter HDL module file name:</label>
               <input
                 type="text"
                 value={createPromptValue}
@@ -733,13 +756,33 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
                   if (e.key === 'Enter') submitCreateNewFile(createPromptValue);
                   if (e.key === 'Escape') setCreatePromptOpen(false);
                 }}
-                className="w-full px-3 py-2 text-sm bg-slate-900 border border-slate-700 rounded-md text-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                className="w-full px-3 py-2 text-xs rounded-md border focus:outline-none transition-colors"
+                style={{
+                  backgroundColor: 'var(--bg-app)',
+                  borderColor: 'var(--border-subtle)',
+                  color: 'var(--text-primary)',
+                }}
                 autoFocus
               />
             </div>
-            <div className="flex justify-end gap-3 px-6 py-3.5 bg-[#090f1c] border-t border-slate-800">
-              <button onClick={() => setCreatePromptOpen(false)} className="px-4 py-2 text-xs font-medium rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors">Cancel</button>
-              <button onClick={() => submitCreateNewFile(createPromptValue)} className="px-4 py-2 text-xs font-medium rounded-md bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors shadow-sm">Create</button>
+            <div
+              className="flex justify-end gap-2 px-5 py-3 border-t"
+              style={{ backgroundColor: 'var(--bg-panel-header)', borderColor: 'var(--border-subtle)' }}
+            >
+              <button
+                onClick={() => setCreatePromptOpen(false)}
+                className="px-3 py-1.5 text-xs font-medium rounded-md border transition-colors hover:bg-[var(--bg-hover)]"
+                style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => submitCreateNewFile(createPromptValue)}
+                className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors"
+                style={{ backgroundColor: 'var(--accent-primary)', color: '#ffffff' }}
+              >
+                Create
+              </button>
             </div>
           </div>
         </div>

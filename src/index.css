@@ -921,11 +921,32 @@ circle[stroke="#a855f7"],
    Wire Hover (Kablo üstüne gelince çıkan bilgilendirme kutusu)
    ========================================= */
 .wire_hover {
-  background: var(--bg-secondary) !important;
-  border: 1px solid var(--border-color) !important;
+  background: var(--bg-surface) !important;
+  border: 1px solid var(--border-subtle) !important;
   color: var(--text-primary) !important;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
   border-radius: 4px !important;
+  font-family: var(--font-mono);
+  font-size: 11px !important;
+}
+
+/* =========================================
+   Phase 13E: Schematic Canvas Drafting Surface
+   Scoped strictly to schematic workspace
+   ========================================= */
+[data-testid="schematic-canvas-area"] {
+  background-color: var(--bg-canvas) !important;
+  position: relative;
+}
+
+[data-testid="schematic-canvas-area"]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle, var(--border-subtle) 0.75px, transparent 0.75px);
+  background-size: 20px 20px;
+  opacity: 0.35;
 }
 
 /* ── Landing hero animations ──────────────────────────────────

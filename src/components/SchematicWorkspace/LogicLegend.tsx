@@ -19,50 +19,56 @@ export const LogicLegend: React.FC = () => {
         bottom: '12px',
         left: '12px',
         zIndex: 10,
-        background: 'rgba(15, 23, 42, 0.85)',
-        backdropFilter: 'blur(8px)',
-        border: '1px solid var(--border-color)',
+        backgroundColor: 'var(--bg-panel)',
+        borderColor: 'var(--border-subtle)',
+        borderWidth: '1px',
+        borderStyle: 'solid',
         borderRadius: '6px',
         padding: isExpanded ? '8px 12px' : '4px 8px',
         fontSize: '0.75rem',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+        boxShadow: 'var(--shadow-sm, 0 2px 8px rgba(0,0,0,0.15))',
         userSelect: 'none',
-        transition: 'all 0.2s ease',
+        transition: 'all 0.15s ease',
       }}
     >
-      <div
+      <button
+        type="button"
         onClick={() => setIsExpanded(!isExpanded)}
+        className="flex items-center gap-1.5 cursor-pointer text-left bg-transparent border-none p-0"
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          cursor: 'pointer',
           color: 'var(--text-secondary)',
           fontWeight: 600,
         }}
       >
-        <Zap size={13} className="text-amber-400" />
-        <span>Logic Colors</span>
-        <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-          {isExpanded ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
+        <Zap size={12} className="text-[var(--text-muted)]" />
+        <span className="text-[11px] font-sans">Logic Colors</span>
+        <span className="inline-flex items-center text-[var(--text-muted)]">
+          {isExpanded ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
         </span>
-      </div>
+      </button>
 
       {isExpanded ? (
-        <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <div className="mt-2 flex flex-col gap-1.5 font-sans">
           {legendItems.map((item) => (
-            <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div key={item.label} className="flex items-center gap-2">
               <span
                 style={{
-                  width: '10px',
-                  height: '10px',
+                  width: '8px',
+                  height: '8px',
                   borderRadius: '2px',
                   backgroundColor: item.color,
-                  boxShadow: `0 0 6px ${item.color}80`,
                   flexShrink: 0,
                 }}
               />
-              <span style={{ fontWeight: 600, color: 'var(--text-primary)', minWidth: '70px' }}>
+              <span
+                style={{
+                  fontWeight: 600,
+                  color: 'var(--text-primary)',
+                  minWidth: '64px',
+                  fontFamily: 'monospace',
+                  fontSize: '0.7rem',
+                }}
+              >
                 {item.label}
               </span>
               <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem' }}>{item.desc}</span>
@@ -70,52 +76,50 @@ export const LogicLegend: React.FC = () => {
           ))}
         </div>
       ) : (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <div className="flex items-center gap-2 mt-1 font-mono text-[11px]">
+          <div className="flex items-center gap-1">
             <span
               style={{
-                width: '7px',
-                height: '7px',
+                width: '6px',
+                height: '6px',
                 borderRadius: '50%',
                 backgroundColor: '#22c55e',
-                boxShadow: '0 0 4px #22c55e',
               }}
             />
-            <span style={{ color: '#22c55e', fontWeight: 600 }}>1</span>
+            <span style={{ color: '#22c55e', fontWeight: 700 }}>1</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <div className="flex items-center gap-1">
             <span
               style={{
-                width: '7px',
-                height: '7px',
+                width: '6px',
+                height: '6px',
                 borderRadius: '50%',
                 backgroundColor: '#52789c',
-                boxShadow: '0 0 4px #52789c',
               }}
             />
-            <span style={{ color: '#52789c', fontWeight: 600 }}>0</span>
+            <span style={{ color: '#52789c', fontWeight: 700 }}>0</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <div className="flex items-center gap-1">
             <span
               style={{
-                width: '7px',
-                height: '7px',
+                width: '6px',
+                height: '6px',
                 borderRadius: '50%',
                 backgroundColor: '#f59e0b',
               }}
             />
-            <span style={{ color: '#f59e0b', fontWeight: 600 }}>X</span>
+            <span style={{ color: '#f59e0b', fontWeight: 700 }}>X</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <div className="flex items-center gap-1">
             <span
               style={{
-                width: '7px',
-                height: '7px',
+                width: '6px',
+                height: '6px',
                 borderRadius: '50%',
                 backgroundColor: '#a855f7',
               }}
             />
-            <span style={{ color: '#a855f7', fontWeight: 600 }}>Z</span>
+            <span style={{ color: '#a855f7', fontWeight: 700 }}>Z</span>
           </div>
         </div>
       )}

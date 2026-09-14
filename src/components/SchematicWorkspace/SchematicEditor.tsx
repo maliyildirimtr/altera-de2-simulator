@@ -34,7 +34,7 @@ export const SchematicEditor: React.FC<SchematicEditorProps> = ({
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        backgroundColor: 'var(--bg-panel, var(--bg-secondary))',
+        backgroundColor: 'var(--bg-surface)',
         overflow: 'hidden',
       }}
     >
@@ -42,8 +42,8 @@ export const SchematicEditor: React.FC<SchematicEditorProps> = ({
       <div
         style={{
           height: '34px',
-          background: 'var(--bg-surface, var(--bg-primary))',
-          borderBottom: '1px solid var(--border-subtle, var(--border-color))',
+          background: 'var(--bg-panel-header)',
+          borderBottom: '1px solid var(--border-subtle)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -59,17 +59,17 @@ export const SchematicEditor: React.FC<SchematicEditorProps> = ({
               alignItems: 'center',
               gap: '6px',
               padding: '4px 10px',
-              background: 'var(--bg-panel, var(--bg-secondary))',
-              borderTop: '2px solid var(--accent-primary, var(--accent-color))',
-              borderRight: '1px solid var(--border-subtle, var(--border-color))',
-              borderLeft: '1px solid var(--border-subtle, var(--border-color))',
+              background: 'var(--bg-surface)',
+              borderTop: '2px solid var(--accent-primary)',
+              borderRight: '1px solid var(--border-subtle)',
+              borderLeft: '1px solid var(--border-subtle)',
               borderRadius: '4px 4px 0 0',
-              fontSize: '0.8rem',
+              fontSize: '0.78rem',
               fontWeight: 600,
               color: 'var(--text-primary)',
             }}
           >
-            <FileCode size={13} className="text-blue-400" />
+            <FileCode size={13} className="text-blue-500" />
             <span>{currentFile?.name || 'untitled.sv'}</span>
             {isModified && (
               <span
@@ -89,13 +89,14 @@ export const SchematicEditor: React.FC<SchematicEditorProps> = ({
           <button
             data-testid="editor-import-hdl-btn"
             onClick={onImportHDL}
+            className="hover:bg-[var(--bg-hover)] transition-colors"
             style={{
-              padding: '2px 8px',
-              background: 'transparent',
-              border: '1px solid var(--border-subtle, var(--border-color))',
+              padding: '3px 8px',
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-subtle)',
               borderRadius: '4px',
               color: 'var(--text-secondary)',
-              fontSize: '0.75rem',
+              fontSize: '0.74rem',
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
@@ -109,12 +110,12 @@ export const SchematicEditor: React.FC<SchematicEditorProps> = ({
             <button
               onClick={onClose}
               title="Close Editor"
+              className="p-1 rounded-[4px] hover:bg-[var(--bg-hover)] transition-colors"
               style={{
                 background: 'transparent',
                 border: 'none',
-                color: 'var(--text-secondary)',
+                color: 'var(--text-muted)',
                 cursor: 'pointer',
-                padding: '2px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
