@@ -120,24 +120,24 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
         color: 'var(--text-primary)',
       }}
     >
-      {/* Left: Branding & Status & Panels */}
-      <div className="flex items-center gap-2">
+      {/* Left: Branding & Status & Project Toggle */}
+      <div className="flex items-center gap-2 min-w-0">
         <button
           data-testid="schematic-project-toggle"
           title={isProjectOpen ? 'Collapse Project Explorer' : 'Expand Project Explorer'}
           onClick={onToggleProject}
-          className={`flex items-center gap-1.5 px-2 py-1 rounded-[4px] text-xs font-medium border transition-colors ${
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-xs font-medium border transition-colors ${
             isProjectOpen
               ? 'bg-[var(--accent-subtle)] text-[var(--accent-primary)] border-[var(--accent-border)] font-semibold shadow-xs'
-              : 'border-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+              : 'border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
           }`}
         >
-          <FolderTree size={14} />
+          <FolderTree size={13} />
           <span className="hidden md:inline">Project</span>
         </button>
 
-        <div className="flex items-center gap-1.5 ml-1">
-          <GitGraph size={15} style={{ color: 'var(--accent-primary)' }} />
+        <div className="flex items-center gap-1.5 ml-0.5">
+          <GitGraph size={14} style={{ color: 'var(--accent-primary)' }} />
           <span className="font-semibold text-xs tracking-tight" style={{ color: 'var(--text-primary)' }}>
             Schematic
           </span>
@@ -146,7 +146,7 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
         {/* Status Badge */}
         <div
           data-testid="schematic-status"
-          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[4px] text-[11px] font-medium border"
+          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[4px] text-[11px] font-medium border font-mono shrink-0"
           style={{
             background: badge.bg,
             borderColor: badge.border,
@@ -161,7 +161,7 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
         </div>
       </div>
 
-      {/* Center: View Modes & Reset Layout */}
+      {/* Center: Segmented View Modes & Reset Layout */}
       <div className="flex items-center gap-1.5">
         <div
           className="flex items-center p-0.5 rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-input)] gap-0.5"
@@ -170,6 +170,8 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
           <button
             data-testid="view-mode-schematic"
             onClick={() => onViewModeChange('schematic')}
+            role="tab"
+            aria-selected={viewMode === 'schematic'}
             className={`px-2.5 py-1 rounded-[3px] text-xs transition-colors ${
               viewMode === 'schematic'
                 ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
@@ -181,6 +183,8 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
           <button
             data-testid="view-mode-split"
             onClick={() => onViewModeChange('split')}
+            role="tab"
+            aria-selected={viewMode === 'split'}
             className={`px-2.5 py-1 rounded-[3px] text-xs transition-colors ${
               viewMode === 'split'
                 ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
@@ -192,6 +196,8 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
           <button
             data-testid="view-mode-code"
             onClick={() => onViewModeChange('code')}
+            role="tab"
+            aria-selected={viewMode === 'code'}
             className={`px-2.5 py-1 rounded-[3px] text-xs transition-colors ${
               viewMode === 'code'
                 ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
@@ -236,10 +242,10 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
           onClick={onSynthesize}
           disabled={status === 'synthesizing'}
           title="Synthesize HDL into Logic Schematic"
-          className={`flex items-center gap-1.5 px-3 py-1 rounded-[4px] text-xs font-medium transition-all shadow-xs ${
+          className={`flex items-center gap-1.5 px-3 py-1 rounded-[4px] text-xs font-semibold transition-colors shadow-xs border ${
             status === 'synthesizing'
-              ? 'opacity-60 cursor-not-allowed bg-[var(--accent-primary)] text-white'
-              : 'bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white shadow-[0_0_10px_rgba(37,99,235,0.25)]'
+              ? 'opacity-60 cursor-not-allowed bg-[var(--accent-primary)] text-white border-transparent'
+              : 'bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white border-[var(--accent-border)]'
           }`}
         >
           {status === 'synthesizing' ? (

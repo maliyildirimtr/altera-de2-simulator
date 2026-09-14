@@ -44,12 +44,12 @@ export const TruthTableDrawer: React.FC<TruthTableDrawerProps> = ({
         width: '100%',
         height: '60vh',
         maxHeight: '60vh',
-        backgroundColor: 'var(--bg-panel)',
+        backgroundColor: 'var(--bg-surface)',
         borderTop: '1px solid var(--border-subtle)',
-        boxShadow: '0 -8px 24px rgba(0, 0, 0, 0.5)',
+        boxShadow: '0 -8px 24px rgba(0, 0, 0, 0.35)',
         display: 'flex',
         flexDirection: 'column',
-        fontSize: '0.85rem',
+        fontSize: '0.82rem',
         overflow: 'hidden',
         zIndex: 40,
       }
@@ -57,14 +57,23 @@ export const TruthTableDrawer: React.FC<TruthTableDrawerProps> = ({
         width: `${width}px`,
         height: '100%',
         flexShrink: 0,
-        backgroundColor: 'var(--bg-panel)',
+        backgroundColor: 'var(--bg-surface)',
         borderLeft: '1px solid var(--border-subtle)',
         display: 'flex',
         flexDirection: 'column',
-        fontSize: '0.85rem',
+        fontSize: '0.82rem',
         overflow: 'hidden',
         zIndex: 10,
       };
+
+  // Restrained logic value coloring adhering to DigitalJS logic semantics
+  const getLogicColor = (val: string) => {
+    if (val === '1' || val.includes('1')) return '#16a34a'; // restrained success green
+    if (val === '0' || val.includes('0')) return 'var(--text-secondary)'; // neutral / subdued
+    if (val.toUpperCase().includes('X')) return '#f59e0b'; // amber
+    if (val.toUpperCase().includes('Z')) return '#a855f7'; // purple
+    return 'var(--text-primary)';
+  };
 
   return (
     <div data-testid="truth-table-drawer" style={drawerStyle}>
@@ -84,14 +93,14 @@ export const TruthTableDrawer: React.FC<TruthTableDrawerProps> = ({
 
       {/* Drawer Header */}
       <div
-        className="h-9 px-3 flex items-center justify-between shrink-0 border-b select-none"
+        className="h-9 px-3 flex items-center justify-between shrink-0 select-none"
         style={{
           borderBottom: '1px solid var(--border-subtle)',
           backgroundColor: 'var(--bg-panel-header)',
         }}
       >
         <div className="flex items-center gap-2 min-w-0">
-          <Table2 size={14} className="text-blue-500 shrink-0" />
+          <Table2 size={13} className="text-blue-500 shrink-0" />
           <span
             className="text-[11px] font-bold uppercase tracking-wider truncate"
             style={{ color: 'var(--text-muted)' }}
@@ -100,11 +109,11 @@ export const TruthTableDrawer: React.FC<TruthTableDrawerProps> = ({
           </span>
           {hasData && (
             <span
-              className="text-[10px] px-1.5 py-0.2 rounded font-mono shrink-0 border font-medium"
+              className="text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0 border font-medium"
               style={{
-                backgroundColor: 'var(--accent-subtle)',
-                borderColor: 'var(--accent-border)',
-                color: 'var(--accent-primary)',
+                backgroundColor: 'var(--bg-surface)',
+                borderColor: 'var(--border-subtle)',
+                color: 'var(--text-secondary)',
               }}
             >
               {truthTableData.length} rows (2^{totalBits})
@@ -157,8 +166,8 @@ export const TruthTableDrawer: React.FC<TruthTableDrawerProps> = ({
               gap: '10px',
             }}
           >
-            <Loader2 size={20} className="animate-spin text-sky-400" />
-            <span style={{ fontSize: '0.8rem' }}>Evaluating combinations in live circuit...</span>
+            <Loader2 size={18} className="animate-spin text-blue-500" />
+            <span style={{ fontSize: '0.78rem' }}>Evaluating combinations in live circuit...</span>
           </div>
         ) : hasData ? (
           <table
@@ -167,22 +176,52 @@ export const TruthTableDrawer: React.FC<TruthTableDrawerProps> = ({
               width: '100%',
               borderCollapse: 'collapse',
               textAlign: 'center',
-              fontSize: '0.78rem',
+              fontSize: '0.76rem',
             }}
           >
             <thead
               style={{
-                background: 'var(--bg-panel)',
+                background: 'var(--bg-panel-header)',
                 position: 'sticky',
                 top: 0,
                 zIndex: 5,
-                borderBottom: '2px solid var(--border-subtle)',
+                borderBottom: '1px solid var(--border-subtle)',
               }}
             >
+              {/* Group category header */}
+              <tr style={{ borderBottom: '1px solid var(--border-subtle)', fontSize: '0.68rem' }}>
+                <th style={{ padding: '3px 4px', color: 'var(--text-muted)' }} />
+                <th
+                  colSpan={inputKeys.length}
+                  style={{
+                    padding: '3px 4px',
+                    color: 'var(--text-muted)',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                  }}
+                >
+                  Inputs
+                </th>
+                <th style={{ width: '8px', borderLeft: '1px solid var(--border-subtle)', borderRight: '1px solid var(--border-subtle)' }} />
+                <th
+                  colSpan={outputKeys.length}
+                  style={{
+                    padding: '3px 4px',
+                    color: 'var(--accent-primary)',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                  }}
+                >
+                  Outputs
+                </th>
+              </tr>
+              {/* Variable names header */}
               <tr>
                 <th
                   style={{
-                    padding: '6px 4px',
+                    padding: '5px 4px',
                     color: 'var(--text-muted)',
                     width: '32px',
                     fontWeight: 600,
@@ -195,9 +234,9 @@ export const TruthTableDrawer: React.FC<TruthTableDrawerProps> = ({
                     key={key}
                     title={key}
                     style={{
-                      padding: '6px 4px',
+                      padding: '5px 4px',
                       color: 'var(--text-primary)',
-                      fontWeight: 700,
+                      fontWeight: 600,
                       maxWidth: '75px',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
@@ -211,9 +250,9 @@ export const TruthTableDrawer: React.FC<TruthTableDrawerProps> = ({
                   style={{
                     borderLeft: '1px solid var(--border-subtle)',
                     borderRight: '1px solid var(--border-subtle)',
-                    padding: '6px 2px',
+                    padding: '5px 2px',
                     color: 'var(--border-subtle)',
-                    width: '10px',
+                    width: '8px',
                   }}
                 >
                   |
@@ -223,9 +262,9 @@ export const TruthTableDrawer: React.FC<TruthTableDrawerProps> = ({
                     key={key}
                     title={key}
                     style={{
-                      padding: '6px 4px',
-                      color: '#38bdf8',
-                      fontWeight: 700,
+                      padding: '5px 4px',
+                      color: 'var(--accent-primary)',
+                      fontWeight: 600,
                       maxWidth: '75px',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
@@ -248,36 +287,38 @@ export const TruthTableDrawer: React.FC<TruthTableDrawerProps> = ({
                     style={{
                       cursor: 'pointer',
                       background: isActive
-                        ? 'rgba(56, 189, 248, 0.18)'
+                        ? 'var(--accent-subtle)'
                         : idx % 2 === 0
                         ? 'transparent'
-                        : 'rgba(255,255,255,0.02)',
+                        : 'var(--bg-app)',
                       borderBottom: '1px solid var(--border-subtle)',
-                      transition: 'background-color 0.15s ease',
+                      outline: isActive ? '1px solid var(--accent-border)' : 'none',
+                      outlineOffset: '-1px',
+                      transition: 'background-color 0.12s ease',
                     }}
                   >
                     <td
                       style={{
-                        padding: '5px 4px',
+                        padding: '4px 4px',
                         color: 'var(--text-muted)',
                         fontSize: '0.7rem',
+                        fontFamily: 'monospace',
                       }}
                     >
                       {idx}
                     </td>
                     {inputKeys.map((key) => {
                       const val = row.inputs[key];
-                      const isHigh = val === '1' || val.includes('1');
                       return (
                         <td
                           key={key}
                           data-testid={`truth-table-in-${key}-${idx}`}
                           data-logic-value={val}
                           style={{
-                            padding: '5px 4px',
-                            fontWeight: 700,
+                            padding: '4px 4px',
+                            fontWeight: 600,
                             fontFamily: 'monospace',
-                            color: isHigh ? '#22c55e' : '#38bdf8',
+                            color: getLogicColor(val),
                           }}
                         >
                           {val}
@@ -292,17 +333,16 @@ export const TruthTableDrawer: React.FC<TruthTableDrawerProps> = ({
                     />
                     {outputKeys.map((key) => {
                       const val = row.outputs[key];
-                      const isHigh = val === '1' || val.includes('1');
                       return (
                         <td
                           key={key}
                           data-testid={`truth-table-out-${key}-${idx}`}
                           data-logic-value={val}
                           style={{
-                            padding: '5px 4px',
-                            fontWeight: 700,
+                            padding: '4px 4px',
+                            fontWeight: 600,
                             fontFamily: 'monospace',
-                            color: isHigh ? '#22c55e' : '#38bdf8',
+                            color: getLogicColor(val),
                           }}
                         >
                           {val}
@@ -320,7 +360,7 @@ export const TruthTableDrawer: React.FC<TruthTableDrawerProps> = ({
               padding: '30px 20px',
               textAlign: 'center',
               color: 'var(--text-secondary)',
-              fontSize: '0.8rem',
+              fontSize: '0.78rem',
             }}
           >
             No inputs/outputs found to generate truth table.
