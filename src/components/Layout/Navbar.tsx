@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, Link } from 'react-router-dom';
-import { Zap, Cpu, Activity, GitGraph, BookOpen, Sun, Moon, Menu, X, Layers, Grid } from 'lucide-react';
+import { Cpu, Activity, GitGraph, BookOpen, Sun, Moon, Menu, X, Layers, Grid } from 'lucide-react';
 import { PLATFORM_NAME } from '../../lib/platform';
 
 interface NavbarProps {
@@ -51,11 +51,17 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
         {/* Brand */}
         <Link
           to="/"
-          className="flex items-center gap-2 group mr-6 sm:mr-8 shrink-0"
+          className="flex items-center gap-2.5 group mr-6 sm:mr-8 shrink-0"
           aria-label={`${PLATFORM_NAME} — go to home`}
         >
-          <div className="w-6 h-6 rounded-[4px] bg-blue-600 flex items-center justify-center shadow-sm shadow-blue-700/30 transition-opacity group-hover:opacity-90">
-            <Zap size={13} className="text-white" strokeWidth={2.5} />
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-[6px] bg-[#070B14] border border-[var(--border-subtle)] flex items-center justify-center overflow-hidden shrink-0 shadow-xs transition-opacity group-hover:opacity-90">
+            <img
+              src="/brand/logiclab-mark.png"
+              alt={`${PLATFORM_NAME} logo`}
+              className="w-full h-full object-contain"
+              width={32}
+              height={32}
+            />
           </div>
           <span
             className="text-[14px] tracking-tight hidden sm:block font-semibold"
