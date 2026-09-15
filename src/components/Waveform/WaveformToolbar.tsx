@@ -72,7 +72,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
       }}
     >
       {/* ── Left: Panel View Toggles & Segmented View Switcher ─────── */}
-      <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 min-w-0">
         <button
           data-testid="wf-toggle-project"
           onClick={onToggleProjectPanel}
@@ -141,7 +141,8 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
             title="Code Editor View (Alt+E)"
           >
             <FileCode size={13} />
-            <span className="hidden sm:inline">Code Editor</span>
+            <span className="hidden xl:inline">Code </span>
+            <span className="hidden sm:inline">Editor</span>
           </button>
 
           <button
@@ -166,7 +167,8 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
             data-testid="wf-reset-layout"
             onClick={onResetLayout}
             title="Reset Workspace Layout"
-            className="p-1.5 rounded-[4px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors border border-transparent hidden xl:flex items-center"
+            aria-label="Reset Workspace Layout"
+            className="p-1.5 rounded-[4px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors border border-transparent flex items-center"
           >
             <RotateCcw size={13} />
           </button>
@@ -174,7 +176,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
       </div>
 
       {/* ── Center: Engine Actions & Zoom ──────────────────────── */}
-      <div className="flex items-center gap-1 sm:gap-2">
+      <div className="flex items-center gap-1 sm:gap-2 shrink-0">
         {/* Upload Button */}
         <button
           data-testid="wf-btn-upload"
@@ -241,6 +243,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
             color: 'var(--text-primary)',
           }}
           title="Reset Playhead to Start"
+          aria-label="Reset Playhead to Start"
         >
           <RotateCcw size={13} />
         </button>
@@ -248,19 +251,20 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
         <div className="w-px h-4 bg-[var(--border-subtle)] mx-0.5 hidden md:block" />
 
         {/* Zoom Controls */}
-        <div className="hidden md:flex items-center rounded-[4px] border border-[var(--border-subtle)] p-0.5 bg-[var(--bg-input)]">
+        <div className="flex items-center rounded-[4px] border border-[var(--border-subtle)] p-0.5 bg-[var(--bg-input)]">
           <button
             data-testid="wf-btn-zoom-out"
             onClick={onZoomOut}
-            className="p-1 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] rounded-[3px] text-[var(--text-muted)] transition-colors"
+            className="hidden md:flex p-1 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] rounded-[3px] text-[var(--text-muted)] transition-colors"
             title="Zoom Out"
+            aria-label="Zoom Out"
           >
             <ZoomOut size={13} />
           </button>
 
           <span
             data-testid="wf-zoom-level"
-            className="text-[11px] font-mono px-1.5 min-w-[44px] text-center select-none text-[var(--text-secondary)]"
+            className="text-[11px] font-mono px-1.5 min-w-[44px] text-center select-none text-[var(--text-secondary)] hidden lg:inline"
           >
             {(() => {
               if (zoomLevel >= 10) return `${zoomLevel.toFixed(0)}x`;
@@ -274,8 +278,9 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
           <button
             data-testid="wf-btn-zoom-in"
             onClick={onZoomIn}
-            className="p-1 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] rounded-[3px] text-[var(--text-muted)] transition-colors"
+            className="hidden md:flex p-1 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] rounded-[3px] text-[var(--text-muted)] transition-colors"
             title="Zoom In"
+            aria-label="Zoom In"
           >
             <ZoomIn size={13} />
           </button>
@@ -283,21 +288,22 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
           <button
             data-testid="wf-btn-zoom-fit"
             onClick={onZoomFit}
-            className="flex items-center gap-1 px-1.5 py-0.5 ml-0.5 hover:bg-[var(--bg-hover)] hover:text-[var(--accent-primary)] rounded-[3px] text-[var(--text-muted)] transition-colors text-[10px] font-medium border-l border-[var(--border-subtle)]"
+            className="flex items-center gap-1 px-1.5 py-0.5 ml-0 md:ml-0.5 hover:bg-[var(--bg-hover)] hover:text-[var(--accent-primary)] rounded-[3px] text-[var(--text-muted)] transition-colors text-[10px] font-medium md:border-l md:border-[var(--border-subtle)]"
             title="Zoom to Fit Full Simulation Duration (Alt+F)"
+            aria-label="Zoom to Fit Full Simulation Duration (Alt+F)"
           >
             <Maximize2 size={11} />
-            <span>Fit</span>
+            <span className="hidden xl:inline">Fit</span>
           </button>
         </div>
       </div>
 
       {/* ── Right: Real Timing Display & Console Toggle ─────────── */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 shrink-0">
         {/* Read-Only Cursors & Delta Timing Display */}
         <div
           data-testid="wf-timing-display"
-          className="hidden md:flex items-center gap-2.5 px-2.5 py-1 border border-[var(--border-subtle)] rounded-[4px] font-mono text-[11px] bg-[var(--bg-input)] text-[var(--text-secondary)] shadow-xs"
+          className="hidden xl:flex items-center gap-2.5 px-2.5 py-1 border border-[var(--border-subtle)] rounded-[4px] font-mono text-[11px] bg-[var(--bg-input)] text-[var(--text-secondary)] shadow-xs"
         >
           <div className="flex items-center gap-1">
             <span className="text-blue-400 font-semibold">A:</span>
@@ -325,7 +331,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
           </div>
         </div>
 
-        <div className="w-px h-4 bg-[var(--border-subtle)] hidden md:block" />
+        <div className="w-px h-4 bg-[var(--border-subtle)] hidden xl:block" />
 
         {/* Console Toggle */}
         <button
