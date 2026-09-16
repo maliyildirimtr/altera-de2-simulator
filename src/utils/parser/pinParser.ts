@@ -15,8 +15,14 @@ export function autoMapPort(portName: string): string | null {
   
   if (upper === 'CLK' || upper === 'CLOCK') return 'CLOCK_50';
 
-  // Regex to find things like SW0, SW[0], KEY_1, KEY[3]
-  const match = upper.match(/(SW|KEY|BTN|LEDG|LEDR|LED|HEX)(\D*)(\d+)/);
+  // Handle HEX arrays like HEX0[0] or HEX0_0
+  const hexMatch = upper.match(/HEX(\d+)\D+(\d+)/);
+  if (hexMatch) {
+    return `HEX${hexMatch[1]}[${hexMatch[2]}]`;
+  }
+
+  // Handle standard 1D arrays or scalars: SW0, SW[0], KEY_1, KEY[3]
+  const match = upper.match(/(SW|KEY|BTN|LEDG|LEDR|LED)(\D*)(\d+)/);
   if (match) {
     let type = match[1];
     const indexStr = match[3];
