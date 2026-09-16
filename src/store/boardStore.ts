@@ -161,7 +161,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
           const graph = buildModuleGraph(state.engine.topModule, state.engine.modules);
           if (graph.nodes.length > 0) {
             const graphSim = evaluateGraphTopological(graph.nodes, graph.edges, inputs, state.engine.modules);
-            newState = { ...newState, ...graphSim.fullState };
+            newState = { ...graphSim.fullState, ...newState };
           }
         }
       } catch (graphErr) {
@@ -171,6 +171,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       // 3. Map Engine Outputs to virtual components (LEDR, LEDG, HEX)
       const newLedR = [...state.ledR];
       const newLedG = [...state.ledG];
+      const newHex = state.hex.map(h => [...h]);
       
       for (const mapping of state.pinMappings) {
         if (!mapping.virtualComponent) continue;
@@ -180,17 +181,27 @@ export const useBoardStore = create<BoardState>((set, get) => ({
         const match = mapping.virtualComponent.match(/(SW|KEY|LEDR|LEDG|HEX)(\d+)?(?:\[(\d+)\])?/);
         if (match) {
           const type = match[1];
-          const idx = parseInt(match[2] || match[3] || '0');
           
-          if (type === 'LEDR') newLedR[idx] = val;
-          if (type === 'LEDG') newLedG[idx] = val;
+          if (type === 'LEDR') {
+            const idx = parseInt(match[2] || match[3] || '0');
+            newLedR[idx] = val;
+          } else if (type === 'LEDG') {
+            const idx = parseInt(match[2] || match[3] || '0');
+            newLedG[idx] = val;
+          } else if (type === 'HEX') {
+            const hexIdx = parseInt(match[2] || '0');
+            const segIdx = parseInt(match[3] || '0');
+            if (newHex[hexIdx]) {
+              newHex[hexIdx][segIdx] = val;
+            }
+          }
         }
       }
       
       const newHistory = [...state.waveformHistory, { time: Date.now(), state: { ...newState, 'CLOCK_50': state.clockState } }];
       if (newHistory.length > 50) newHistory.shift();
 
-      return { simState: newState, ledR: newLedR, ledG: newLedG, waveformHistory: newHistory };
+      return { simState: newState, ledR: newLedR, ledG: newLedG, hex: newHex, waveformHistory: newHistory };
     } catch (err) {
       console.warn('[boardStore] runSimulationCycle error (state preserved):', err);
       return state;
@@ -458,3 +469,8 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     }
   }),
 }));
+
+// Expose to window for automated testing
+if (typeof window !== 'undefined') {
+  (window as any).useBoardStore = useBoardStore;
+}
