@@ -42,8 +42,7 @@ async function main() {
   }
   const r = await fetch('http://127.0.0.1:9247/json/list');
   const list = await r.json();
-  const page = list.find(t => t.type === 'page');
-
+  const page = list.find(t => t.type === 'page' && t.url.includes('#/de2-simulator'));
   if (!page) {
     chrome.kill();
     throw new Error('Could not find chrome page');
