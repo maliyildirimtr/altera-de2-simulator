@@ -11,8 +11,14 @@ interface Switch25DProps {
   detail: BoardDetail;
 }
 
-const BODY_H = 3.6;
-const LEVER_H = 1.7;
+/*
+ * Heights here are deliberately shallow and match the elevation the canonical
+ * layout gives this part. Depth is carried by the shared shade gradients,
+ * the top-arris highlight and the contact shadow — not by extrusion. See the
+ * header of `StaticParts25D.tsx` for the reasoning.
+ */
+const BODY_H = 2.9;
+const LEVER_H = 1.05;
 
 /**
  * DE2 slide switch in the 2.5D view: an extruded IVORY housing with a BLACK
@@ -71,23 +77,33 @@ export const Switch25D: React.FC<Switch25DProps> = React.memo(({ component, deta
       onKeyDown={handleKeyDown}
       style={{ cursor: 'pointer' }}
     >
-      {/* Contact shadow on the board plane */}
+      {/* Soft contact shadow, cast away from the upper-left light */}
       <g transform={faceTransform(0)}>
         <rect
-          x={x - 0.3}
-          y={y + 0.3}
-          width={w + 1.3}
-          height={h + 0.5}
-          rx={0.5}
-          fill="#02060C"
-          opacity={0.34}
+          x={x - 0.35}
+          y={y - 0.2}
+          width={w + 1.5}
+          height={h + 1.4}
+          rx={0.9}
+          fill="url(#de2b-contact)"
         />
       </g>
 
-      {/* Ivory housing */}
+      {/* Ivory housing, lit by the board's shared light */}
       <polygon points={housing.side} fill={SWITCH.side} />
-      <polygon points={housing.front} fill={SWITCH.bodyDark} />
-      <polygon points={housing.top} fill="url(#de2b-sw-body)" stroke={SWITCH.side} strokeWidth={0.12} />
+      <polygon points={housing.side} fill="url(#de2b-shade-side)" />
+      <polygon points={housing.front} fill={SWITCH.body} />
+      <polygon points={housing.front} fill="url(#de2b-shade-front)" />
+      <polygon points={housing.top} fill="url(#de2b-sw-body)" />
+      <polygon
+        points={housing.top}
+        fill="none"
+        stroke={SWITCH.bodyLight}
+        strokeWidth={0.12}
+        opacity={0.75}
+      />
+      {/* Recessed channel: a shadowed slot, so the black lever sits INSIDE the
+          housing rather than on top of it. */}
       <g transform={faceTransform(BODY_H)}>
         <rect
           x={x + 0.45}
@@ -97,13 +113,30 @@ export const Switch25D: React.FC<Switch25DProps> = React.memo(({ component, deta
           rx={0.24}
           fill={SWITCH.channel}
         />
+        <rect
+          x={x + 0.45}
+          y={y + 0.5}
+          width={w - 0.9}
+          height={(h - 1) * 0.3}
+          rx={0.24}
+          fill="#000000"
+          opacity={0.32}
+        />
       </g>
 
       {/* Black lever */}
       <g className="de2-switch-lever" style={{ transform: `translateY(${slide}px)` }}>
         <polygon points={lever.side} fill={SWITCH.leverDark} />
         <polygon points={lever.front} fill={SWITCH.lever} />
-        <polygon points={lever.top} fill="url(#de2b-lever)" stroke="#0B0D10" strokeWidth={0.1} />
+        <polygon points={lever.front} fill="url(#de2b-shade-front)" />
+        <polygon points={lever.top} fill="url(#de2b-lever)" />
+        <polygon
+          points={lever.top}
+          fill="none"
+          stroke={SWITCH.leverLight}
+          strokeWidth={0.1}
+          opacity={0.8}
+        />
       </g>
 
       <title>{`SW${index} ${isOn ? 'up (1)' : 'down (0)'}`}</title>

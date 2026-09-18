@@ -62,12 +62,14 @@ export const Led2D: React.FC<Led2DProps> = React.memo(({ component, detail }) =>
         />
       )}
 
+      {/* Small, tight bloom. A driven LED should look like a bright emitter
+          seated in a lens, not like a glowing rectangle. */}
       {isOn && (
         <ellipse
           cx={cx}
           cy={y + h / 2}
-          rx={w * 2.3}
-          ry={h * 1.5}
+          rx={w * 1.5}
+          ry={h * 1.05}
           fill={isRed ? 'url(#de2b-ledr-halo)' : 'url(#de2b-ledg-halo)'}
         />
       )}
@@ -87,7 +89,7 @@ export const Led2D: React.FC<Led2DProps> = React.memo(({ component, detail }) =>
         y={y - 0.24}
         width={w + 0.48}
         height={h + 0.48}
-        rx={0.28}
+        rx={0.85}
         fill="url(#de2b-led-rim)"
       />
       <rect
@@ -95,7 +97,7 @@ export const Led2D: React.FC<Led2DProps> = React.memo(({ component, detail }) =>
         y={y}
         width={w}
         height={h}
-        rx={0.22}
+        rx={0.75}
         className="de2-led-lens"
         fill={
           isOn
@@ -109,26 +111,38 @@ export const Led2D: React.FC<Led2DProps> = React.memo(({ component, detail }) =>
       />
       {/* Diffuser highlight — present lit or unlit, stronger when driven */}
       <rect
-        x={x + 0.42}
-        y={y + 0.34}
-        width={w - 0.84}
-        height={h * 0.26}
-        rx={0.16}
+        x={x + 0.5}
+        y={y + 0.3}
+        width={w - 1}
+        height={h * 0.2}
+        rx={0.3}
         fill="#FFFFFF"
-        opacity={isOn ? 0.46 : 0.12}
+        opacity={isOn ? 0.3 : 0.11}
       />
+      {/* The emitter itself: a small bright core inside the diffused lens.
+          This is what carries "lit" now that the external bloom is minimal. */}
       {isOn && (
-        <rect
-          x={x}
-          y={y}
-          width={w}
-          height={h}
-          rx={0.22}
-          fill="none"
-          stroke={isRed ? LED.redCore : LED.greenCore}
-          strokeWidth={0.16}
-          opacity={0.55}
-        />
+        <>
+          <ellipse
+            cx={cx}
+            cy={y + h * 0.46}
+            rx={w * 0.3}
+            ry={h * 0.22}
+            fill={isRed ? LED.redCore : LED.greenCore}
+            opacity={0.85}
+          />
+          <rect
+            x={x}
+            y={y}
+            width={w}
+            height={h}
+            rx={0.75}
+            fill="none"
+            stroke={isRed ? LED.redCore : LED.greenCore}
+            strokeWidth={0.13}
+            opacity={0.4}
+          />
+        </>
       )}
 
       <PartLabel x={cx} y={labelY} text={label} detail={detail} size={1.55} minDetail="high" />

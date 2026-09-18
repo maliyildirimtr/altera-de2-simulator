@@ -42,10 +42,44 @@ export const BoardDefs: React.FC = () => (
       <stop offset="100%" stopColor="#000000" stopOpacity="0.11" />
     </linearGradient>
 
-    <radialGradient id="de2b-pcb-vignette" cx="0.44" cy="0.36" r="0.82">
+    <radialGradient id="de2b-pcb-vignette" cx="0.42" cy="0.34" r="0.86">
       <stop offset="0%" stopColor="#000000" stopOpacity="0" />
-      <stop offset="52%" stopColor="#000000" stopOpacity="0.07" />
+      <stop offset="56%" stopColor="#000000" stopOpacity="0.04" />
+      <stop offset="100%" stopColor="#000000" stopOpacity="0.19" />
+    </radialGradient>
+
+    {/* ── Shared lighting language ────────────────────────────────────────
+        One virtual light, upper-left / front-left, for EVERY material.
+
+        These three shades are overlaid on whatever base colour a part
+        carries, so a cream PS/2 housing, a nickel USB shell and a black
+        GPIO shroud all pick up the same highlight and falloff. That is what
+        stops the connector families looking as though they came from
+        different illustration libraries — and it means adding a new body
+        style costs one colour, not a new gradient.
+        ─────────────────────────────────────────────────────────────────── */}
+    <linearGradient id="de2b-shade-top" x1="0.08" y1="0" x2="0.9" y2="1">
+      <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.09" />
+      <stop offset="42%" stopColor="#FFFFFF" stopOpacity="0.01" />
+      <stop offset="100%" stopColor="#000000" stopOpacity="0.14" />
+    </linearGradient>
+    {/* Face toward the viewer: catches the light along its top edge only. */}
+    <linearGradient id="de2b-shade-front" x1="0" y1="0" x2="0.16" y2="1">
+      <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.14" />
+      <stop offset="24%" stopColor="#FFFFFF" stopOpacity="0.02" />
       <stop offset="100%" stopColor="#000000" stopOpacity="0.3" />
+    </linearGradient>
+    {/* Left-hand face: turned away from the light, so darker throughout. */}
+    <linearGradient id="de2b-shade-side" x1="0" y1="0" x2="0.34" y2="1">
+      <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.06" />
+      <stop offset="30%" stopColor="#000000" stopOpacity="0.12" />
+      <stop offset="100%" stopColor="#000000" stopOpacity="0.44" />
+    </linearGradient>
+    {/* Soft contact shadow. A gradient, not a blur — no filters on this board. */}
+    <radialGradient id="de2b-contact" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stopColor="#01040A" stopOpacity="0.42" />
+      <stop offset="58%" stopColor="#01040A" stopOpacity="0.24" />
+      <stop offset="100%" stopColor="#01040A" stopOpacity="0" />
     </radialGradient>
 
     {/* Ground-pour mesh showing faintly through the mask. */}
@@ -161,9 +195,11 @@ export const BoardDefs: React.FC = () => (
       <stop offset="0%" stopColor={LED.redOff} />
       <stop offset="100%" stopColor={LED.redOffDark} />
     </linearGradient>
+    {/* Bloom is deliberately small: a driven LED should read as a bright
+        emitter seated on the board, not as a glowing tile. */}
     <radialGradient id="de2b-ledr-halo" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0%" stopColor="#FF4433" stopOpacity="0.6" />
-      <stop offset="40%" stopColor="#FF2A18" stopOpacity="0.22" />
+      <stop offset="0%" stopColor="#FF4433" stopOpacity="0.34" />
+      <stop offset="34%" stopColor="#FF2A18" stopOpacity="0.1" />
       <stop offset="100%" stopColor="#FF2A18" stopOpacity="0" />
     </radialGradient>
 
@@ -177,8 +213,8 @@ export const BoardDefs: React.FC = () => (
       <stop offset="100%" stopColor={LED.greenOffDark} />
     </linearGradient>
     <radialGradient id="de2b-ledg-halo" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0%" stopColor="#46E874" stopOpacity="0.52" />
-      <stop offset="40%" stopColor="#25C951" stopOpacity="0.2" />
+      <stop offset="0%" stopColor="#46E874" stopOpacity="0.3" />
+      <stop offset="34%" stopColor="#25C951" stopOpacity="0.09" />
       <stop offset="100%" stopColor="#25C951" stopOpacity="0" />
     </radialGradient>
 
@@ -189,8 +225,8 @@ export const BoardDefs: React.FC = () => (
       <stop offset="100%" stopColor={LED.blueEdge} />
     </radialGradient>
     <radialGradient id="de2b-ledb-halo" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0%" stopColor="#5AA8FF" stopOpacity="0.5" />
-      <stop offset="42%" stopColor="#2E7FE0" stopOpacity="0.18" />
+      <stop offset="0%" stopColor="#5AA8FF" stopOpacity="0.28" />
+      <stop offset="40%" stopColor="#2E7FE0" stopOpacity="0.08" />
       <stop offset="100%" stopColor="#2E7FE0" stopOpacity="0" />
     </radialGradient>
 
@@ -210,10 +246,23 @@ export const BoardDefs: React.FC = () => (
       <stop offset="0%" stopColor={SEVEN_SEG.faceDark} />
       <stop offset="100%" stopColor={SEVEN_SEG.side} />
     </linearGradient>
+    {/* The digit's glow belongs INSIDE the package, so the external bloom is
+        almost nothing and the light lives in `de2b-seg-recess` instead. */}
     <radialGradient id="de2b-seg-halo" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0%" stopColor="#FF3D1E" stopOpacity="0.4" />
-      <stop offset="55%" stopColor="#FF3D1E" stopOpacity="0.1" />
+      <stop offset="0%" stopColor="#FF3D1E" stopOpacity="0.16" />
+      <stop offset="50%" stopColor="#FF3D1E" stopOpacity="0.04" />
       <stop offset="100%" stopColor="#FF3D1E" stopOpacity="0" />
+    </radialGradient>
+    {/* Shallow recess the digit is printed into. */}
+    <linearGradient id="de2b-seg-recess" x1="0.1" y1="0" x2="0.85" y2="1">
+      <stop offset="0%" stopColor={SEVEN_SEG.recessEdge} />
+      <stop offset="45%" stopColor={SEVEN_SEG.recess} />
+      <stop offset="100%" stopColor={SEVEN_SEG.recess} />
+    </linearGradient>
+    {/* Light spilling into the package from the lit segments. */}
+    <radialGradient id="de2b-seg-inner" cx="0.5" cy="0.52" r="0.62">
+      <stop offset="0%" stopColor="#FF6A3A" stopOpacity="0.2" />
+      <stop offset="100%" stopColor="#FF6A3A" stopOpacity="0" />
     </radialGradient>
 
     {/* ── LCD module ──────────────────────────────────────────────────── */}

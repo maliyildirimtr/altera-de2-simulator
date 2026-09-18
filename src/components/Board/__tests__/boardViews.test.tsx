@@ -44,7 +44,7 @@ import { isSegmentLit } from '../../../board/useBoardSelectors';
 import { useBoardStore } from '../../../store/boardStore';
 import { compileVerilog } from '../../../core/simulator/verilogEngine';
 import { DE2BoardRenderer, boardRenderSize } from '../DE2BoardRenderer';
-import { project, faceTransform, sevenSegmentShapes } from '../boardGeometry';
+import { ISO, project, faceTransform, sevenSegmentShapes } from '../boardGeometry';
 
 /* ────────────────────────────────────────────────────────────────────────
  * Harness
@@ -180,7 +180,12 @@ assert.ok(project(0, 0, 0).y < project(0, BOARD_MM.height, 0).y, 'depth increase
 pass('2.5D projection lifts, shears and foreshortens as intended');
 
 assert.strictEqual(faceTransform(0), faceTransform(0), 'face transform is deterministic');
-assert.ok(faceTransform(0).includes('scale(1 0.74)'), 'board plane uses the tilt factor');
+assert.ok(
+  faceTransform(0).includes(`scale(1 ${ISO.tilt})`),
+  'board plane uses the tilt factor',
+);
+assert.ok(ISO.tilt > 0.5 && ISO.tilt <= 1, 'tilt keeps the board close to top-down');
+assert.ok(ISO.lift > 0 && ISO.lift < ISO.tilt, 'height lifts less than depth foreshortens');
 pass('face transform places flat artwork on a projected plane');
 
 const segs = sevenSegmentShapes(9, 9);

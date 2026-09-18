@@ -19,11 +19,17 @@ interface Key25DProps {
 }
 
 /** Stainless shell height above the board. */
-const SHELL_H = 2.6;
+/*
+ * Heights here are deliberately shallow and match the elevation the canonical
+ * layout gives this part. Depth is carried by the shared shade gradients,
+ * the top-arris highlight and the contact shadow — not by extrusion. See the
+ * header of `StaticParts25D.tsx` for the reasoning.
+ */
+const SHELL_H = 2.2;
 /** Plunger height above the shell when released. */
-const PLUNGER_H = 1.5;
+const PLUNGER_H = 1.05;
 /** Travel when pressed, millimetres. */
-const PLUNGER_TRAVEL = 0.95;
+const PLUNGER_TRAVEL = 0.68;
 
 /**
  * DE2 momentary push-button in the 2.5D view.

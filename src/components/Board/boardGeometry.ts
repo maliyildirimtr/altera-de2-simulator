@@ -90,13 +90,35 @@ export const SEGMENT_SLANT_DEG = 6;
  * ──────────────────────────────────────────────────────────────────────── */
 
 export const ISO = {
-  /** Vertical foreshortening applied to board depth. */
-  tilt: 0.74,
-  /** Screen units of lift per millimetre of package height. */
-  lift: 0.95,
+  /**
+   * Vertical foreshortening applied to board depth. Closer to 1 is closer to
+   * a pure top-down view. Kept high deliberately: the DE2 is a teaching
+   * illustration first, and a shallow camera keeps the silkscreen readable
+   * and the banks aligned with the 2D view.
+   */
+  tilt: 0.82,
+  /**
+   * Screen units of lift per millimetre of package height.
+   *
+   * Low on purpose. Depth in this renderer is carried by lighting, edge
+   * highlights and contact shadows — not by tall extrusions. Raising this
+   * makes the board look like folded cardboard long before it looks solid.
+   */
+  lift: 0.66,
   /** Horizontal shear per millimetre of height — exposes left side faces. */
-  shear: 0.3,
+  shear: 0.2,
 } as const;
+
+/**
+ * How far above a part's own height its silkscreen must be printed to stay
+ * visible in the projected view: height lifts a package on screen while board
+ * depth only foreshortens, so a part of height `e` hides ink printed less than
+ * `SILK_CLEARANCE_RATIO * e` millimetres behind it.
+ *
+ * Derived, not tuned — it falls straight out of the projection, so flattening
+ * the camera automatically buys the silkscreen more clearance.
+ */
+export const SILK_CLEARANCE_RATIO = ISO.lift / ISO.tilt;
 
 export const BOARD_CY = BOARD_MM.height / 2;
 
@@ -218,7 +240,7 @@ export function boardOutlinePath(height = 0): string {
 }
 
 /** viewBox covering the fully projected board plus package height and shadow. */
-export const ISO_VIEWBOX = { x: -9, y: 4, width: 222, height: 140 } as const;
+export const ISO_VIEWBOX = { x: -3.5, y: 8.5, width: 210, height: 137 } as const;
 
 export const ISO_VIEWBOX_ATTR = `${ISO_VIEWBOX.x} ${ISO_VIEWBOX.y} ${ISO_VIEWBOX.width} ${ISO_VIEWBOX.height}`;
 
