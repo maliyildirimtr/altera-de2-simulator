@@ -106,6 +106,7 @@ export const Switch2D: React.FC<Switch2DProps> = React.memo(({ component, detail
       />
 
       {/* Black lever */}
+      {/* Lever position is the state read-out, so it travels the full channel. */}
       <g className="de2-switch-lever" style={{ transform: `translateY(${isOn ? 0 : travel}px)` }}>
         <rect
           x={chX - 0.08}

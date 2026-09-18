@@ -63,8 +63,13 @@ export const PcbSurface2D: React.FC<{ detail: BoardDetail }> = React.memo(({ det
       fill="url(#de2b-pcb)"
     />
 
-    {/* Mask over copper pour: lighter, warmer patches */}
-    <g opacity={0.5}>
+    {/*
+      Mask over copper pour. Held at a very low opacity on purpose: the
+      boundary between mask-over-copper and mask-over-substrate is a subtle
+      shift in finish on a real board, and anything stronger reads as a set of
+      dark panels pasted onto the PCB rather than as the PCB's own surface.
+    */}
+    <g opacity={0.24}>
       {POUR_REGIONS.map(([px, py, pw, ph]) => (
         <rect key={`${px}-${py}`} x={px} y={py} width={pw} height={ph} rx={1.6} fill={PCB.pour} />
       ))}
@@ -77,7 +82,7 @@ export const PcbSurface2D: React.FC<{ detail: BoardDetail }> = React.memo(({ det
       height={BOARD_MM.height}
       rx={PCB_CORNER_RADIUS_MM}
       fill="url(#de2b-pour)"
-      opacity={0.4}
+      opacity={0.17}
     />
 
     {/* Routed trace hints */}
@@ -270,7 +275,10 @@ const IcBody: React.FC<{ c: BoardComponent; detail: BoardDetail }> = ({ c, detai
         </>
       )}
 
-      {c.type === 'memory' && c.label && c.width >= 12 && hasDetail(detail, 'normal') && (
+      {/* Memory part names survive LOW: a board whose SDRAM, SRAM and flash
+          are anonymous black rectangles has lost the identity that makes it
+          readable as a teaching illustration. */}
+      {c.type === 'memory' && c.label && c.width >= 12 && (
         <text
           x={c.x + c.width / 2}
           y={c.y + c.height / 2 + 0.72}
@@ -633,6 +641,22 @@ const HeaderBody: React.FC<{ c: BoardComponent; detail: BoardDetail }> = ({ c, d
         rx={0.25}
         fill="#0A0D11"
       />
+      {/*
+        At LOW the individual pads are too small to resolve, but a featureless
+        black slab reads as a missing part rather than a simplified one — so
+        the field keeps a gold wash and the pads themselves drop out.
+      */}
+      {!hasDetail(detail, 'normal') && (
+        <rect
+          x={c.x + 0.9}
+          y={c.y + 0.9}
+          width={c.width - 1.8}
+          height={c.height - 1.8}
+          rx={0.2}
+          fill="url(#de2b-gold)"
+          opacity={0.3}
+        />
+      )}
       {hasDetail(detail, 'normal') && (
         <g>
           {rowY.map((py) =>
@@ -680,15 +704,20 @@ const FpgaBody: React.FC<{ c: BoardComponent; detail: BoardDetail }> = ({ c, det
     <g>
       <ContactShadow x={c.x} y={c.y} width={c.width} height={c.height} rx={0.6} strength={0.42} />
 
-      {/* Green package substrate, visible as a narrow border */}
+      {/*
+        Package substrate, visible as a narrow border. Charcoal rather than
+        the green of the first pass: a saturated frame made the FPGA read as
+        a coloured accent, when it should be the board's focal point by
+        refinement — crisp typography, a clean bevel, a restrained sheen.
+      */}
       <rect
         x={c.x}
         y={c.y}
         width={c.width}
         height={c.height}
         rx={0.5}
-        fill="#2C4A32"
-        stroke="#16281B"
+        fill={IC.substrate}
+        stroke={IC.substrateEdge}
         strokeWidth={0.2}
       />
       {/* Moulded lid, inset from the substrate */}
@@ -715,9 +744,13 @@ const FpgaBody: React.FC<{ c: BoardComponent; detail: BoardDetail }> = ({ c, det
         opacity={0.75}
       />
 
-      {hasDetail(detail, 'normal') && (
-        <>
-          <text
+      {/*
+        The FPGA's identity survives every level of detail. At LOW the board
+        still has to be recognisably a Cyclone II DE2 — stripping the part
+        number is fine, stripping the vendor and family is not.
+      */}
+      <>
+        <text
             x={cx}
             y={c.y + c.height * 0.44}
             fontSize={2.45}
@@ -744,8 +777,7 @@ const FpgaBody: React.FC<{ c: BoardComponent; detail: BoardDetail }> = ({ c, det
           >
             Cyclone II
           </text>
-        </>
-      )}
+      </>
       {hasDetail(detail, 'high') && (
         <text
           x={cx}
@@ -760,11 +792,20 @@ const FpgaBody: React.FC<{ c: BoardComponent; detail: BoardDetail }> = ({ c, det
           EP2C35F672C6
         </text>
       )}
-      {/* Glossy lid sweep */}
+      {/* Faint lid sheen, and the shared top-face shade so the package is
+          lit by the same light as everything else on the board. */}
       <path
         d={`M ${c.x + 1.65} ${c.y + c.height - 1.65} L ${c.x + c.width * 0.5} ${c.y + 1.65} L ${c.x + c.width * 0.66} ${c.y + 1.65} L ${c.x + c.width * 0.3} ${c.y + c.height - 1.65} Z`}
         fill="#FFFFFF"
-        opacity={0.05}
+        opacity={0.035}
+      />
+      <rect
+        x={c.x}
+        y={c.y}
+        width={c.width}
+        height={c.height}
+        rx={0.5}
+        fill="url(#de2b-shade-top)"
       />
     </g>
   );
@@ -772,7 +813,10 @@ const FpgaBody: React.FC<{ c: BoardComponent; detail: BoardDetail }> = ({ c, det
 
 /** 16 x 2 character LCD on its own teal carrier PCB. */
 const LcdBody: React.FC<{ c: BoardComponent; detail: BoardDetail }> = ({ c, detail }) => {
-  const bezelInset = 2.5;
+  // Thinner than the first pass: the module keeps its real 72 x 29 mm
+  // footprint, but a slimmer bezel gives more of that area to the glass and
+  // less to bright metal, which is what made it out-shout the FPGA.
+  const bezelInset = 1.7;
   const gx = c.x + bezelInset;
   const gy = c.y + bezelInset + 1.5;
   const gw = c.width - bezelInset * 2;
@@ -781,20 +825,20 @@ const LcdBody: React.FC<{ c: BoardComponent; detail: BoardDetail }> = ({ c, deta
   return (
     <g>
       <ContactShadow
-        x={c.x - 0.9}
-        y={c.y - 0.9}
-        width={c.width + 1.8}
-        height={c.height + 1.8}
+        x={c.x - 0.7}
+        y={c.y - 0.7}
+        width={c.width + 1.4}
+        height={c.height + 1.4}
         rx={0.6}
-        strength={0.4}
+        strength={0.3}
       />
 
-      {/* Carrier PCB — distinctly teal against the navy mainboard */}
+      {/* Carrier PCB — reads as green against the navy, without shouting */}
       <rect
-        x={c.x - 0.9}
-        y={c.y - 0.9}
-        width={c.width + 1.8}
-        height={c.height + 1.8}
+        x={c.x - 0.7}
+        y={c.y - 0.7}
+        width={c.width + 1.4}
+        height={c.height + 1.4}
         rx={0.55}
         fill="url(#de2b-lcd-pcb)"
         stroke={LCD.pcbDark}
@@ -833,14 +877,21 @@ const LcdBody: React.FC<{ c: BoardComponent; detail: BoardDetail }> = ({ c, deta
         x={c.x + 0.35}
         y={c.y + 0.28}
         width={c.width - 0.7}
-        height={0.22}
-        rx={0.11}
+        height={0.18}
+        rx={0.09}
         fill="#FFFFFF"
-        opacity={0.2}
+        opacity={0.13}
       />
 
       {/* STN glass, unlit */}
       <rect x={gx} y={gy} width={gw} height={gh} rx={0.28} fill="url(#de2b-lcd-glass)" />
+      {/* A single soft reflection across the glass — the one thing that makes
+          a flat panel read as covered by something transparent. */}
+      <path
+        d={`M ${gx} ${gy + gh * 0.62} L ${gx + gw * 0.46} ${gy} L ${gx + gw * 0.7} ${gy} L ${gx} ${gy + gh} Z`}
+        fill="#FFFFFF"
+        opacity={0.055}
+      />
       {/* Inner bezel shadow around the glass */}
       <rect
         x={gx}

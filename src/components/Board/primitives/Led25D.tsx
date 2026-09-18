@@ -11,7 +11,13 @@ interface Led25DProps {
   detail: BoardDetail;
 }
 
-const LENS_H = 1.8;
+/*
+ * Heights here are deliberately shallow and match the elevation the canonical
+ * layout gives this part. Depth is carried by the shared shade gradients,
+ * the top-arris highlight and the contact shadow — not by extrusion. See the
+ * header of `StaticParts25D.tsx` for the reasoning.
+ */
+const LENS_H = 1.55;
 
 /**
  * DE2 indicator LED in the 2.5D view: a raised lens with visible side walls

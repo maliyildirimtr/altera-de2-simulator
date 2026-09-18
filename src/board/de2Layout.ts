@@ -274,7 +274,7 @@ export const DE2_SWITCHES: BoardComponent[] = Array.from({ length: 18 }, (_, i) 
     height: SWITCH_H,
     interactive: true,
     label: `SW${index}`,
-    elevation: 3.6,
+    elevation: 2.9,
     body: 'plastic-black' as const,
   };
 });
@@ -291,7 +291,7 @@ export const DE2_KEYS: BoardComponent[] = Array.from({ length: 4 }, (_, i) => {
     height: KEY_D,
     interactive: true,
     label: `KEY${index}`,
-    elevation: 4.2,
+    elevation: 3.2,
     body: 'metal' as const,
   };
 });
@@ -344,7 +344,7 @@ export const DE2_HEX_DISPLAYS: BoardComponent[] = Array.from({ length: 8 }, (_, 
     height: HEX_H,
     interactive: false,
     label: `HEX${index}`,
-    elevation: 2.6,
+    elevation: 2.2,
     body: 'display' as const,
   };
 });
@@ -355,30 +355,30 @@ export const DE2_HEX_DISPLAYS: BoardComponent[] = Array.from({ length: 8 }, (_, 
 
 export const DE2_CONNECTORS: BoardComponent[] = [
   // ── Top I/O edge, left → right (original DE2 ordering) ──
-  { id: 'conn-usb-blaster', type: 'connector', x: 9, y: 1.5, width: 14, height: 13, interactive: false, label: 'USB BLASTER', elevation: 6.5, body: 'metal', refDes: 'J9' },
-  { id: 'conn-usb-device', type: 'connector', x: 24.6, y: 1.5, width: 12.4, height: 13, interactive: false, label: 'USB DEVICE', elevation: 6.5, body: 'metal', refDes: 'J10' },
-  { id: 'conn-usb-host', type: 'connector', x: 38.6, y: 1.5, width: 12.8, height: 13, interactive: false, label: 'USB HOST', elevation: 6.5, body: 'metal', refDes: 'J11' },
-  { id: 'conn-mic', type: 'connector', x: 55.5, y: 3, width: 7.5, height: 9.5, interactive: false, label: 'MIC', elevation: 6, body: 'jack-pink' },
-  { id: 'conn-line-in', type: 'connector', x: 64.5, y: 3, width: 7.5, height: 9.5, interactive: false, label: 'LINE IN', elevation: 6, body: 'jack-blue' },
-  { id: 'conn-line-out', type: 'connector', x: 73.5, y: 3, width: 7.5, height: 9.5, interactive: false, label: 'LINE OUT', elevation: 6, body: 'jack-green' },
-  { id: 'conn-video-in', type: 'connector', x: 84, y: 2, width: 9, height: 11, interactive: false, label: 'VIDEO IN', elevation: 7, body: 'rca', refDes: 'J12' },
-  { id: 'conn-vga', type: 'connector', x: 96, y: 1.5, width: 22, height: 13, interactive: false, label: 'VGA', elevation: 7.5, body: 'metal-dark', refDes: 'J13' },
-  { id: 'conn-ethernet', type: 'connector', x: 121.5, y: 1, width: 19, height: 14.5, interactive: false, label: 'ETHERNET', elevation: 8, body: 'plastic-black', refDes: 'J4' },
-  { id: 'conn-rs232', type: 'connector', x: 143.5, y: 1.5, width: 20, height: 13, interactive: false, label: 'RS-232', elevation: 7.5, body: 'metal-dark', refDes: 'J8' },
-  { id: 'conn-ps2', type: 'connector', x: 167, y: 2, width: 13, height: 12, interactive: false, label: 'PS/2', elevation: 7, body: 'jack-cream', refDes: 'J6' },
+  { id: 'conn-usb-blaster', type: 'connector', x: 9, y: 1.5, width: 14, height: 13, interactive: false, label: 'USB BLASTER', elevation: 3.9, body: 'metal', refDes: 'J9' },
+  { id: 'conn-usb-device', type: 'connector', x: 24.6, y: 1.5, width: 12.4, height: 13, interactive: false, label: 'USB DEVICE', elevation: 3.9, body: 'metal', refDes: 'J10' },
+  { id: 'conn-usb-host', type: 'connector', x: 38.6, y: 1.5, width: 12.8, height: 13, interactive: false, label: 'USB HOST', elevation: 3.9, body: 'metal', refDes: 'J11' },
+  { id: 'conn-mic', type: 'connector', x: 55.5, y: 3, width: 7.5, height: 9.5, interactive: false, label: 'MIC', elevation: 3.6, body: 'jack-pink' },
+  { id: 'conn-line-in', type: 'connector', x: 64.5, y: 3, width: 7.5, height: 9.5, interactive: false, label: 'LINE IN', elevation: 3.6, body: 'jack-blue' },
+  { id: 'conn-line-out', type: 'connector', x: 73.5, y: 3, width: 7.5, height: 9.5, interactive: false, label: 'LINE OUT', elevation: 3.6, body: 'jack-green' },
+  { id: 'conn-video-in', type: 'connector', x: 84, y: 2, width: 9, height: 11, interactive: false, label: 'VIDEO IN', elevation: 4.0, body: 'rca', refDes: 'J12' },
+  { id: 'conn-vga', type: 'connector', x: 96, y: 1.5, width: 22, height: 13, interactive: false, label: 'VGA', elevation: 4.3, body: 'metal-dark', refDes: 'J13' },
+  { id: 'conn-ethernet', type: 'connector', x: 121.5, y: 1, width: 19, height: 14.5, interactive: false, label: 'ETHERNET', elevation: 4.6, body: 'plastic-black', refDes: 'J4' },
+  { id: 'conn-rs232', type: 'connector', x: 143.5, y: 1.5, width: 20, height: 13, interactive: false, label: 'RS-232', elevation: 4.3, body: 'metal-dark', refDes: 'J8' },
+  { id: 'conn-ps2', type: 'connector', x: 167, y: 2, width: 13, height: 12, interactive: false, label: 'PS/2', elevation: 3.9, body: 'jack-cream', refDes: 'J6' },
 
   // ── Left edge ──
-  { id: 'conn-dc-power', type: 'connector', x: 2.2, y: 18.5, width: 13, height: 11, interactive: false, label: 'DC 9V', elevation: 6, body: 'barrel' },
-  { id: 'ctl-power-button', type: 'connector', x: 3.6, y: 32, width: 9.2, height: 9.2, interactive: false, label: 'POWER', elevation: 5.5, body: 'button-red' },
-  { id: 'ctl-run-prog', type: 'connector', x: 2.4, y: 69.5, width: 5.5, height: 12, interactive: false, label: 'RUN / PROG', elevation: 3.2, body: 'plastic-black', refDes: 'SW19' },
-  { id: 'hdr-jp3', type: 'header', x: 2.6, y: 55, width: 5, height: 9, interactive: false, elevation: 3, body: 'plastic-black', refDes: 'JP3' },
+  { id: 'conn-dc-power', type: 'connector', x: 2.2, y: 18.5, width: 13, height: 11, interactive: false, label: 'DC 9V', elevation: 3.8, body: 'barrel' },
+  { id: 'ctl-power-button', type: 'connector', x: 3.6, y: 32, width: 9.2, height: 9.2, interactive: false, label: 'POWER', elevation: 3.4, body: 'button-red' },
+  { id: 'ctl-run-prog', type: 'connector', x: 2.4, y: 69.5, width: 5.5, height: 12, interactive: false, label: 'RUN / PROG', elevation: 2.4, body: 'plastic-black', refDes: 'SW19' },
+  { id: 'hdr-jp3', type: 'header', x: 2.6, y: 55, width: 5, height: 9, interactive: false, elevation: 2.2, body: 'plastic-black', refDes: 'JP3' },
 
   // ── Right edge ──
-  { id: 'hdr-gpio0', type: 'header', x: 173, y: 35, width: 9, height: 55, interactive: false, label: 'GPIO 0', elevation: 8.5, body: 'plastic-black', refDes: 'JP1' },
-  { id: 'hdr-gpio1', type: 'header', x: 185, y: 35, width: 9, height: 55, interactive: false, label: 'GPIO 1', elevation: 8.5, body: 'plastic-black', refDes: 'JP2' },
-  { id: 'conn-sd-card', type: 'connector', x: 172, y: 97, width: 27, height: 21, interactive: false, label: 'SD CARD', elevation: 3.4, body: 'metal', refDes: 'J14' },
-  { id: 'conn-sma-out', type: 'connector', x: 193.5, y: 58, width: 7.5, height: 7.5, interactive: false, label: 'SMA', elevation: 5, body: 'gold', refDes: 'J15' },
-  { id: 'conn-sma-in', type: 'connector', x: 187, y: 141, width: 7.5, height: 7.5, interactive: false, label: 'EXT_CLK', elevation: 5, body: 'gold', refDes: 'J5' },
+  { id: 'hdr-gpio0', type: 'header', x: 173, y: 35, width: 9, height: 55, interactive: false, label: 'GPIO 0', elevation: 3.4, body: 'plastic-black', refDes: 'JP1' },
+  { id: 'hdr-gpio1', type: 'header', x: 185, y: 35, width: 9, height: 55, interactive: false, label: 'GPIO 1', elevation: 3.4, body: 'plastic-black', refDes: 'JP2' },
+  { id: 'conn-sd-card', type: 'connector', x: 172, y: 97, width: 27, height: 21, interactive: false, label: 'SD CARD', elevation: 2.4, body: 'metal', refDes: 'J14' },
+  { id: 'conn-sma-out', type: 'connector', x: 193.5, y: 58, width: 7.5, height: 7.5, interactive: false, label: 'SMA', elevation: 2.8, body: 'gold', refDes: 'J15' },
+  { id: 'conn-sma-in', type: 'connector', x: 187, y: 141, width: 7.5, height: 7.5, interactive: false, label: 'EXT_CLK', elevation: 2.8, body: 'gold', refDes: 'J5' },
 ];
 
 /* ────────────────────────────────────────────────────────────────────────
@@ -386,9 +386,9 @@ export const DE2_CONNECTORS: BoardComponent[] = [
  * ──────────────────────────────────────────────────────────────────────── */
 
 export const DE2_MODULES: BoardComponent[] = [
-  { id: 'mod-lcd', type: 'lcd', x: 11.8, y: 68, width: 72, height: 29, interactive: false, label: 'LCD 16x2', elevation: 8.6, body: 'lcd' },
+  { id: 'mod-lcd', type: 'lcd', x: 11.8, y: 68, width: 72, height: 29, interactive: false, label: 'LCD 16x2', elevation: 3.9, body: 'lcd' },
 
-  { id: 'ic-fpga', type: 'fpga', x: 113.5, y: 63.5, width: 27, height: 26, interactive: false, label: 'Cyclone II', elevation: 2.6, body: 'ic-black', refDes: 'U1', caption: 'EP2C35F672C6' },
+  { id: 'ic-fpga', type: 'fpga', x: 113.5, y: 63.5, width: 27, height: 26, interactive: false, label: 'Cyclone II', elevation: 2.3, body: 'ic-black', refDes: 'U1', caption: 'EP2C35F672C6' },
 
   { id: 'mem-sdram', type: 'memory', x: 85.5, y: 68.5, width: 18, height: 11.5, interactive: false, label: 'SDRAM 8MB', elevation: 1.5, body: 'ic-black', refDes: 'U17' },
   { id: 'mem-sram', type: 'memory', x: 85, y: 84, width: 19, height: 10.5, interactive: false, label: 'SRAM 512KB', elevation: 1.5, body: 'ic-black', refDes: 'U18' },
@@ -542,14 +542,14 @@ export const DE2_SILKSCREEN: SilkscreenText[] = [
   { id: 'silk-altera-url', x: 4, y: 103.6, text: 'www.altera.com', size: 2, anchor: 'start', tone: 'tertiary', minDetail: 'normal' },
 
   /* ── Area headings ────────────────────────────────────────────────── */
-  { id: 'silk-lcd', x: 47.8, y: 65.2, text: 'LCD MODULE 2x16', size: 2.5, anchor: 'middle', tone: 'secondary', minDetail: 'normal', letterSpacing: 0.15 },
+  { id: 'silk-lcd', x: 47.8, y: 63.4, text: 'LCD MODULE 2x16', size: 2.5, anchor: 'middle', tone: 'secondary', minDetail: 'normal', letterSpacing: 0.15 },
   { id: 'silk-gpio0', x: 177.5, y: 94, text: 'GPIO 0', size: 2.9, anchor: 'middle', tone: 'secondary', weight: 'bold' },
   { id: 'silk-gpio1', x: 189.5, y: 94, text: 'GPIO 1', size: 2.9, anchor: 'middle', tone: 'secondary', weight: 'bold' },
   { id: 'silk-sd', x: 185.5, y: 121.4, text: 'SD CARD', size: 2.5, anchor: 'middle', tone: 'secondary', minDetail: 'normal', letterSpacing: 0.15 },
 
   /* ── Net names and switch positions ──────────────────────────────── */
-  { id: 'silk-run', x: 8.2, y: 72.6, text: 'RUN', size: 1.9, anchor: 'start', tone: 'secondary', minDetail: 'high' },
-  { id: 'silk-prog-sw', x: 8.2, y: 80.4, text: 'PROG', size: 1.9, anchor: 'start', tone: 'secondary', minDetail: 'high' },
+  { id: 'silk-run', x: 9.6, y: 72.6, text: 'RUN', size: 1.9, anchor: 'start', tone: 'secondary', minDetail: 'high' },
+  { id: 'silk-prog-sw', x: 9.6, y: 80.4, text: 'PROG', size: 1.9, anchor: 'start', tone: 'secondary', minDetail: 'high' },
   { id: 'silk-vccio', x: 106.2, y: 50.4, text: 'VCCIO', size: 1.7, anchor: 'middle', tone: 'ref', minDetail: 'high' },
   { id: 'silk-vccint', x: 98.2, y: 50.4, text: 'VCCINT', size: 1.7, anchor: 'middle', tone: 'ref', minDetail: 'high' },
   { id: 'silk-3v3', x: 148.2, y: 51.6, text: '3V3', size: 1.7, anchor: 'middle', tone: 'ref', minDetail: 'high' },
@@ -564,7 +564,7 @@ export const DE2_SILKSCREEN: SilkscreenText[] = [
  * All at `secondary` weight: these are wayfinding, not branding.
  */
 export const DE2_CONNECTOR_LABELS: SilkscreenText[] = [
-  { id: 'lbl-usb-blaster', x: 20, y: 16.3, text: 'BLASTER', size: 1.85, anchor: 'middle', tone: 'secondary', minDetail: 'normal' },
+  { id: 'lbl-usb-blaster', x: 16.2, y: 16.3, text: 'BLASTER', size: 1.85, anchor: 'middle', tone: 'secondary', minDetail: 'normal' },
   { id: 'lbl-usb-device', x: 30.8, y: 16.3, text: 'DEVICE', size: 1.85, anchor: 'middle', tone: 'secondary', minDetail: 'normal' },
   { id: 'lbl-usb-host', x: 45, y: 16.3, text: 'HOST', size: 1.85, anchor: 'middle', tone: 'secondary', minDetail: 'normal' },
   { id: 'lbl-mic', x: 59.2, y: 15.4, text: 'MIC', size: 1.9, anchor: 'middle', tone: 'secondary', minDetail: 'normal' },

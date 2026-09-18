@@ -48,12 +48,13 @@ export const SevenSegment2D: React.FC<SevenSegment2DProps> = React.memo(
         aria-label={`HEX${index} seven-segment display`}
         pointerEvents="none"
       >
+        {/* Almost no external bloom — the light belongs inside the package. */}
         {anyLit && (
           <rect
-            x={x - w * 0.34}
-            y={y - h * 0.28}
-            width={w * 1.68}
-            height={h * 1.56}
+            x={x - w * 0.16}
+            y={y - h * 0.12}
+            width={w * 1.32}
+            height={h * 1.24}
             fill="url(#de2b-seg-halo)"
           />
         )}
@@ -71,26 +72,57 @@ export const SevenSegment2D: React.FC<SevenSegment2DProps> = React.memo(
           stroke={SEVEN_SEG.side}
           strokeWidth={0.16}
         />
-        {/* Moulding highlight along the top edge */}
+        {/* Moulding highlight along the top edge, lit from upper-left */}
         <rect
           x={x + 0.4}
-          y={y + 0.26}
+          y={y + 0.24}
           width={w - 0.8}
-          height={0.3}
-          rx={0.15}
+          height={0.26}
+          rx={0.13}
           fill="#FFFFFF"
-          opacity={0.45}
+          opacity={0.34}
         />
-        {/* Shallow recess the digit is printed into */}
+        <rect
+          x={x}
+          y={y}
+          width={w}
+          height={h}
+          rx={0.45}
+          fill="url(#de2b-shade-top)"
+        />
+        {/*
+          The digit sits in a shallow recess, slightly darker than the package
+          face. This is what seats the eight modules into the board instead of
+          leaving them looking like pale tiles laid on top of it.
+        */}
         <rect
           x={x + faceInset}
           y={y + faceInset}
           width={w - faceInset * 2}
           height={h - faceInset * 2 - 0.5}
           rx={0.25}
-          fill="#000000"
-          opacity={0.06}
+          fill="url(#de2b-seg-recess)"
         />
+        <rect
+          x={x + faceInset}
+          y={y + faceInset}
+          width={w - faceInset * 2}
+          height={0.34}
+          rx={0.17}
+          fill="#000000"
+          opacity={0.13}
+        />
+        {/* Light spilling into the package from the driven segments */}
+        {anyLit && (
+          <rect
+            x={x + faceInset}
+            y={y + faceInset}
+            width={w - faceInset * 2}
+            height={h - faceInset * 2 - 0.5}
+            rx={0.25}
+            fill="url(#de2b-seg-inner)"
+          />
+        )}
 
         <g
           transform={`translate(${x + faceInset + digitPadX} ${y + faceInset + digitPadY}) skewX(-${SEGMENT_SLANT_DEG})`}
@@ -107,7 +139,7 @@ export const SevenSegment2D: React.FC<SevenSegment2DProps> = React.memo(
                 fill={lit ? SEVEN_SEG.on : SEVEN_SEG.off}
                 stroke={lit ? SEVEN_SEG.onEdge : SEVEN_SEG.offEdge}
                 strokeWidth={0.1}
-                opacity={lit ? 1 : 0.5}
+                opacity={lit ? 1 : 0.42}
               />
             );
           })}

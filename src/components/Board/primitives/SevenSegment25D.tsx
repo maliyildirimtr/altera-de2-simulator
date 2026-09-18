@@ -17,7 +17,13 @@ interface SevenSegment25DProps {
   detail: BoardDetail;
 }
 
-const PACKAGE_H = 2.6;
+/*
+ * Heights here are deliberately shallow and match the elevation the canonical
+ * layout gives this part. Depth is carried by the shared shade gradients,
+ * the top-arris highlight and the contact shadow — not by extrusion. See the
+ * header of `StaticParts25D.tsx` for the reasoning.
+ */
+const PACKAGE_H = 2.2;
 
 /**
  * DE2 seven-segment display in the 2.5D view: a raised PALE GREY package with
@@ -57,30 +63,33 @@ export const SevenSegment25D: React.FC<SevenSegment25DProps> = React.memo(
         pointerEvents="none"
       >
         {anyLit && (
-          <ellipse cx={halo.x} cy={halo.y} rx={w * 1.5} ry={h} fill="url(#de2b-seg-halo)" />
+          <ellipse cx={halo.x} cy={halo.y} rx={w * 0.82} ry={h * 0.6} fill="url(#de2b-seg-halo)" />
         )}
 
-        {/* Contact shadow on the board plane */}
+        {/* Soft contact shadow, cast away from the upper-left light */}
         <g transform={faceTransform(0)}>
           <rect
-            x={x - 0.3}
-            y={y + 0.35}
-            width={w + 1.3}
-            height={h + 0.5}
-            rx={0.55}
-            fill="#02060C"
-            opacity={0.38}
+            x={x - 0.4}
+            y={y - 0.25}
+            width={w + 1.6}
+            height={h + 1.5}
+            rx={1}
+            fill="url(#de2b-contact)"
           />
         </g>
 
-        {/* Raised pale-grey package */}
+        {/* Raised package, lit by the board's shared light */}
         <polygon points={pkg.side} fill={SEVEN_SEG.side} />
-        <polygon points={pkg.front} fill={SEVEN_SEG.faceDark} />
+        <polygon points={pkg.side} fill="url(#de2b-shade-side)" />
+        <polygon points={pkg.front} fill={SEVEN_SEG.face} />
+        <polygon points={pkg.front} fill="url(#de2b-shade-front)" />
+        <polygon points={pkg.top} fill="url(#de2b-seg-face)" />
         <polygon
           points={pkg.top}
-          fill="url(#de2b-seg-face)"
-          stroke={SEVEN_SEG.side}
-          strokeWidth={0.14}
+          fill="none"
+          stroke={SEVEN_SEG.faceLight}
+          strokeWidth={0.13}
+          opacity={0.8}
         />
 
         {/* Digit, printed on the package's top face */}

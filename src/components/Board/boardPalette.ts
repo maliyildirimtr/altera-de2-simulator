@@ -31,10 +31,15 @@ export const PCB = {
   light: '#153A64',
   /** Mask in shadow, used for the vignette and the 2.5D substrate walls. */
   dark: '#050F1E',
-  /** Mask over a ground pour: lighter and a touch warmer than `base`. */
-  pour: '#12305628',
+  /**
+   * Mask over a ground pour. Deliberately only ~6% off `base`: a real pour
+   * boundary is a barely-there shift in finish, and drawing it any stronger
+   * turns the board into a collage of dark panels — which is exactly what the
+   * first pass did around the FPGA, the GPIO field and the IC clusters.
+   */
+  pour: '#0D2749',
   /** Solid form of the pour tint, for shapes that need an opaque fill. */
-  pourSolid: '#123056',
+  pourSolid: '#0E2A4D',
   /** Routed trace hint. */
   trace: '#2E639F',
   /** Silkscreen-outlined courtyard boxes around small parts. */
@@ -84,10 +89,14 @@ export const GOLD = {
  * ──────────────────────────────────────────────────────────────────────── */
 
 export const METAL = {
-  /** Bright nickel connector shells: USB, SD shield, RCA barrel. */
-  bright: '#D3D8DE',
-  mid: '#9BA3AD',
-  dark: '#636B76',
+  /**
+   * Bright nickel connector shells: USB, SD shield, RCA barrel. Knocked back
+   * from near-white: at full brightness the three USB shells were the highest
+   * -contrast objects on the board and drew the eye straight past the FPGA.
+   */
+  bright: '#BEC5CD',
+  mid: '#8D959F',
+  dark: '#5A616B',
   shadow: '#333942',
   /** Machined tact-switch body. */
   tact: '#C2C7CE',
@@ -108,6 +117,13 @@ export const IC = {
   dark: '#0E1116',
   /** Glossy chamfer around the package edge. */
   bevel: '#3A3F47',
+  /**
+   * Moulded package substrate ring. Charcoal, not green: the green frame read
+   * as a saturated accent and pulled the eye away from the FPGA's own
+   * typography, which is what should make it the focal point.
+   */
+  substrate: '#20242A',
+  substrateEdge: '#0D1014',
   /** Mould parting line. */
   seam: '#14171B',
   /** Gull-wing leads. */
@@ -127,15 +143,22 @@ export const IC = {
  * ──────────────────────────────────────────────────────────────────────── */
 
 export const SEVEN_SEG = {
-  /** Package face, lit from the top-left. */
-  faceLight: '#DAD8D1',
-  face: '#C9C7BF',
-  faceDark: '#A9A7A0',
+  /**
+   * Package face, lit from the top-left. A warm light neutral rather than the
+   * cold grey of the first pass, which made the eight modules look like they
+   * had been pasted on from a different drawing.
+   */
+  faceLight: '#DCD6C8',
+  face: '#CAC3B3',
+  faceDark: '#ABA495',
   /** Package side walls (2.5D). */
-  side: '#8D8B85',
-  /** Unlit segment printed on the grey face. */
-  off: '#8E8C85',
-  offEdge: '#76746E',
+  side: '#8C8677',
+  /** The slightly recessed area the digit is printed into. */
+  recess: '#BDB6A6',
+  recessEdge: '#9B9484',
+  /** Unlit segment printed on the recessed face: faint, not black. */
+  off: '#A9A190',
+  offEdge: '#958D7C',
   /** Driven segment. */
   on: '#FF3D1E',
   onCore: '#FFB59B',
@@ -241,16 +264,21 @@ export const BUTTON_RED = {
  * ──────────────────────────────────────────────────────────────────────── */
 
 export const LCD = {
-  /** Module carrier PCB — distinctly teal against the navy mainboard. */
-  pcb: '#14584E',
-  pcbDark: '#0B3A33',
-  bezel: '#1C2027',
-  bezelLight: '#31373F',
-  glass: '#9DAE88',
-  glassLight: '#B2C09E',
-  glassDark: '#7C8C6B',
+  /**
+   * Module carrier PCB. Darker and less saturated than the first pass: at
+   * 72 x 29 mm this is the largest single part on the board, and a bright teal
+   * slab out-shouted both the FPGA and the user-I/O banks.
+   */
+  pcb: '#0F453D',
+  pcbDark: '#082C27',
+  bezel: '#191D23',
+  bezelLight: '#2B3138',
+  /** Unlit STN glass — desaturated olive-grey, not minty. */
+  glass: '#7F8B74',
+  glassLight: '#909B83',
+  glassDark: '#66715E',
   /** Faint character cells on the unlit panel. */
-  cell: '#78886699',
+  cell: '#5F6A5766',
 } as const;
 
 /** Passive chip components (resistor networks, capacitors). */
