@@ -3,16 +3,29 @@ import type { BoardDetail, SilkscreenText } from '../../../board/de2Layout';
 import { hasDetail } from '../../../board/de2Layout';
 import { SILK } from '../boardPalette';
 
-const TONE_FILL: Record<NonNullable<SilkscreenText['tone']>, string> = {
-  white: SILK.white,
-  dim: SILK.dim,
+/**
+ * Silkscreen rendering.
+ *
+ * One ink, four strengths. A real board is screen-printed with a single white
+ * ink, so every piece of text here shares `SILK.ink` and hierarchy comes only
+ * from size, weight and opacity. The `ref` tone is the DE2's one genuine
+ * second ink: its reference designators are printed warmer and thinner.
+ */
+
+type Tone = NonNullable<SilkscreenText['tone']>;
+
+const TONE_FILL: Record<Tone, string> = {
+  primary: SILK.ink,
+  secondary: SILK.ink,
+  tertiary: SILK.ink,
   ref: SILK.ref,
 };
 
-const TONE_OPACITY: Record<NonNullable<SilkscreenText['tone']>, number> = {
-  white: 0.9,
-  dim: 0.62,
-  ref: 0.72,
+const TONE_OPACITY: Record<Tone, number> = {
+  primary: SILK.primary,
+  secondary: SILK.secondary,
+  tertiary: SILK.tertiary,
+  ref: SILK.refOpacity,
 };
 
 const WEIGHT: Record<NonNullable<SilkscreenText['weight']>, number> = {
@@ -31,7 +44,7 @@ export const Silkscreen: React.FC<{ item: SilkscreenText; detail: BoardDetail }>
   ({ item, detail }) => {
     if (item.minDetail && !hasDetail(detail, item.minDetail)) return null;
 
-    const tone = item.tone ?? 'white';
+    const tone = item.tone ?? 'secondary';
     return (
       <text
         x={item.x}
@@ -65,7 +78,7 @@ export const SilkscreenLayer: React.FC<{ items: SilkscreenText[]; detail: BoardD
   ));
 SilkscreenLayer.displayName = 'SilkscreenLayer';
 
-/** Small yellow reference designator, e.g. `U1`, `J13`. Only at high detail. */
+/** Small reference designator, e.g. `U1`, `J13`. High detail only. */
 export const RefDes: React.FC<{
   x: number;
   y: number;
@@ -73,7 +86,7 @@ export const RefDes: React.FC<{
   detail: BoardDetail;
   anchor?: 'start' | 'middle' | 'end';
   size?: number;
-}> = React.memo(({ x, y, text, detail, anchor = 'middle', size = 1.7 }) => {
+}> = React.memo(({ x, y, text, detail, anchor = 'middle', size = 1.65 }) => {
   if (!hasDetail(detail, 'high')) return null;
   return (
     <text
@@ -81,10 +94,10 @@ export const RefDes: React.FC<{
       y={y}
       fontSize={size}
       fontFamily={SILK_MONO_FONT}
-      fontWeight={600}
+      fontWeight={500}
       textAnchor={anchor}
       fill={SILK.ref}
-      opacity={0.66}
+      opacity={SILK.refOpacity}
       style={{ userSelect: 'none' }}
     >
       {text}
@@ -93,7 +106,12 @@ export const RefDes: React.FC<{
 });
 RefDes.displayName = 'RefDes';
 
-/** Bank label under an indicator or control, e.g. `SW0`, `LEDR12`. */
+/**
+ * Bank label under a control or over an indicator, e.g. `SW0`, `LEDR12`.
+ *
+ * Monospaced on purpose: eighteen of these sit in a row at a fixed pitch, and
+ * a proportional face makes that row look ragged.
+ */
 export const PartLabel: React.FC<{
   x: number;
   y: number;
@@ -101,7 +119,7 @@ export const PartLabel: React.FC<{
   detail: BoardDetail;
   size?: number;
   minDetail?: BoardDetail;
-}> = React.memo(({ x, y, text, detail, size = 1.85, minDetail = 'normal' }) => {
+}> = React.memo(({ x, y, text, detail, size = 1.8, minDetail = 'normal' }) => {
   if (!hasDetail(detail, minDetail)) return null;
   return (
     <text
@@ -109,10 +127,11 @@ export const PartLabel: React.FC<{
       y={y}
       fontSize={size}
       fontFamily={SILK_MONO_FONT}
-      fontWeight={600}
+      fontWeight={500}
       textAnchor="middle"
-      fill={SILK.white}
-      opacity={0.78}
+      fill={SILK.ink}
+      opacity={SILK.secondary}
+      letterSpacing={-0.04}
       style={{ userSelect: 'none' }}
     >
       {text}
@@ -120,3 +139,30 @@ export const PartLabel: React.FC<{
   );
 });
 PartLabel.displayName = 'PartLabel';
+
+/**
+ * Contact shadow under a raised part. This is the cheapest and most effective
+ * cue that a component is seated *in* the board rather than pasted on top of
+ * it, so every raised body draws one.
+ */
+export const ContactShadow: React.FC<{
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rx?: number;
+  /** 0..1; scale with package height. */
+  strength?: number;
+}> = React.memo(({ x, y, width, height, rx = 0.4, strength = 0.3 }) => (
+  <rect
+    x={x - 0.28}
+    y={y - 0.12}
+    width={width + 0.72}
+    height={height + 0.62}
+    rx={rx + 0.2}
+    fill="#02060C"
+    opacity={strength}
+    pointerEvents="none"
+  />
+));
+ContactShadow.displayName = 'ContactShadow';

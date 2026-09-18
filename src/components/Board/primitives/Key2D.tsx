@@ -1,8 +1,9 @@
 import React, { useCallback } from 'react';
 import type { BoardComponent, BoardDetail } from '../../../board/de2Layout';
-import { BOTTOM_SILK } from '../../../board/de2Layout';
+import { BOTTOM_SILK, hasDetail } from '../../../board/de2Layout';
 import { useKeyPressed, useSetKey } from '../../../board/useBoardSelectors';
-import { PartLabel } from './Silkscreen';
+import { ContactShadow, PartLabel } from './Silkscreen';
+import { GOLD, METAL } from '../boardPalette';
 
 interface Key2DProps {
   component: BoardComponent;
@@ -12,8 +13,13 @@ interface Key2DProps {
 /**
  * DE2 momentary push-button KEY3..KEY0, flat top view.
  *
+ * These are square through-hole tact switches: a brushed stainless shell with
+ * four dark corner posts and a small black moulded plunger in the middle — not
+ * the chrome dome an earlier pass drew. Checked against the push-button
+ * close-up and the orthographic scan.
+ *
  * KEY inputs are ACTIVE-LOW in the simulator: `keys[i] === 0` means pressed.
- * `useKeyPressed` already converts that to a plain pressed boolean, and
+ * `useKeyPressed` converts that to a plain pressed boolean and
  * `setKey(index, pressed)` writes the active-low value back — this component
  * must never invert the value itself.
  */
@@ -48,8 +54,14 @@ export const Key2D: React.FC<Key2DProps> = React.memo(({ component, detail }) =>
   const { x, y, width: w, height: h } = component;
   const cx = x + w / 2;
   const cy = y + h / 2;
-  const housing = w * 0.5;
-  const capR = w * 0.36;
+
+  // Stainless shell: a square slightly inset from the courtyard.
+  const shell = w * 0.78;
+  const sx = cx - shell / 2;
+  const sy = cy - shell / 2;
+  // Black moulded plunger.
+  const plungerR = w * 0.21;
+  const wellR = plungerR + 0.5;
 
   return (
     <g
@@ -69,64 +81,81 @@ export const Key2D: React.FC<Key2DProps> = React.memo(({ component, detail }) =>
       onKeyUp={handleKeyUp}
       style={{ cursor: 'pointer', touchAction: 'none' }}
     >
-      {/* Black plastic housing */}
-      <rect
-        x={cx - housing}
-        y={cy - housing}
-        width={housing * 2}
-        height={housing * 2}
-        rx={0.6}
-        fill="#15181D"
-        stroke="#05070A"
-        strokeWidth={0.2}
-      />
-      {/* Four corner legs */}
-      {[
-        [-1, -1],
-        [1, -1],
-        [-1, 1],
-        [1, 1],
-      ].map(([sx, sy], i) => (
-        <rect
-          key={i}
-          x={cx + sx * housing - (sx > 0 ? 0 : 0.9)}
-          y={cy + sy * housing - (sy > 0 ? 0 : 0.7)}
-          width={0.9}
-          height={0.7}
-          fill="#9A7C34"
-          opacity={0.55}
-        />
-      ))}
+      <ContactShadow x={sx} y={sy} width={shell} height={shell} rx={0.5} strength={0.34} />
 
-      {/* Metal cap */}
+      {/* Four gold solder posts, one per corner */}
+      <g opacity={0.7}>
+        {[
+          [sx - 0.55, sy - 0.2],
+          [sx + shell - 0.75, sy - 0.2],
+          [sx - 0.55, sy + shell - 1],
+          [sx + shell - 0.75, sy + shell - 1],
+        ].map(([px, py], i) => (
+          <rect key={i} x={px} y={py} width={1.3} height={1.2} rx={0.22} fill={GOLD.dark} />
+        ))}
+      </g>
+
+      {/* Brushed stainless shell */}
+      <rect
+        x={sx}
+        y={sy}
+        width={shell}
+        height={shell}
+        rx={0.55}
+        fill="url(#de2b-tact)"
+        stroke={METAL.shadow}
+        strokeWidth={0.16}
+      />
+      {/* Crimped corner dimples that hold the shell to the base */}
+      {hasDetail(detail, 'normal') && (
+        <g fill="#000000" opacity={0.42}>
+          {[
+            [sx + 1, sy + 1],
+            [sx + shell - 1, sy + 1],
+            [sx + 1, sy + shell - 1],
+            [sx + shell - 1, sy + shell - 1],
+          ].map(([px, py], i) => (
+            <circle key={i} cx={px} cy={py} r={0.46} />
+          ))}
+        </g>
+      )}
+      {/* Specular band across the top-left of the shell */}
+      <path
+        d={`M ${sx + 0.5} ${sy + shell * 0.42} L ${sx + shell * 0.46} ${sy + 0.5} L ${sx + shell * 0.72} ${sy + 0.5} L ${sx + 0.5} ${sy + shell * 0.68} Z`}
+        fill="#FFFFFF"
+        opacity={0.2}
+      />
+
+      {/* Plunger well and the black moulded plunger itself */}
+      <circle cx={cx} cy={cy} r={wellR} fill="#5A616A" />
+      <circle cx={cx} cy={cy} r={wellR} fill="#000000" opacity={0.35} />
       <g className="de2-key-cap" data-pressed={isPressed ? 'true' : 'false'}>
-        <circle cx={cx} cy={cy} r={capR + 0.32} fill="#0B0D11" opacity={0.7} />
         <circle
           cx={cx}
           cy={cy}
-          r={capR}
-          fill={isPressed ? 'url(#de2b-cap-pressed)' : 'url(#de2b-cap)'}
-          stroke="#2B3037"
-          strokeWidth={0.15}
+          r={plungerR}
+          fill={isPressed ? 'url(#de2b-plunger-pressed)' : 'url(#de2b-plunger)'}
         />
         {!isPressed && (
           <ellipse
-            cx={cx - capR * 0.24}
-            cy={cy - capR * 0.34}
-            rx={capR * 0.42}
-            ry={capR * 0.26}
+            cx={cx - plungerR * 0.3}
+            cy={cy - plungerR * 0.36}
+            rx={plungerR * 0.4}
+            ry={plungerR * 0.28}
             fill="#FFFFFF"
-            opacity={0.34}
+            opacity={0.3}
           />
         )}
       </g>
 
+      <title>{`KEY${index} ${isPressed ? 'pressed (active-low 0)' : 'released (1)'}`}</title>
+
       <rect
         className="de2-focus-ring"
-        x={cx - housing - 0.7}
-        y={cy - housing - 0.7}
-        width={housing * 2 + 1.4}
-        height={housing * 2 + 1.4}
+        x={sx - 0.8}
+        y={sy - 0.8}
+        width={shell + 1.6}
+        height={shell + 1.6}
         rx={1}
         fill="none"
         pointerEvents="none"
@@ -137,7 +166,7 @@ export const Key2D: React.FC<Key2DProps> = React.memo(({ component, detail }) =>
         y={BOTTOM_SILK.controlLabelY}
         text={`KEY${index}`}
         detail={detail}
-        size={1.9}
+        size={1.85}
       />
     </g>
   );

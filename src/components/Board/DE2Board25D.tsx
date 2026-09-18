@@ -9,22 +9,15 @@ import {
   DE2_SILKSCREEN,
   DE2_STATIC_COMPONENTS,
   DE2_SWITCHES,
-  BOTTOM_SILK,
   PCB_CORNER_RADIUS_MM,
   PCB_THICKNESS_MM,
-  ledGreenCentreX,
   sortByDepth,
-  userIoCentreX,
 } from '../../board/de2Layout';
 import type { BoardDetail } from '../../board/de2Layout';
 import { FLAT_TRANSFORM, ISO_VIEWBOX_ATTR, polygon, project } from './boardGeometry';
 import { BoardDefs } from './BoardDefs';
 import { SilkscreenLayer } from './primitives/Silkscreen';
-import {
-  BankHeading2D,
-  MountingHoles2D,
-  PcbSurface2D,
-} from './primitives/StaticParts2D';
+import { MountingHoles2D, PcbSurface2D } from './primitives/StaticParts2D';
 import { StaticPart25D } from './primitives/StaticParts25D';
 import { Switch25D } from './primitives/Switch25D';
 import { Key25D } from './primitives/Key25D';
@@ -116,18 +109,6 @@ export const DE2Board25D: React.FC<DE2Board25DProps> = React.memo(({ detail }) =
       <MountingHoles2D />
       <SilkscreenLayer items={DE2_SILKSCREEN} detail={detail} />
       <SilkscreenLayer items={DE2_CONNECTOR_LABELS} detail={detail} />
-      <BankHeading2D
-        x={(userIoCentreX(17) + userIoCentreX(0)) / 2}
-        y={BOTTOM_SILK.switchBankHeadingY}
-        text="SW[17..0]  /  LEDR[17..0]"
-        detail={detail}
-      />
-      <BankHeading2D
-        x={(ledGreenCentreX(7) + ledGreenCentreX(0)) / 2}
-        y={BOTTOM_SILK.greenBankHeadingY}
-        text="LEDG[7..0]  /  KEY[3..0]"
-        detail={detail}
-      />
     </g>
 
     {/* Depth-sorted components */}

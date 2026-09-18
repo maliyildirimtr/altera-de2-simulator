@@ -1,9 +1,9 @@
 import React, { useMemo } from 'react';
 import type { BoardComponent, BoardDetail } from '../../../board/de2Layout';
-import { BOTTOM_SILK } from '../../../board/de2Layout';
+import { BOTTOM_SILK, hasDetail } from '../../../board/de2Layout';
 import { isSegmentLit, useHexSegments } from '../../../board/useBoardSelectors';
 import { sevenSegmentShapes, SEGMENT_SLANT_DEG } from '../boardGeometry';
-import { PartLabel } from './Silkscreen';
+import { ContactShadow, PartLabel } from './Silkscreen';
 import { SEVEN_SEG } from '../boardPalette';
 
 interface SevenSegment2DProps {
@@ -13,6 +13,12 @@ interface SevenSegment2DProps {
 
 /**
  * DE2 seven-segment display HEX7..HEX0, flat top view.
+ *
+ * The DE2's displays have a PALE GREY face. Unlit segments read as faint grey
+ * shapes printed on that face; driven segments are a saturated orange-red.
+ * An earlier pass drew a dark-red package with a recessed black window, which
+ * is a visibly cheaper class of part than the board actually carries — see the
+ * orthographic scan and the powered-board photograph.
  *
  * Segment values are ACTIVE-LOW: `segments[s] === 0` lights segment `s`
  * (order A, B, C, D, E, F, G). The raw array is published unmodified on
@@ -24,11 +30,14 @@ export const SevenSegment2D: React.FC<SevenSegment2DProps> = React.memo(
     const segments = useHexSegments(index);
 
     const { x, y, width: w, height: h } = component;
-    const glassInset = 0.7;
-    const glassW = w - glassInset * 2;
-    const glassH = h - glassInset * 2 - 1.2;
+    // The digit occupies the whole package face; there is no dark window.
+    const faceInset = 0.55;
+    const digitPadX = 1.15;
+    const digitPadY = 1.35;
+    const digitW = w - faceInset * 2 - digitPadX * 2;
+    const digitH = h - faceInset * 2 - digitPadY * 2;
 
-    const shapes = useMemo(() => sevenSegmentShapes(glassW, glassH), [glassW, glassH]);
+    const shapes = useMemo(() => sevenSegmentShapes(digitW, digitH), [digitW, digitH]);
     const anyLit = segments.some((v) => isSegmentLit(v));
 
     return (
@@ -41,37 +50,50 @@ export const SevenSegment2D: React.FC<SevenSegment2DProps> = React.memo(
       >
         {anyLit && (
           <rect
-            x={x - w * 0.35}
-            y={y - h * 0.3}
-            width={w * 1.7}
-            height={h * 1.6}
+            x={x - w * 0.34}
+            y={y - h * 0.28}
+            width={w * 1.68}
+            height={h * 1.56}
             fill="url(#de2b-seg-halo)"
           />
         )}
 
-        {/* Moulded package */}
+        <ContactShadow x={x} y={y} width={w} height={h} rx={0.45} strength={0.36} />
+
+        {/* Pale grey moulded package */}
         <rect
           x={x}
           y={y}
           width={w}
           height={h}
-          rx={0.4}
-          fill="url(#de2b-seg-pkg)"
-          stroke="#0D0505"
-          strokeWidth={0.18}
+          rx={0.45}
+          fill="url(#de2b-seg-face)"
+          stroke={SEVEN_SEG.side}
+          strokeWidth={0.16}
         />
-        {/* Recessed glass window */}
+        {/* Moulding highlight along the top edge */}
         <rect
-          x={x + glassInset}
-          y={y + glassInset}
-          width={glassW}
-          height={glassH}
+          x={x + 0.4}
+          y={y + 0.26}
+          width={w - 0.8}
+          height={0.3}
+          rx={0.15}
+          fill="#FFFFFF"
+          opacity={0.45}
+        />
+        {/* Shallow recess the digit is printed into */}
+        <rect
+          x={x + faceInset}
+          y={y + faceInset}
+          width={w - faceInset * 2}
+          height={h - faceInset * 2 - 0.5}
           rx={0.25}
-          fill="url(#de2b-seg-glass)"
+          fill="#000000"
+          opacity={0.06}
         />
 
         <g
-          transform={`translate(${x + glassInset} ${y + glassInset}) skewX(-${SEGMENT_SLANT_DEG})`}
+          transform={`translate(${x + faceInset + digitPadX} ${y + faceInset + digitPadY}) skewX(-${SEGMENT_SLANT_DEG})`}
         >
           {shapes.map((s) => {
             const lit = isSegmentLit(segments[s.index]);
@@ -83,20 +105,26 @@ export const SevenSegment2D: React.FC<SevenSegment2DProps> = React.memo(
                 data-lit={lit ? 'true' : 'false'}
                 points={s.points}
                 fill={lit ? SEVEN_SEG.on : SEVEN_SEG.off}
-                opacity={lit ? 1 : 0.42}
+                stroke={lit ? SEVEN_SEG.onEdge : SEVEN_SEG.offEdge}
+                strokeWidth={0.1}
+                opacity={lit ? 1 : 0.5}
               />
             );
           })}
         </g>
 
         {/* Decimal point — present on the package, not wired on the DE2 */}
-        <circle
-          cx={x + w - glassInset - 0.55}
-          cy={y + glassInset + glassH - 0.5}
-          r={0.38}
-          fill={SEVEN_SEG.offDim}
-          opacity={0.6}
-        />
+        {hasDetail(detail, 'normal') && (
+          <circle
+            cx={x + w - faceInset - 0.7}
+            cy={y + h - faceInset - 1.05}
+            r={0.4}
+            fill={SEVEN_SEG.off}
+            stroke={SEVEN_SEG.offEdge}
+            strokeWidth={0.08}
+            opacity={0.5}
+          />
+        )}
 
         <PartLabel
           x={x + w / 2}
