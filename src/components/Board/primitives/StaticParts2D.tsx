@@ -13,8 +13,6 @@ import {
   CONNECTOR,
   GOLD,
   IC,
-  JACK,
-  JACK_DARK,
   LCD,
   METAL,
   PASSIVE,
@@ -53,7 +51,7 @@ export const PcbSurface2D: React.FC<{ detail: BoardDetail }> = React.memo(({ det
       fill="url(#de2b-core)"
     />
 
-    {/* Solder mask */}
+    {/* Solder mask — deep navy with top-left lighting */}
     <rect
       x={0}
       y={0}
@@ -64,17 +62,15 @@ export const PcbSurface2D: React.FC<{ detail: BoardDetail }> = React.memo(({ det
     />
 
     {/*
-      Mask over copper pour. Held at a very low opacity on purpose: the
-      boundary between mask-over-copper and mask-over-substrate is a subtle
-      shift in finish on a real board, and anything stronger reads as a set of
-      dark panels pasted onto the PCB rather than as the PCB's own surface.
+      Mask over copper pour — very subtle warmth variation, not dark panels.
+      Uses a dedicated pour warmth tint for a more natural finish shift.
     */}
-    <g opacity={0.24}>
+    <g opacity={0.18}>
       {POUR_REGIONS.map(([px, py, pw, ph]) => (
-        <rect key={`${px}-${py}`} x={px} y={py} width={pw} height={ph} rx={1.6} fill={PCB.pour} />
+        <rect key={`${px}-${py}`} x={px} y={py} width={pw} height={ph} rx={1.6} fill={PCB.pourWarmth} />
       ))}
     </g>
-    {/* Pour mesh, clipped to the board by the rounded rect below it */}
+    {/* Pour mesh — finer, more restrained */}
     <rect
       x={0}
       y={0}
@@ -82,19 +78,19 @@ export const PcbSurface2D: React.FC<{ detail: BoardDetail }> = React.memo(({ det
       height={BOARD_MM.height}
       rx={PCB_CORNER_RADIUS_MM}
       fill="url(#de2b-pour)"
-      opacity={0.17}
+      opacity={0.12}
     />
 
-    {/* Routed trace hints */}
+    {/* Routed trace hints — very restrained */}
     {hasDetail(detail, 'normal') && (
       <g fill="none" stroke={PCB.trace} strokeLinecap="round" strokeLinejoin="round">
         {DE2_TRACE_HINTS.map((t) => (
-          <path key={t.id} d={t.d} strokeWidth={t.width} opacity={t.opacity * 0.6} />
+          <path key={t.id} d={t.d} strokeWidth={t.width} opacity={t.opacity * 0.45} />
         ))}
       </g>
     )}
 
-    {/* Printed boundary around the user-I/O strip */}
+    {/* Printed boundary around the user-I/O strip — subtle */}
     <rect
       x={4}
       y={112}
@@ -103,11 +99,11 @@ export const PcbSurface2D: React.FC<{ detail: BoardDetail }> = React.memo(({ det
       rx={1.4}
       fill="none"
       stroke={PCB.courtyard}
-      strokeWidth={0.2}
-      opacity={0.28}
+      strokeWidth={0.18}
+      opacity={0.22}
     />
 
-    {/* Semi-gloss mask sheen, then a corner vignette */}
+    {/* Semi-gloss mask sheen — directional from top-left */}
     <rect
       x={0}
       y={0}
@@ -116,6 +112,7 @@ export const PcbSurface2D: React.FC<{ detail: BoardDetail }> = React.memo(({ det
       rx={PCB_CORNER_RADIUS_MM}
       fill="url(#de2b-pcb-sheen)"
     />
+    {/* Corner vignette — softer */}
     <rect
       x={0}
       y={0}
@@ -134,19 +131,20 @@ export const PcbSurface2D: React.FC<{ detail: BoardDetail }> = React.memo(({ det
       rx={PCB_CORNER_RADIUS_MM}
       fill="none"
       stroke="#02060C"
-      strokeWidth={0.4}
-      opacity={0.75}
+      strokeWidth={0.38}
+      opacity={0.7}
     />
+    {/* Thin top-edge highlight — catches the light */}
     <rect
-      x={0.55}
-      y={0.55}
-      width={BOARD_MM.width - 1.1}
-      height={BOARD_MM.height - 1.1}
+      x={0.5}
+      y={0.5}
+      width={BOARD_MM.width - 1}
+      height={BOARD_MM.height - 1}
       rx={PCB_CORNER_RADIUS_MM}
       fill="none"
       stroke="#FFFFFF"
-      strokeWidth={0.18}
-      opacity={0.07}
+      strokeWidth={0.14}
+      opacity={0.06}
     />
   </g>
 ));
@@ -156,7 +154,7 @@ export const MountingHoles2D: React.FC = React.memo(() => (
   <g pointerEvents="none" aria-hidden="true">
     {DE2_MOUNTING_HOLES.map((hole) => (
       <g key={hole.id}>
-        {/* Annular gold ring */}
+        {/* Annular gold ring — refined */}
         <circle cx={hole.cx} cy={hole.cy} r={hole.padR} fill="url(#de2b-gold)" />
         <circle
           cx={hole.cx}
@@ -164,8 +162,16 @@ export const MountingHoles2D: React.FC = React.memo(() => (
           r={hole.padR}
           fill="none"
           stroke={GOLD.dark}
-          strokeWidth={0.14}
-          opacity={0.8}
+          strokeWidth={0.12}
+          opacity={0.7}
+        />
+        {/* Thin top highlight on gold ring */}
+        <path
+          d={`M ${hole.cx - hole.padR * 0.9} ${hole.cy - hole.padR * 0.3} A ${hole.padR} ${hole.padR} 0 0 1 ${hole.cx + hole.padR * 0.9} ${hole.cy - hole.padR * 0.3}`}
+          fill="none"
+          stroke={GOLD.light}
+          strokeWidth={0.1}
+          opacity={0.5}
         />
         {/* Drill, with the inner wall catching light at the bottom-right */}
         <circle cx={hole.cx} cy={hole.cy} r={hole.r} fill={PCB.hole} />
@@ -173,8 +179,8 @@ export const MountingHoles2D: React.FC = React.memo(() => (
           d={`M ${hole.cx - hole.r} ${hole.cy} A ${hole.r} ${hole.r} 0 0 0 ${hole.cx + hole.r} ${hole.cy}`}
           fill="none"
           stroke={GOLD.light}
-          strokeWidth={0.18}
-          opacity={0.45}
+          strokeWidth={0.16}
+          opacity={0.4}
         />
       </g>
     ))}
@@ -306,17 +312,17 @@ const MetalShellBody: React.FC<{ c: BoardComponent; detail: BoardDetail }> = ({ 
   const faceH = Math.min(3.4, c.height * 0.42);
   return (
     <g>
-      <ContactShadow x={c.x} y={c.y} width={c.width} height={c.height} rx={0.4} strength={0.34} />
-      {/* Body */}
+      <ContactShadow x={c.x} y={c.y} width={c.width} height={c.height} rx={0.4} strength={0.32} />
+      {/* Body — brushed nickel */}
       <rect
         x={c.x}
         y={c.y}
         width={c.width}
         height={c.height}
         rx={0.42}
-        fill="url(#de2b-metal)"
-        stroke={METAL.shadow}
-        strokeWidth={0.16}
+        fill="url(#de2b-usb-shell)"
+        stroke="#4A5158"
+        strokeWidth={0.14}
       />
       {/* Outward-facing end, in shadow */}
       <rect
@@ -325,7 +331,17 @@ const MetalShellBody: React.FC<{ c: BoardComponent; detail: BoardDetail }> = ({ 
         width={c.width}
         height={faceH}
         rx={0.4}
-        fill="url(#de2b-metal-face)"
+        fill="url(#de2b-usb-face)"
+      />
+      {/* Thin top highlight on the shell */}
+      <rect
+        x={c.x + 0.4}
+        y={c.y + 0.2}
+        width={c.width - 0.8}
+        height={0.22}
+        rx={0.12}
+        fill="#FFFFFF"
+        opacity={0.18}
       />
       {/* Mouth */}
       <rect
@@ -342,25 +358,20 @@ const MetalShellBody: React.FC<{ c: BoardComponent; detail: BoardDetail }> = ({ 
           x={c.x + 1.3}
           y={c.y + faceH * 0.42}
           width={c.width - 2.6}
-          height={faceH * 0.3}
+          height={faceH * 0.28}
           rx={0.1}
-          fill="#C9CDD3"
-          opacity={0.55}
+          fill="#A8B0BA"
+          opacity={0.5}
         />
       )}
-      {/* Seam and specular band across the shell top */}
+      {/* Subtle seam across the shell top */}
       <rect
         x={c.x + 0.5}
         y={c.y + faceH + 0.45}
         width={c.width - 1}
-        height={0.14}
+        height={0.1}
         fill="#FFFFFF"
-        opacity={0.28}
-      />
-      <path
-        d={`M ${c.x + 0.4} ${c.y + c.height - 0.5} L ${c.x + c.width * 0.42} ${c.y + faceH + 0.3} L ${c.x + c.width * 0.6} ${c.y + faceH + 0.3} L ${c.x + 0.4} ${c.y + c.height - 0.5} Z`}
-        fill="#FFFFFF"
-        opacity={0.12}
+        opacity={0.15}
       />
     </g>
   );
@@ -373,7 +384,7 @@ const DSubBody: React.FC<{ c: BoardComponent; detail: BoardDetail }> = ({ c, det
   const pinRow = pinPositions(c.x + 6.4, c.x + c.width - 6.4, 8);
   return (
     <g>
-      <ContactShadow x={c.x} y={c.y} width={c.width} height={c.height} rx={0.5} strength={0.34} />
+      <ContactShadow x={c.x} y={c.y} width={c.width} height={c.height} rx={0.5} strength={0.3} />
       {/* Black moulded insulator body */}
       <rect
         x={c.x}
@@ -383,39 +394,46 @@ const DSubBody: React.FC<{ c: BoardComponent; detail: BoardDetail }> = ({ c, det
         rx={0.5}
         fill="url(#de2b-conn-plastic)"
         stroke="#05080C"
-        strokeWidth={0.18}
+        strokeWidth={0.16}
       />
-      {/* Nickel shell wrapping the opening */}
+      {/* Subdued metal hood wrapping the opening */}
       <path
         d={`M ${c.x + 2.4} ${c.y + mouthH + 0.9} L ${c.x + 4.4} ${c.y + 0.2} L ${c.x + c.width - 4.4} ${c.y + 0.2} L ${c.x + c.width - 2.4} ${c.y + mouthH + 0.9} Z`}
-        fill="url(#de2b-metal-dark)"
-        stroke={METAL.shadow}
-        strokeWidth={0.14}
+        fill="url(#de2b-dsub-hood)"
+        stroke="#474D55"
+        strokeWidth={0.12}
+      />
+      {/* Thin highlight on hood top edge */}
+      <path
+        d={`M ${c.x + 4.6} ${c.y + 0.3} L ${c.x + c.width - 4.6} ${c.y + 0.3}`}
+        stroke="#9AA2AB"
+        strokeWidth={0.1}
+        opacity={0.4}
       />
       <path d={inner} fill={CONNECTOR.mouth} />
       {hasDetail(detail, 'normal') && (
-        <g fill={GOLD.base} opacity={0.8}>
+        <g fill={GOLD.base} opacity={0.7}>
           {pinRow.map((px) => (
-            <circle key={px} cx={px} cy={c.y + 2.2} r={0.3} />
+            <circle key={px} cx={px} cy={c.y + 2.2} r={0.28} />
           ))}
           {pinRow.slice(0, 7).map((px) => (
-            <circle key={`b-${px}`} cx={px + 0.95} cy={c.y + 3.7} r={0.3} />
+            <circle key={`b-${px}`} cx={px + 0.95} cy={c.y + 3.7} r={0.28} />
           ))}
         </g>
       )}
-      {/* Jack screws */}
+      {/* Jack screws — smaller, less prominent */}
       {[c.x + 1.75, c.x + c.width - 1.75].map((sx) => (
         <g key={sx}>
-          <circle cx={sx} cy={c.y + c.height * 0.4} r={1.15} fill="url(#de2b-metal)" />
+          <circle cx={sx} cy={c.y + c.height * 0.4} r={1.05} fill="url(#de2b-dsub-hood)" />
           <circle
             cx={sx}
             cy={c.y + c.height * 0.4}
-            r={1.15}
+            r={1.05}
             fill="none"
-            stroke={METAL.shadow}
-            strokeWidth={0.14}
+            stroke="#474D55"
+            strokeWidth={0.12}
           />
-          <circle cx={sx} cy={c.y + c.height * 0.4} r={0.42} fill="#000000" opacity={0.35} />
+          <circle cx={sx} cy={c.y + c.height * 0.4} r={0.38} fill="#000000" opacity={0.3} />
         </g>
       ))}
     </g>
@@ -427,16 +445,27 @@ const Rj45Body: React.FC<{ c: BoardComponent; detail: BoardDetail }> = ({ c, det
   const mouthH = c.height * 0.52;
   return (
     <g>
-      <ContactShadow x={c.x} y={c.y} width={c.width} height={c.height} rx={0.5} strength={0.36} />
+      <ContactShadow x={c.x} y={c.y} width={c.width} height={c.height} rx={0.5} strength={0.32} />
+      {/* Compact RJ45 shell — reduced visual height */}
       <rect
         x={c.x}
         y={c.y}
         width={c.width}
         height={c.height}
         rx={0.5}
-        fill="url(#de2b-conn-plastic)"
-        stroke="#04070A"
-        strokeWidth={0.2}
+        fill="url(#de2b-rj45-shell)"
+        stroke="#0D1014"
+        strokeWidth={0.16}
+      />
+      {/* Thin top highlight */}
+      <rect
+        x={c.x + 0.5}
+        y={c.y + 0.2}
+        width={c.width - 1}
+        height={0.2}
+        rx={0.12}
+        fill="#FFFFFF"
+        opacity={0.12}
       />
       {/* Opening with the RJ45 latch cut-out at the top */}
       <path
@@ -451,80 +480,66 @@ const Rj45Body: React.FC<{ c: BoardComponent; detail: BoardDetail }> = ({ c, det
       />
       {/* Gold contacts on the roof of the opening */}
       {hasDetail(detail, 'normal') && (
-        <g fill={GOLD.base} opacity={0.6}>
+        <g fill={GOLD.base} opacity={0.55}>
           {pinPositions(c.x + 3.2, c.x + c.width - 3.2, 8).map((px) => (
-            <rect key={px} x={px - 0.16} y={c.y + mouthH - 1.5} width={0.32} height={1.2} />
+            <rect key={px} x={px - 0.16} y={c.y + mouthH - 1.4} width={0.32} height={1.1} />
           ))}
         </g>
       )}
-      {/* Link / activity indicators moulded into the housing front */}
+      {/* Link / activity indicators moulded into the housing front — smaller */}
       <rect
-        x={c.x + 2.2}
-        y={c.y + c.height - 3.2}
-        width={2}
-        height={1.4}
-        rx={0.22}
+        x={c.x + 2}
+        y={c.y + c.height - 2.8}
+        width={1.7}
+        height={1.2}
+        rx={0.2}
         fill={CONNECTOR.linkGreen}
+        opacity={0.85}
       />
       <rect
-        x={c.x + c.width - 4.2}
-        y={c.y + c.height - 3.2}
-        width={2}
-        height={1.4}
-        rx={0.22}
+        x={c.x + c.width - 3.7}
+        y={c.y + c.height - 2.8}
+        width={1.7}
+        height={1.2}
+        rx={0.2}
         fill={CONNECTOR.linkAmber}
-      />
-      <rect
-        x={c.x + 0.6}
-        y={c.y + mouthH + 0.55}
-        width={c.width - 1.2}
-        height={0.14}
-        fill="#FFFFFF"
-        opacity={0.1}
+        opacity={0.85}
       />
     </g>
   );
 };
 
-/** 3.5 mm audio jack: a tall colour-coded housing with a black barrel. */
+/** 3.5 mm audio jack: a compact coloured housing with a dark barrel. */
 const JackBody: React.FC<{ c: BoardComponent }> = ({ c }) => {
   const cx = c.x + c.width / 2;
   const barrelCy = c.y + c.height * 0.42;
   const r = Math.min(c.width, c.height) * 0.3;
-  const colour = JACK[c.body ?? ''] ?? METAL.mid;
-  const dark = JACK_DARK[c.body ?? ''] ?? METAL.dark;
+  const gradientId = `de2b-jack-${c.body?.replace('jack-', '')}`;
   return (
     <g>
-      <ContactShadow x={c.x} y={c.y} width={c.width} height={c.height} rx={0.5} strength={0.34} />
-      {/* Housing, with a darker lower half so it reads as a raised block */}
-      <rect x={c.x} y={c.y} width={c.width} height={c.height} rx={0.55} fill={dark} />
-      <rect
-        x={c.x}
-        y={c.y}
-        width={c.width}
-        height={c.height * 0.66}
-        rx={0.55}
-        fill={colour}
-      />
+      <ContactShadow x={c.x} y={c.y} width={c.width} height={c.height} rx={0.5} strength={0.3} />
+      {/* Housing — coloured plastic with subtle gradient */}
+      <rect x={c.x} y={c.y} width={c.width} height={c.height} rx={0.55} fill={`url(#${gradientId})`} />
+      {/* Thin top highlight */}
       <rect
         x={c.x + 0.3}
-        y={c.y + 0.25}
+        y={c.y + 0.2}
         width={c.width - 0.6}
-        height={0.3}
-        rx={0.15}
+        height={0.22}
+        rx={0.12}
         fill="#FFFFFF"
-        opacity={0.45}
+        opacity={0.18}
       />
-      {/* Barrel */}
-      <circle cx={cx} cy={barrelCy} r={r + 0.34} fill={dark} />
-      <circle cx={cx} cy={barrelCy} r={r} fill="#0C1014" />
-      <circle cx={cx} cy={barrelCy} r={r * 0.4} fill="#04070A" />
+      {/* Barrel — compact, dark */}
+      <circle cx={cx} cy={barrelCy} r={r + 0.28} fill="#0A0D11" />
+      <circle cx={cx} cy={barrelCy} r={r} fill="#05080C" />
+      <circle cx={cx} cy={barrelCy} r={r * 0.38} fill="#030507" />
       <path
-        d={`M ${cx - r * 0.72} ${barrelCy - r * 0.5} A ${r} ${r} 0 0 1 ${cx + r * 0.18} ${barrelCy - r * 0.72}`}
+        d={`M ${cx - r * 0.7} ${barrelCy - r * 0.48} A ${r} ${r} 0 0 1 ${cx + r * 0.16} ${barrelCy - r * 0.7}`}
         fill="none"
         stroke="#FFFFFF"
-        strokeWidth={0.18}
-        opacity={0.3}
+        strokeWidth={0.14}
+        opacity={0.22}
       />
       <rect
         x={c.x}
@@ -534,8 +549,8 @@ const JackBody: React.FC<{ c: BoardComponent }> = ({ c }) => {
         rx={0.55}
         fill="none"
         stroke="#0A0D11"
-        strokeWidth={0.14}
-        opacity={0.6}
+        strokeWidth={0.12}
+        opacity={0.5}
       />
     </g>
   );
@@ -548,26 +563,36 @@ const RcaBody: React.FC<{ c: BoardComponent }> = ({ c }) => {
   const r = Math.min(c.width, c.height) * 0.36;
   return (
     <g>
-      <ContactShadow x={c.x} y={c.y} width={c.width} height={c.height} rx={0.5} strength={0.34} />
+      <ContactShadow x={c.x} y={c.y} width={c.width} height={c.height} rx={0.5} strength={0.3} />
       <rect
         x={c.x}
         y={c.y}
         width={c.width}
         height={c.height}
         rx={0.5}
-        fill="url(#de2b-metal)"
-        stroke={METAL.shadow}
-        strokeWidth={0.16}
+        fill="url(#de2b-rca-barrel)"
+        stroke="#4A5158"
+        strokeWidth={0.14}
       />
-      <circle cx={cx} cy={cy} r={r + 0.5} fill="url(#de2b-metal-face)" />
+      <circle cx={cx} cy={cy} r={r + 0.4} fill="url(#de2b-rca-barrel)" />
       <circle cx={cx} cy={cy} r={r} fill="#0A0E13" />
-      <circle cx={cx} cy={cy} r={r * 0.34} fill={METAL.mid} />
+      <circle cx={cx} cy={cy} r={r * 0.32} fill={METAL.brushed} />
       <path
-        d={`M ${cx - r * 0.74} ${cy - r * 0.5} A ${r} ${r} 0 0 1 ${cx + r * 0.2} ${cy - r * 0.74}`}
+        d={`M ${cx - r * 0.72} ${cy - r * 0.48} A ${r} ${r} 0 0 1 ${cx + r * 0.18} ${cy - r * 0.72}`}
         fill="none"
         stroke="#FFFFFF"
-        strokeWidth={0.2}
-        opacity={0.38}
+        strokeWidth={0.16}
+        opacity={0.3}
+      />
+      {/* Thin top highlight on the body */}
+      <rect
+        x={c.x + 0.5}
+        y={c.y + 0.18}
+        width={c.width - 1}
+        height={0.18}
+        rx={0.1}
+        fill="#FFFFFF"
+        opacity={0.15}
       />
     </g>
   );
@@ -578,32 +603,42 @@ const BarrelJackBody: React.FC<{ c: BoardComponent }> = ({ c }) => {
   const cy = c.y + c.height / 2;
   return (
     <g>
-      <ContactShadow x={c.x} y={c.y} width={c.width} height={c.height} rx={0.6} strength={0.36} />
+      <ContactShadow x={c.x} y={c.y} width={c.width} height={c.height} rx={0.6} strength={0.3} />
       <rect
         x={c.x}
         y={c.y}
         width={c.width}
         height={c.height}
         rx={0.6}
-        fill="url(#de2b-conn-plastic)"
+        fill="url(#de2b-barrel-jack)"
         stroke="#04070A"
-        strokeWidth={0.18}
+        strokeWidth={0.16}
+      />
+      {/* Thin top highlight */}
+      <rect
+        x={c.x + 0.4}
+        y={c.y + 0.18}
+        width={c.width - 0.8}
+        height={0.18}
+        rx={0.1}
+        fill="#FFFFFF"
+        opacity={0.14}
       />
       {/* Socket mouth on the outward (left) end */}
-      <circle cx={c.x + 2.9} cy={cy} r={c.height * 0.36} fill="#05080C" />
+      <circle cx={c.x + 2.9} cy={cy} r={c.height * 0.34} fill="#05080C" />
       <circle
         cx={c.x + 2.9}
         cy={cy}
-        r={c.height * 0.36}
+        r={c.height * 0.34}
         fill="none"
         stroke="#3A4048"
-        strokeWidth={0.16}
+        strokeWidth={0.14}
       />
-      <circle cx={c.x + 2.9} cy={cy} r={c.height * 0.12} fill={METAL.mid} />
-      {/* Moulded strain-relief ribs */}
-      <g fill="#000000" opacity={0.3}>
+      <circle cx={c.x + 2.9} cy={cy} r={c.height * 0.11} fill={METAL.brushed} />
+      {/* Moulded strain-relief ribs — subtler */}
+      <g fill="#000000" opacity={0.22}>
         {[0, 1, 2].map((i) => (
-          <rect key={i} x={c.x + 6 + i * 2} y={c.y + 1} width={0.55} height={c.height - 2} rx={0.2} />
+          <rect key={i} x={c.x + 6 + i * 2} y={c.y + 1} width={0.5} height={c.height - 2} rx={0.18} />
         ))}
       </g>
     </g>
@@ -621,16 +656,26 @@ const HeaderBody: React.FC<{ c: BoardComponent; detail: BoardDetail }> = ({ c, d
   const rowY = pinPositions(c.y + 1.5, c.y + c.height - 1.5, rows);
   return (
     <g>
-      <ContactShadow x={c.x} y={c.y} width={c.width} height={c.height} rx={0.35} strength={0.34} />
+      <ContactShadow x={c.x} y={c.y} width={c.width} height={c.height} rx={0.35} strength={0.3} />
       <rect
         x={c.x}
         y={c.y}
         width={c.width}
         height={c.height}
         rx={0.35}
-        fill="url(#de2b-conn-plastic)"
+        fill="url(#de2b-header-shroud)"
         stroke="#04070A"
-        strokeWidth={0.18}
+        strokeWidth={0.16}
+      />
+      {/* Thin top highlight on shroud */}
+      <rect
+        x={c.x + 0.3}
+        y={c.y + 0.15}
+        width={c.width - 0.6}
+        height={0.18}
+        rx={0.09}
+        fill="#FFFFFF"
+        opacity={0.12}
       />
       {/* Recessed pin field */}
       <rect
@@ -654,7 +699,7 @@ const HeaderBody: React.FC<{ c: BoardComponent; detail: BoardDetail }> = ({ c, d
           height={c.height - 1.8}
           rx={0.2}
           fill="url(#de2b-gold)"
-          opacity={0.3}
+          opacity={0.25}
         />
       )}
       {hasDetail(detail, 'normal') && (
@@ -676,23 +721,13 @@ const HeaderBody: React.FC<{ c: BoardComponent; detail: BoardDetail }> = ({ c, d
                   width={0.88}
                   height={0.26}
                   fill="#000000"
-                  opacity={0.35}
+                  opacity={0.3}
                 />
               </g>
             )),
           )}
         </g>
       )}
-      {/* Shroud highlight */}
-      <rect
-        x={c.x + 0.2}
-        y={c.y + 0.18}
-        width={c.width - 0.4}
-        height={0.2}
-        rx={0.1}
-        fill="#FFFFFF"
-        opacity={0.14}
-      />
     </g>
   );
 };
@@ -1250,6 +1285,52 @@ const SlideSwitchBody: React.FC<{ c: BoardComponent }> = ({ c }) => (
   </g>
 );
 
+/** PS/2 mini-DIN: cream plastic body, dark socket face, compact proportions. */
+const Ps2Body: React.FC<{ c: BoardComponent }> = ({ c }) => {
+  const cx = c.x + c.width / 2;
+  const cy = c.y + c.height / 2;
+  const r = Math.min(c.width, c.height) * 0.38;
+  return (
+    <g>
+      <ContactShadow x={c.x} y={c.y} width={c.width} height={c.height} rx={0.5} strength={0.3} />
+      {/* Cream plastic body */}
+      <rect x={c.x} y={c.y} width={c.width} height={c.height} rx={0.55} fill="url(#de2b-ps2-body)" />
+      {/* Thin top highlight */}
+      <rect
+        x={c.x + 0.4}
+        y={c.y + 0.18}
+        width={c.width - 0.8}
+        height={0.2}
+        rx={0.12}
+        fill="#FFFFFF"
+        opacity={0.16}
+      />
+      {/* Dark socket face — recessed */}
+      <circle cx={cx} cy={cy} r={r + 0.25} fill="url(#de2b-ps2-face)" />
+      <circle cx={cx} cy={cy} r={r} fill="#05080C" />
+      {/* Pin holes hint */}
+      <g fill="#000000" opacity={0.3}>
+        {[0, 1, 2, 3, 4, 5].map((i) => {
+          const angle = (i * Math.PI) / 3 - Math.PI / 6;
+          const px = cx + r * 0.55 * Math.cos(angle);
+          const py = cy + r * 0.55 * Math.sin(angle);
+          return <circle key={i} cx={px} cy={py} r={0.28} />;
+        })}
+      </g>
+      {/* Subtle rim highlight */}
+      <circle
+        cx={cx}
+        cy={cy}
+        r={r + 0.25}
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={0.1}
+        opacity={0.12}
+      />
+    </g>
+  );
+};
+
 /* ────────────────────────────────────────────────────────────────────────
  * Dispatch
  * ──────────────────────────────────────────────────────────────────────── */
@@ -1264,6 +1345,7 @@ export const StaticPart2D: React.FC<{ c: BoardComponent; detail: BoardDetail }> 
     else if (c.type === 'oscillator') body = <OscillatorBody c={c} detail={detail} />;
     else if (c.id === 'conn-sd-card') body = <SdCardBody c={c} />;
     else if (c.id === 'ctl-run-prog') body = <SlideSwitchBody c={c} />;
+    else if (c.id === 'conn-ps2') body = <Ps2Body c={c} />;
     else if (c.body === 'barrel') body = <BarrelJackBody c={c} />;
     else if (c.body === 'rca') body = <RcaBody c={c} />;
     else if (c.body === 'tantalum') body = <TantalumBody c={c} />;
