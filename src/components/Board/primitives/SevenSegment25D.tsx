@@ -1,8 +1,14 @@
 import React, { useMemo } from 'react';
 import type { BoardComponent, BoardDetail } from '../../../board/de2Layout';
-import { BOTTOM_SILK } from '../../../board/de2Layout';
+import { BOTTOM_SILK, hasDetail } from '../../../board/de2Layout';
 import { isSegmentLit, useHexSegments } from '../../../board/useBoardSelectors';
-import { SEGMENT_SLANT_DEG, extrudeBox, faceTransform, project, sevenSegmentShapes } from '../boardGeometry';
+import {
+  SEGMENT_SLANT_DEG,
+  extrudeBox,
+  faceTransform,
+  project,
+  sevenSegmentShapes,
+} from '../boardGeometry';
 import { PartLabel } from './Silkscreen';
 import { SEVEN_SEG } from '../boardPalette';
 
@@ -12,16 +18,17 @@ interface SevenSegment25DProps {
 }
 
 const PACKAGE_H = 2.6;
-/** How far the glass sits below the package rim. */
-const RECESS = 0.5;
 
 /**
- * DE2 seven-segment display in the 2.5D view: a raised dark-red package with a
- * recessed glass window.
+ * DE2 seven-segment display in the 2.5D view: a raised PALE GREY package with
+ * the digit printed on its top face.
  *
- * Segments are ACTIVE-LOW (`0` lights a segment) and the raw array is published
- * on `data-segments`, identical to the 2D renderer — the DE2 HEX regression
- * suite reads that attribute in whichever view is active.
+ * Same part and same materials as the 2D view — pale grey face, faint grey
+ * unlit segments, orange-red when driven.
+ *
+ * Segments are ACTIVE-LOW (`0` lights a segment) and the raw array is
+ * published on `data-segments`, identical to the 2D renderer — the DE2 HEX
+ * regression suite reads that attribute in whichever view is active.
  */
 export const SevenSegment25D: React.FC<SevenSegment25DProps> = React.memo(
   ({ component, detail }) => {
@@ -29,16 +36,17 @@ export const SevenSegment25D: React.FC<SevenSegment25DProps> = React.memo(
     const segments = useHexSegments(index);
 
     const { x, y, width: w, height: h } = component;
-    const glassInset = 0.7;
-    const glassW = w - glassInset * 2;
-    const glassH = h - glassInset * 2 - 1.2;
+    const faceInset = 0.55;
+    const digitPadX = 1.15;
+    const digitPadY = 1.35;
+    const digitW = w - faceInset * 2 - digitPadX * 2;
+    const digitH = h - faceInset * 2 - digitPadY * 2;
 
-    const shapes = useMemo(() => sevenSegmentShapes(glassW, glassH), [glassW, glassH]);
+    const shapes = useMemo(() => sevenSegmentShapes(digitW, digitH), [digitW, digitH]);
     const anyLit = segments.some((v) => isSegmentLit(v));
 
     const pkg = extrudeBox(x, y, w, h, PACKAGE_H);
     const halo = project(x + w / 2, y + h / 2, PACKAGE_H);
-    const glassHeight = PACKAGE_H - RECESS;
 
     return (
       <g
@@ -49,31 +57,45 @@ export const SevenSegment25D: React.FC<SevenSegment25DProps> = React.memo(
         pointerEvents="none"
       >
         {anyLit && (
-          <ellipse cx={halo.x} cy={halo.y} rx={w * 1.5} ry={h * 1.0} fill="url(#de2b-seg-halo)" />
+          <ellipse cx={halo.x} cy={halo.y} rx={w * 1.5} ry={h} fill="url(#de2b-seg-halo)" />
         )}
 
-        {/* Raised package */}
-        <polygon points={pkg.side} fill="#180A0A" />
-        <polygon points={pkg.front} fill="#26100F" />
+        {/* Contact shadow on the board plane */}
+        <g transform={faceTransform(0)}>
+          <rect
+            x={x - 0.3}
+            y={y + 0.35}
+            width={w + 1.3}
+            height={h + 0.5}
+            rx={0.55}
+            fill="#02060C"
+            opacity={0.38}
+          />
+        </g>
+
+        {/* Raised pale-grey package */}
+        <polygon points={pkg.side} fill={SEVEN_SEG.side} />
+        <polygon points={pkg.front} fill={SEVEN_SEG.faceDark} />
         <polygon
           points={pkg.top}
-          fill="url(#de2b-seg-pkg)"
-          stroke="#0D0505"
+          fill="url(#de2b-seg-face)"
+          stroke={SEVEN_SEG.side}
           strokeWidth={0.14}
         />
 
-        {/* Recessed glass window and the digit itself */}
-        <g transform={faceTransform(glassHeight)}>
+        {/* Digit, printed on the package's top face */}
+        <g transform={faceTransform(PACKAGE_H)}>
           <rect
-            x={x + glassInset}
-            y={y + glassInset}
-            width={glassW}
-            height={glassH}
+            x={x + faceInset}
+            y={y + faceInset}
+            width={w - faceInset * 2}
+            height={h - faceInset * 2 - 0.5}
             rx={0.25}
-            fill="url(#de2b-seg-glass)"
+            fill="#000000"
+            opacity={0.06}
           />
           <g
-            transform={`translate(${x + glassInset} ${y + glassInset}) skewX(-${SEGMENT_SLANT_DEG})`}
+            transform={`translate(${x + faceInset + digitPadX} ${y + faceInset + digitPadY}) skewX(-${SEGMENT_SLANT_DEG})`}
           >
             {shapes.map((s) => {
               const lit = isSegmentLit(segments[s.index]);
@@ -85,18 +107,24 @@ export const SevenSegment25D: React.FC<SevenSegment25DProps> = React.memo(
                   data-lit={lit ? 'true' : 'false'}
                   points={s.points}
                   fill={lit ? SEVEN_SEG.on : SEVEN_SEG.off}
-                  opacity={lit ? 1 : 0.42}
+                  stroke={lit ? SEVEN_SEG.onEdge : SEVEN_SEG.offEdge}
+                  strokeWidth={0.1}
+                  opacity={lit ? 1 : 0.5}
                 />
               );
             })}
           </g>
-          <circle
-            cx={x + w - glassInset - 0.55}
-            cy={y + glassInset + glassH - 0.5}
-            r={0.38}
-            fill={SEVEN_SEG.offDim}
-            opacity={0.6}
-          />
+          {hasDetail(detail, 'normal') && (
+            <circle
+              cx={x + w - faceInset - 0.7}
+              cy={y + h - faceInset - 1.05}
+              r={0.4}
+              fill={SEVEN_SEG.off}
+              stroke={SEVEN_SEG.offEdge}
+              strokeWidth={0.08}
+              opacity={0.5}
+            />
+          )}
         </g>
 
         <g transform={faceTransform(0)}>

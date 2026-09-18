@@ -9,19 +9,11 @@ import {
   DE2_SILKSCREEN,
   DE2_STATIC_COMPONENTS,
   DE2_SWITCHES,
-  BOTTOM_SILK,
-  userIoCentreX,
-  ledGreenCentreX,
 } from '../../board/de2Layout';
 import type { BoardDetail } from '../../board/de2Layout';
 import { BoardDefs } from './BoardDefs';
 import { SilkscreenLayer } from './primitives/Silkscreen';
-import {
-  BankHeading2D,
-  MountingHoles2D,
-  PcbSurface2D,
-  StaticParts2D,
-} from './primitives/StaticParts2D';
+import { MountingHoles2D, PcbSurface2D, StaticParts2D } from './primitives/StaticParts2D';
 import { Switch2D } from './primitives/Switch2D';
 import { Key2D } from './primitives/Key2D';
 import { Led2D } from './primitives/Led2D';
@@ -58,20 +50,6 @@ export const DE2Board2D: React.FC<DE2Board2DProps> = React.memo(({ detail }) => 
 
     <SilkscreenLayer items={DE2_SILKSCREEN} detail={detail} />
     <SilkscreenLayer items={DE2_CONNECTOR_LABELS} detail={detail} />
-
-    {/* Bank headings */}
-    <BankHeading2D
-      x={(userIoCentreX(17) + userIoCentreX(0)) / 2}
-      y={BOTTOM_SILK.switchBankHeadingY}
-      text="SW[17..0]  /  LEDR[17..0]"
-      detail={detail}
-    />
-    <BankHeading2D
-      x={(ledGreenCentreX(7) + ledGreenCentreX(0)) / 2}
-      y={BOTTOM_SILK.greenBankHeadingY}
-      text="LEDG[7..0]  /  KEY[3..0]"
-      detail={detail}
-    />
 
     {/* ── Live simulation state ── */}
     <g>

@@ -10,26 +10,29 @@ import { StaticPart2D } from './StaticParts2D';
  * views in the same visual family without a second set of drawings.
  */
 const FACE: Partial<Record<BoardBodyStyle, { side: string; front: string }>> = {
-  'ic-black': { side: '#0A0C0F', front: '#171A1F' },
-  metal: { side: '#5F6771', front: '#868F9B' },
-  'metal-dark': { side: '#363B42', front: '#4B525A' },
+  'ic-black': { side: '#0A0C0F', front: '#191C21' },
+  metal: { side: '#5F6771', front: '#8A939E' },
+  'metal-dark': { side: '#363B42', front: '#4E555E' },
   gold: { side: '#7E6427', front: '#A9883A' },
-  'plastic-black': { side: '#0A0C10', front: '#171A20' },
+  'plastic-black': { side: '#0A0C10', front: '#1A1E24' },
   'plastic-white': { side: '#8A9099', front: '#B2B9C2' },
-  barrel: { side: '#0A0C10', front: '#171A20' },
+  barrel: { side: '#0A0C10', front: '#1A1E24' },
   'button-red': { side: '#71150E', front: '#A0221A' },
-  lcd: { side: '#0E1116', front: '#1D222A' },
-  'jack-pink': { side: '#8E4E68', front: '#B96A8C' },
-  'jack-blue': { side: '#35678B', front: '#4A8ABA' },
-  'jack-green': { side: '#4E7A38', front: '#69A44B' },
-  'jack-yellow': { side: '#8C7628', front: '#B89C36' },
-  'jack-purple': { side: '#5F5080', front: '#7F6BA8' },
+  lcd: { side: '#0B3A33', front: '#14584E' },
+  rca: { side: '#5F6771', front: '#8A939E' },
+  'jack-pink': { side: '#8E4E68', front: '#A35F7D' },
+  'jack-blue': { side: '#35678B', front: '#3C7AA6' },
+  'jack-green': { side: '#4E7A38', front: '#5B9042' },
+  'jack-cream': { side: '#9A9486', front: '#C4BEAF' },
+  tantalum: { side: '#463962', front: '#5C4B7E' },
+  can: { side: '#22262C', front: '#3A3F48' },
+  'indicator-blue': { side: '#1F5FB8', front: '#2E7FE0' },
 };
 
 const DEFAULT_FACE = { side: '#0A0C0F', front: '#171A1F' };
 
 /** Round-bodied parts get a cylinder rather than a box. */
-const ROUND_BODIES = new Set<BoardBodyStyle>(['button-red', 'gold']);
+const ROUND_BODIES = new Set<BoardBodyStyle>(['button-red', 'gold', 'can']);
 
 export const StaticPart25D: React.FC<{ c: BoardComponent; detail: BoardDetail }> = React.memo(
   ({ c, detail }) => {

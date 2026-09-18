@@ -12,13 +12,16 @@ interface Switch25DProps {
 }
 
 const BODY_H = 3.6;
-const LEVER_H = 1.9;
+const LEVER_H = 1.7;
 
 /**
- * DE2 slide switch in the 2.5D view: an extruded housing with a lever that has
- * real height and slides along the board's depth axis.
+ * DE2 slide switch in the 2.5D view: an extruded IVORY housing with a BLACK
+ * lever that has real height and slides along the board's depth axis.
  *
- * State semantics are identical to the 2D switch — `switches[index] === 1`
+ * Materials match the 2D switch exactly — same gradients, same way round —
+ * because the two views are the same board seen differently, not two styles.
+ *
+ * State semantics are identical to the 2D switch: `switches[index] === 1`
  * means the lever is up. Both renderers read the same store selector.
  */
 export const Switch25D: React.FC<Switch25DProps> = React.memo(({ component, detail }) => {
@@ -41,9 +44,9 @@ export const Switch25D: React.FC<Switch25DProps> = React.memo(({ component, deta
   const { x, y, width: w, height: h } = component;
   const housing = extrudeBox(x, y, w, h, BODY_H);
 
-  const inset = 0.5;
+  const inset = 0.62;
   const leverW = w - inset * 2;
-  const leverD = (h - inset * 2) * 0.46;
+  const leverD = (h - inset * 2) * 0.47;
   const travel = h - inset * 2 - leverD;
   const lever = extrudeBox(x + inset, y + inset, leverW, leverD, LEVER_H, BODY_H);
 
@@ -68,28 +71,42 @@ export const Switch25D: React.FC<Switch25DProps> = React.memo(({ component, deta
       onKeyDown={handleKeyDown}
       style={{ cursor: 'pointer' }}
     >
-      {/* Housing */}
-      <polygon points={housing.side} fill="#0A0C10" />
-      <polygon points={housing.front} fill="#12151A" />
-      <polygon points={housing.top} fill="url(#de2b-sw-body)" stroke="#04060A" strokeWidth={0.12} />
-      <g transform={faceTransform(BODY_H)}>
+      {/* Contact shadow on the board plane */}
+      <g transform={faceTransform(0)}>
         <rect
-          x={x + 0.3}
+          x={x - 0.3}
           y={y + 0.3}
-          width={w - 0.6}
-          height={h - 0.6}
-          rx={0.3}
-          fill={SWITCH.channel}
-          opacity={0.9}
+          width={w + 1.3}
+          height={h + 0.5}
+          rx={0.5}
+          fill="#02060C"
+          opacity={0.34}
         />
       </g>
 
-      {/* Lever */}
+      {/* Ivory housing */}
+      <polygon points={housing.side} fill={SWITCH.side} />
+      <polygon points={housing.front} fill={SWITCH.bodyDark} />
+      <polygon points={housing.top} fill="url(#de2b-sw-body)" stroke={SWITCH.side} strokeWidth={0.12} />
+      <g transform={faceTransform(BODY_H)}>
+        <rect
+          x={x + 0.45}
+          y={y + 0.5}
+          width={w - 0.9}
+          height={h - 1}
+          rx={0.24}
+          fill={SWITCH.channel}
+        />
+      </g>
+
+      {/* Black lever */}
       <g className="de2-switch-lever" style={{ transform: `translateY(${slide}px)` }}>
         <polygon points={lever.side} fill={SWITCH.leverDark} />
-        <polygon points={lever.front} fill="#7E858F" />
-        <polygon points={lever.top} fill="url(#de2b-lever)" stroke="#20242A" strokeWidth={0.1} />
+        <polygon points={lever.front} fill={SWITCH.lever} />
+        <polygon points={lever.top} fill="url(#de2b-lever)" stroke="#0B0D10" strokeWidth={0.1} />
       </g>
+
+      <title>{`SW${index} ${isOn ? 'up (1)' : 'down (0)'}`}</title>
 
       <rect
         className="de2-focus-ring"
