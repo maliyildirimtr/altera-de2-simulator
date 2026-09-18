@@ -51,6 +51,8 @@ export const PCB = {
   hole: '#040A14',
   /** Contact shadow where a part meets the board. */
   contactShadow: '#02060C',
+  /** Very subtle copper warmth showing through mask over pours. */
+  pourWarmth: '#123052',
 } as const;
 
 /* ────────────────────────────────────────────────────────────────────────
@@ -98,12 +100,20 @@ export const METAL = {
   mid: '#8D959F',
   dark: '#5A616B',
   shadow: '#333942',
+  /** Brushed nickel — for USB shells, D-sub hoods, SD shield. */
+  brushed: '#A8B0BA',
+  brushedLight: '#D0D6DC',
+  brushedDark: '#6B737C',
   /** Machined tact-switch body. */
   tact: '#C2C7CE',
   tactDark: '#7C838C',
   /** The black moulded plunger on a tact switch. */
   plunger: '#191B1F',
   plungerLight: '#31353B',
+  /** Brass/gold contact material for D-sub pins, header pins. */
+  brass: '#C9A54E',
+  brassLight: '#E8D4A0',
+  brassDark: '#8A6E2C',
 } as const;
 
 /* ────────────────────────────────────────────────────────────────────────
@@ -243,10 +253,25 @@ export const CONNECTOR = {
   plasticLight: '#2A2F36',
   plasticDark: '#0A0C10',
   /** The dark opening of an outward-facing connector. */
-  mouth: '#05080C',
+  mouth: '#030508',
   /** Ethernet link / activity LEDs. */
   linkGreen: '#3E8F4A',
   linkAmber: '#9A5A2A',
+  /** PS/2 mini-DIN cream body. */
+  ps2Body: '#E4DFD2',
+  ps2BodyDark: '#A8A294',
+  /** USB shell — brushed nickel. */
+  usbShell: '#A8B0BA',
+  usbShellLight: '#D0D6DC',
+  usbShellDark: '#6B737C',
+  /** VGA / RS-232 D-sub hood — subdued metal. */
+  dsubHood: '#61686F',
+  dsubHoodLight: '#9AA2AB',
+  dsubHoodDark: '#474D55',
+  /** Ethernet RJ45 shell. */
+  rj45Shell: '#1A1E24',
+  rj45ShellLight: '#2D323A',
+  rj45ShellDark: '#0D1014',
 } as const;
 
 export const BUTTON_RED = {
