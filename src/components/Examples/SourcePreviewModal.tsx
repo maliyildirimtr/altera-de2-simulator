@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
 import type { LearningExample } from '../../examples/types';
 
+type TabType = 'source' | 'testbench' | 'de2';
+
 interface SourcePreviewModalProps {
   example: LearningExample | null;
   onClose: () => void;
 }
 
 export const SourcePreviewModal: React.FC<SourcePreviewModalProps> = ({ example, onClose }) => {
-  if (!example) return null;
-
-  type TabType = 'source' | 'testbench' | 'de2';
+  // Hooks run before any early return. Projects.tsx keeps this modal mounted
+  // with example={null} while the preview is closed, so returning early above
+  // these would change the hook count between renders and React would throw.
   const [activeTab, setActiveTab] = useState<TabType>('source');
   const [copied, setCopied] = useState(false);
+
+  if (!example) return null;
 
   const tabs: { id: TabType; label: string; filename: string; code: string }[] = [
     {
