@@ -1,33 +1,39 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Board } from '../Board/Board';
-import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { boardRenderSize } from '../Board/DE2BoardRenderer';
+import { BoardViewModeSwitcher } from './BoardViewModeSwitcher';
+import type { BoardViewMode } from '../../board/boardViewMode';
+import { loadBoardViewMode, saveBoardViewMode } from '../../board/boardViewMode';
+import { detailForScale } from '../../board/de2Layout';
+import { ZoomIn, ZoomOut, Maximize2, Minimize2, RotateCcw, Expand } from 'lucide-react';
 
 interface BoardViewportProps {
   isSplitView?: boolean;
 }
 
-const BOARD_WIDTH = 1200;
-const BOARD_HEIGHT = 750;
 const MIN_SCALE = 0.25;
 const MAX_SCALE = 2.5;
-const MIN_VISIBLE_MARGIN = 120; // Ensure at least 120px of board remains visible within viewport
+/** Keep at least this much of the board reachable inside the viewport. */
+const MIN_VISIBLE_MARGIN = 120;
+const PAN_STEP = 48;
 
 /**
- * Computes viewport-aware pan bounds so the board cannot be permanently lost offscreen,
- * while ensuring all corners (including bottom switches) can be inspected at high zoom.
+ * Computes viewport-aware pan bounds so the board cannot be permanently lost
+ * offscreen, while ensuring all corners (including bottom switches) can be
+ * inspected at high zoom.
  */
 function clampPan(
   panX: number,
   panY: number,
   scale: number,
   viewportW: number,
-  viewportH: number
+  viewportH: number,
+  boardW: number,
+  boardH: number,
 ): { panX: number; panY: number } {
-  const scaledW = BOARD_WIDTH * scale;
-  const scaledH = BOARD_HEIGHT * scale;
+  const scaledW = boardW * scale;
+  const scaledH = boardH * scale;
 
-  // When board is smaller than viewport, allow panning within margins around center
-  // When board is larger, allow panning from margin to viewport - margin
   const minPanX = Math.min(MIN_VISIBLE_MARGIN - scaledW, (viewportW - scaledW) / 2);
   const maxPanX = Math.max(viewportW - MIN_VISIBLE_MARGIN, (viewportW - scaledW) / 2);
 
@@ -40,28 +46,28 @@ function clampPan(
   };
 }
 
-/**
- * Computes fit-to-screen scale and centered pan offsets
- */
-function calculateFit(width: number, height: number): { scale: number; panX: number; panY: number } {
-  const paddingX = 32;
-  const paddingY = 32;
-  const availW = Math.max(100, width - paddingX);
-  const availH = Math.max(100, height - paddingY);
+/** Computes fit-to-screen scale and centered pan offsets. */
+function calculateFit(
+  width: number,
+  height: number,
+  boardW: number,
+  boardH: number,
+): { scale: number; panX: number; panY: number } {
+  const availW = Math.max(100, width - 32);
+  const availH = Math.max(100, height - 32);
 
-  const scaleX = availW / BOARD_WIDTH;
-  const scaleY = availH / BOARD_HEIGHT;
-  const fitScale = Math.min(1.15, Math.max(MIN_SCALE, Math.min(scaleX, scaleY)));
+  const fitScale = Math.min(
+    1.15,
+    Math.max(MIN_SCALE, Math.min(availW / boardW, availH / boardH)),
+  );
 
-  const scaledW = BOARD_WIDTH * fitScale;
-  const scaledH = BOARD_HEIGHT * fitScale;
-  const centeredX = Math.round((width - scaledW) / 2);
-  const centeredY = Math.round((height - scaledH) / 2);
+  const scaledW = boardW * fitScale;
+  const scaledH = boardH * fitScale;
 
   return {
-    scale: +(fitScale.toFixed(3)),
-    panX: centeredX,
-    panY: centeredY,
+    scale: +fitScale.toFixed(3),
+    panX: Math.round((width - scaledW) / 2),
+    panY: Math.round((height - scaledH) / 2),
   };
 }
 
@@ -69,25 +75,34 @@ function calculateFit(width: number, height: number): { scale: number; panX: num
  * Checks whether the pointer target originates from an interactive control
  * (switches, buttons, inputs, toolbar buttons, canvas controls).
  */
-function isInteractiveTarget(el: HTMLElement | null): boolean {
+function isInteractiveTarget(el: Element | null): boolean {
   if (!el) return false;
   return Boolean(
     el.closest(
-      'button, input, select, textarea, [role="button"], [role="switch"], .switch-base, .btn-metallic, [data-testid^="de2-switch-"], [data-testid^="de2-key-"], .canvas-controls, [data-testid^="de2-toolbar-"]'
-    )
+      'button, input, select, textarea, [role="button"], [role="switch"], [data-board-interactive="true"], .switch-base, .btn-metallic, [data-testid^="de2-switch-"], [data-testid^="de2-key-"], .canvas-controls, [data-testid^="de2-toolbar-"]',
+    ),
   );
 }
+
+const CONTROL_BUTTON_CLASS =
+  'p-1 rounded-[3px] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]';
 
 export const BoardViewport: React.FC<BoardViewportProps> = ({ isSplitView }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const [viewMode, setViewMode] = useState<BoardViewMode>(loadBoardViewMode);
   const [scale, setScale] = useState<number>(0.85);
   const [panX, setPanX] = useState<number>(0);
   const [panY, setPanY] = useState<number>(0);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [isUserTransformed, setIsUserTransformed] = useState<boolean>(false);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
-  // Active refs to eliminate stale closure bugs during high-frequency pointer / wheel events
+  const boardSize = boardRenderSize(viewMode);
+  const detail = detailForScale(scale);
+
+  // Active refs to eliminate stale closure bugs during high-frequency pointer /
+  // wheel events.
   const scaleRef = useRef(scale);
   scaleRef.current = scale;
   const panXRef = useRef(panX);
@@ -98,24 +113,26 @@ export const BoardViewport: React.FC<BoardViewportProps> = ({ isSplitView }) => 
   isDraggingRef.current = isDragging;
   const isUserTransformedRef = useRef(isUserTransformed);
   isUserTransformedRef.current = isUserTransformed;
+  const boardSizeRef = useRef(boardSize);
+  boardSizeRef.current = boardSize;
 
   const dragStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const panStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // Fit to screen handler
+  /** Fit the board to the viewport and clear any manual transform. */
   const handleFitToScreen = useCallback(() => {
     if (!containerRef.current) return;
     const { clientWidth, clientHeight } = containerRef.current;
     if (clientWidth <= 0 || clientHeight <= 0) return;
 
-    const fit = calculateFit(clientWidth, clientHeight);
+    const { width, height } = boardSizeRef.current;
+    const fit = calculateFit(clientWidth, clientHeight, width, height);
     setScale(fit.scale);
     setPanX(fit.panX);
     setPanY(fit.panY);
     setIsUserTransformed(false);
   }, []);
 
-  // Zoom step handler (+/- buttons) centered on the current viewport
   const handleZoomStep = useCallback((direction: 'in' | 'out') => {
     if (!containerRef.current) return;
     const { clientWidth, clientHeight } = containerRef.current;
@@ -128,37 +145,72 @@ export const BoardViewport: React.FC<BoardViewportProps> = ({ isSplitView }) => 
     if (newScale === oldScale) return;
 
     const ratio = newScale / oldScale;
-    const newPanX = centerX - (centerX - panXRef.current) * ratio;
-    const newPanY = centerY - (centerY - panYRef.current) * ratio;
-
-    const clamped = clampPan(newPanX, newPanY, newScale, clientWidth, clientHeight);
+    const { width, height } = boardSizeRef.current;
+    const clamped = clampPan(
+      centerX - (centerX - panXRef.current) * ratio,
+      centerY - (centerY - panYRef.current) * ratio,
+      newScale,
+      clientWidth,
+      clientHeight,
+      width,
+      height,
+    );
     setScale(newScale);
     setPanX(clamped.panX);
     setPanY(clamped.panY);
     setIsUserTransformed(true);
   }, []);
 
-  // ResizeObserver for responsive fit and viewport bounds preservation
+  const panBy = useCallback((dx: number, dy: number) => {
+    if (!containerRef.current) return;
+    const { clientWidth, clientHeight } = containerRef.current;
+    const { width, height } = boardSizeRef.current;
+    const clamped = clampPan(
+      panXRef.current + dx,
+      panYRef.current + dy,
+      scaleRef.current,
+      clientWidth,
+      clientHeight,
+      width,
+      height,
+    );
+    setPanX(clamped.panX);
+    setPanY(clamped.panY);
+    setIsUserTransformed(true);
+  }, []);
+
+  /**
+   * Board view mode is a persisted user preference. Changing it must not touch
+   * simulation state — only the renderer and the viewport fit.
+   */
+  const handleSelectViewMode = useCallback((mode: BoardViewMode) => {
+    setViewMode(mode);
+    saveBoardViewMode(mode);
+    setIsUserTransformed(false);
+  }, []);
+
+  // ResizeObserver for responsive fit and viewport bounds preservation.
   useEffect(() => {
     const updateViewport = () => {
       if (!containerRef.current) return;
       const { clientWidth, clientHeight } = containerRef.current;
       if (clientWidth <= 0 || clientHeight <= 0) return;
+      const { width, height } = boardSizeRef.current;
 
       if (!isUserTransformedRef.current) {
-        // Automatically fit and center board when not manually transformed
-        const fit = calculateFit(clientWidth, clientHeight);
+        const fit = calculateFit(clientWidth, clientHeight, width, height);
         setScale(fit.scale);
         setPanX(fit.panX);
         setPanY(fit.panY);
       } else {
-        // Keep user's zoom scale, but clamp pan to guarantee the board is never lost
         const clamped = clampPan(
           panXRef.current,
           panYRef.current,
           scaleRef.current,
           clientWidth,
-          clientHeight
+          clientHeight,
+          width,
+          height,
         );
         setPanX(clamped.panX);
         setPanY(clamped.panY);
@@ -174,9 +226,9 @@ export const BoardViewport: React.FC<BoardViewportProps> = ({ isSplitView }) => 
       observer.disconnect();
       window.removeEventListener('resize', updateViewport);
     };
-  }, [isSplitView]);
+  }, [isSplitView, viewMode]);
 
-  // Cursor-relative wheel zoom with non-passive listener to prevent page scroll
+  // Cursor-relative wheel zoom with a non-passive listener to prevent page scroll.
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -193,10 +245,16 @@ export const BoardViewport: React.FC<BoardViewportProps> = ({ isSplitView }) => 
       if (newScale === oldScale) return;
 
       const ratio = newScale / oldScale;
-      const newPanX = mouseX - (mouseX - panXRef.current) * ratio;
-      const newPanY = mouseY - (mouseY - panYRef.current) * ratio;
-
-      const clamped = clampPan(newPanX, newPanY, newScale, rect.width, rect.height);
+      const { width, height } = boardSizeRef.current;
+      const clamped = clampPan(
+        mouseX - (mouseX - panXRef.current) * ratio,
+        mouseY - (mouseY - panYRef.current) * ratio,
+        newScale,
+        rect.width,
+        rect.height,
+        width,
+        height,
+      );
       setScale(newScale);
       setPanX(clamped.panX);
       setPanY(clamped.panY);
@@ -204,20 +262,76 @@ export const BoardViewport: React.FC<BoardViewportProps> = ({ isSplitView }) => 
     };
 
     container.addEventListener('wheel', handleWheel, { passive: false });
-    return () => {
-      container.removeEventListener('wheel', handleWheel);
-    };
+    return () => container.removeEventListener('wheel', handleWheel);
   }, []);
 
-  // Pointer dragging events
+  // Track fullscreen state, including exits triggered by Escape.
+  useEffect(() => {
+    const onChange = () => {
+      setIsFullscreen(document.fullscreenElement === containerRef.current);
+    };
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, []);
+
+  const handleToggleFullscreen = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    try {
+      if (document.fullscreenElement === el) {
+        void document.exitFullscreen?.();
+      } else {
+        void el.requestFullscreen?.();
+      }
+    } catch {
+      // Fullscreen can be blocked by permissions policy — ignore and carry on.
+    }
+  }, []);
+
+  /**
+   * Keyboard navigation for the canvas itself. Only handled when the viewport
+   * has focus, so arrow keys on a focused switch or key are never swallowed.
+   */
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.target !== e.currentTarget) return;
+
+      switch (e.key) {
+        case 'ArrowLeft':
+          panBy(PAN_STEP, 0);
+          break;
+        case 'ArrowRight':
+          panBy(-PAN_STEP, 0);
+          break;
+        case 'ArrowUp':
+          panBy(0, PAN_STEP);
+          break;
+        case 'ArrowDown':
+          panBy(0, -PAN_STEP);
+          break;
+        case '+':
+        case '=':
+          handleZoomStep('in');
+          break;
+        case '-':
+        case '_':
+          handleZoomStep('out');
+          break;
+        case '0':
+        case 'Home':
+          handleFitToScreen();
+          break;
+        default:
+          return;
+      }
+      e.preventDefault();
+    },
+    [panBy, handleZoomStep, handleFitToScreen],
+  );
+
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
-
-    // Isolate interactive board controls: do NOT start panning on switches, buttons, or controls
-    const target = e.target as HTMLElement | null;
-    if (isInteractiveTarget(target)) {
-      return;
-    }
+    if (isInteractiveTarget(e.target as Element | null)) return;
 
     setIsDragging(true);
     dragStartRef.current = { x: e.clientX, y: e.clientY };
@@ -234,42 +348,31 @@ export const BoardViewport: React.FC<BoardViewportProps> = ({ isSplitView }) => 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isDraggingRef.current || !containerRef.current) return;
 
-    const dx = e.clientX - dragStartRef.current.x;
-    const dy = e.clientY - dragStartRef.current.y;
-
-    const newPanX = panStartRef.current.x + dx;
-    const newPanY = panStartRef.current.y + dy;
-
     const { clientWidth, clientHeight } = containerRef.current;
-    const clamped = clampPan(newPanX, newPanY, scaleRef.current, clientWidth, clientHeight);
+    const { width, height } = boardSizeRef.current;
+    const clamped = clampPan(
+      panStartRef.current.x + (e.clientX - dragStartRef.current.x),
+      panStartRef.current.y + (e.clientY - dragStartRef.current.y),
+      scaleRef.current,
+      clientWidth,
+      clientHeight,
+      width,
+      height,
+    );
 
     setPanX(clamped.panX);
     setPanY(clamped.panY);
   };
 
-  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (isDraggingRef.current) {
-      setIsDragging(false);
-      try {
-        if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-          e.currentTarget.releasePointerCapture(e.pointerId);
-        }
-      } catch {
-        // ignore
+  const endDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingRef.current) return;
+    setIsDragging(false);
+    try {
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
       }
-    }
-  };
-
-  const handlePointerCancel = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (isDraggingRef.current) {
-      setIsDragging(false);
-      try {
-        if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-          e.currentTarget.releasePointerCapture(e.pointerId);
-        }
-      } catch {
-        // ignore
-      }
+    } catch {
+      // ignore
     }
   };
 
@@ -277,18 +380,24 @@ export const BoardViewport: React.FC<BoardViewportProps> = ({ isSplitView }) => 
     <div
       ref={containerRef}
       data-testid="de2-board-viewport"
-      className="relative flex-1 h-full w-full overflow-hidden select-none dot-grid"
+      data-board-view-mode={viewMode}
+      data-fullscreen={isFullscreen ? 'true' : 'false'}
+      className="relative flex-1 h-full w-full overflow-hidden select-none dot-grid outline-none"
       style={{
         backgroundColor: 'var(--bg-canvas, #0a0f18)',
         cursor: isDragging ? 'grabbing' : 'grab',
         touchAction: 'none',
       }}
+      tabIndex={0}
+      role="group"
+      aria-label="DE2 board viewport — arrow keys pan, plus and minus zoom, 0 fits the board"
+      onKeyDown={handleKeyDown}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerCancel}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
     >
-      {/* Canvas Transform Layer: Canonical translate(panX, panY) scale(scale) with origin 0 0 */}
+      {/* Canvas transform layer: translate(panX, panY) scale(scale), origin 0 0 */}
       <div
         data-testid="de2-board-transform"
         data-scale={scale}
@@ -296,18 +405,25 @@ export const BoardViewport: React.FC<BoardViewportProps> = ({ isSplitView }) => 
         data-pan-y={panY}
         className="shrink-0"
         style={{
-          width: BOARD_WIDTH,
-          height: BOARD_HEIGHT,
+          width: boardSize.width,
+          height: boardSize.height,
           transform: `translate3d(${panX}px, ${panY}px, 0) scale(${scale})`,
           transformOrigin: '0 0',
           willChange: isDragging ? 'transform' : 'auto',
           transition: isDragging ? 'none' : 'transform 60ms ease-out',
         }}
       >
-        <Board />
+        <div key={viewMode} className="de2-view-enter w-full h-full">
+          <Board viewMode={viewMode} detail={detail} />
+        </div>
       </div>
 
-      {/* Floating Canvas Controls (bottom-right) - Precision instrument chrome */}
+      {/* Board view mode selector (top-left) */}
+      <div className="absolute top-3 left-3 z-20">
+        <BoardViewModeSwitcher mode={viewMode} onSelect={handleSelectViewMode} />
+      </div>
+
+      {/* Floating canvas controls (bottom-right) */}
       <div
         className="canvas-controls absolute bottom-3 right-3 flex items-center gap-1 rounded-[4px] px-2 py-1 z-20 border shadow-xs select-none"
         style={{
@@ -327,10 +443,8 @@ export const BoardViewport: React.FC<BoardViewportProps> = ({ isSplitView }) => 
         <button
           onClick={() => handleZoomStep('out')}
           title="Zoom Out"
-          className="p-1 rounded-[3px] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
-          style={{
-            color: 'var(--text-secondary)',
-          }}
+          className={CONTROL_BUTTON_CLASS}
+          style={{ color: 'var(--text-secondary)' }}
           aria-label="Zoom Out"
           data-testid="de2-zoom-out"
         >
@@ -338,12 +452,10 @@ export const BoardViewport: React.FC<BoardViewportProps> = ({ isSplitView }) => 
         </button>
         <button
           onClick={handleFitToScreen}
-          title="Fit to Screen"
-          className="p-1 rounded-[3px] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
-          style={{
-            color: 'var(--text-secondary)',
-          }}
-          aria-label="Fit to Screen"
+          title="Fit Board to Screen"
+          className={CONTROL_BUTTON_CLASS}
+          style={{ color: 'var(--text-secondary)' }}
+          aria-label="Fit Board to Screen"
           data-testid="de2-fit-view"
         >
           <Maximize2 size={13} />
@@ -351,14 +463,34 @@ export const BoardViewport: React.FC<BoardViewportProps> = ({ isSplitView }) => 
         <button
           onClick={() => handleZoomStep('in')}
           title="Zoom In"
-          className="p-1 rounded-[3px] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
-          style={{
-            color: 'var(--text-secondary)',
-          }}
+          className={CONTROL_BUTTON_CLASS}
+          style={{ color: 'var(--text-secondary)' }}
           aria-label="Zoom In"
           data-testid="de2-zoom-in"
         >
           <ZoomIn size={13} />
+        </button>
+        <span className="w-px h-3.5 mx-0.5" style={{ backgroundColor: 'var(--border-subtle)' }} />
+        <button
+          onClick={handleFitToScreen}
+          title="Reset View"
+          className={CONTROL_BUTTON_CLASS}
+          style={{ color: 'var(--text-secondary)' }}
+          aria-label="Reset View"
+          data-testid="de2-reset-view"
+        >
+          <RotateCcw size={13} />
+        </button>
+        <button
+          onClick={handleToggleFullscreen}
+          title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Board'}
+          className={CONTROL_BUTTON_CLASS}
+          style={{ color: 'var(--text-secondary)' }}
+          aria-label={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Board'}
+          aria-pressed={isFullscreen}
+          data-testid="de2-fullscreen"
+        >
+          {isFullscreen ? <Minimize2 size={13} /> : <Expand size={13} />}
         </button>
       </div>
     </div>
