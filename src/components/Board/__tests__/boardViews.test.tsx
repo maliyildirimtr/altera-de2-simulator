@@ -44,6 +44,23 @@ import { isSegmentLit } from '../../../board/useBoardSelectors';
 import { useBoardStore } from '../../../store/boardStore';
 import { compileVerilog } from '../../../core/simulator/verilogEngine';
 import { DE2BoardRenderer, boardRenderSize } from '../DE2BoardRenderer';
+import {
+  ACTIVE_BOARD_2D_PRESENTATION,
+  BOARD_2D_PRESENTATIONS,
+  DEFAULT_BOARD_2D_PRESENTATION,
+  isBoard2DPresentation,
+  loadBoard2DPresentation,
+} from '../../../board/board2dPresentation';
+import type { Board2DPresentation } from '../../../board/board2dPresentation';
+import {
+  DE2_ARTWORK,
+  DE2_ARTWORK_SRC,
+  HEX_CX,
+  KEY_CX,
+  LED_GREEN_CX,
+  LED_RED_CX,
+  SWITCH_CX,
+} from '../../../board/de2ArtworkLayout';
 import { ISO, project, faceTransform, sevenSegmentShapes } from '../boardGeometry';
 
 /* ────────────────────────────────────────────────────────────────────────
@@ -81,6 +98,17 @@ function installLocalStorageStub(): Map<string, string> {
 function render(mode: BoardViewMode): string {
   return renderToStaticMarkup(
     React.createElement(DE2BoardRenderer, { mode, detail: 'high' as const }),
+  );
+}
+
+/** Renders 2D with an explicit presentation, so both are covered. */
+function render2d(presentation: Board2DPresentation): string {
+  return renderToStaticMarkup(
+    React.createElement(DE2BoardRenderer, {
+      mode: '2d' as const,
+      detail: 'high' as const,
+      presentation,
+    }),
   );
 }
 
@@ -482,5 +510,182 @@ pass('both renderers display the same engine-driven state');
 
 store().resetBoard();
 useBoardStore.setState({ engine: null, pinMappings: [] });
+
+/* ────────────────────────────────────────────────────────────────────────
+ * 7. Artwork-based 2D presentation
+ *
+ * Mode '2d' has two renderers behind it: the raster artwork with live SVG
+ * overlays, and the all-SVG vector board. These checks hold the contract that
+ * makes that safe — both must exist, both must expose the same hooks, and the
+ * artwork must not bake simulator state into the picture.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+assert.deepStrictEqual(
+  [...BOARD_2D_PRESENTATIONS],
+  ['artwork', 'vector'],
+  'both 2D presentations are declared',
+);
+assert.ok(isBoard2DPresentation('artwork') && isBoard2DPresentation('vector'), 'guard accepts both');
+assert.ok(!isBoard2DPresentation('3d') && !isBoard2DPresentation(null), 'guard rejects junk');
+
+const presentationStore = installLocalStorageStub();
+assert.strictEqual(
+  loadBoard2DPresentation(),
+  DEFAULT_BOARD_2D_PRESENTATION,
+  'missing preference falls back to the shipped default',
+);
+presentationStore.set('engineering-lab-de2-2d-presentation', 'nonsense');
+assert.strictEqual(
+  loadBoard2DPresentation(),
+  DEFAULT_BOARD_2D_PRESENTATION,
+  'malformed preference falls back to the shipped default',
+);
+presentationStore.set('engineering-lab-de2-2d-presentation', 'vector');
+assert.strictEqual(loadBoard2DPresentation(), 'vector', 'the vector fallback is reachable');
+presentationStore.clear();
+pass('2D offers an artwork presentation and a vector fallback');
+
+const artwork2d = render2d('artwork');
+const vector2d = render2d('vector');
+
+assert.ok(artwork2d.includes('data-board-presentation="artwork"'), 'artwork board identifies itself');
+assert.ok(!vector2d.includes('data-board-presentation="artwork"'), 'vector board does not');
+assert.ok(artwork2d.includes(DE2_ARTWORK_SRC), 'artwork board references the board image');
+assert.ok(!vector2d.includes(DE2_ARTWORK_SRC), 'vector board references no raster asset');
+assert.notStrictEqual(artwork2d, vector2d, 'the two presentations are genuinely different output');
+assert.ok(
+  vector2d.includes('de2-board-svg') && artwork2d.includes('de2-board-svg'),
+  'both presentations remain SVG roots the viewport can transform',
+);
+pass('both 2D presentations render and stay distinguishable');
+
+// The artwork image must never swallow a click meant for a control, and must
+// not be draggable — a slow drag on an SVG image lifts a ghost thumbnail
+// instead of panning the board.
+const imageTag = /<image\b[^>]*>/.exec(artwork2d);
+assert.ok(imageTag, 'artwork board contains an image element');
+assert.ok(/pointer-events="none"/.test(imageTag![0]), 'artwork does not intercept pointer input');
+assert.ok(/user-select:\s*none/.test(imageTag![0]), 'artwork is not selectable');
+assert.ok(
+  /width="\d+"/.test(imageTag![0]) && !/width="\d+px"/.test(imageTag![0]),
+  'artwork is sized in viewBox units, not screen pixels',
+);
+pass('artwork layer is inert and scales with the board');
+
+// Calibration completeness. One entry per real DE2 I/O, all inside the image.
+const banks: Array<[string, readonly number[], number]> = [
+  ['SWITCH_CX', SWITCH_CX, 18],
+  ['KEY_CX', KEY_CX, 4],
+  ['LED_RED_CX', LED_RED_CX, 18],
+  ['LED_GREEN_CX', LED_GREEN_CX, 9],
+  ['HEX_CX', HEX_CX, 8],
+];
+for (const [name, values, expected] of banks) {
+  assert.strictEqual(values.length, expected, `${name} calibrates ${expected} parts`);
+  for (const v of values) {
+    assert.ok(v > 0 && v < 1, `${name}: ${v} is a normalised fraction inside the artwork`);
+  }
+  const ascending = values.every((v, i) => i === 0 || v > values[i - 1]);
+  assert.ok(ascending, `${name} runs left to right, high index first`);
+}
+assert.ok(DE2_ARTWORK.width > 0 && DE2_ARTWORK.height > 0, 'artwork has an intrinsic size');
+pass('artwork calibration covers every live part in normalised coordinates');
+
+// The artwork renderer gets its own DOM box, because the render is not a
+// mechanical drawing and its board is fractionally taller in proportion.
+const artSize = boardRenderSize('2d', 'artwork');
+const vecSize = boardRenderSize('2d', 'vector');
+assert.strictEqual(artSize.width, vecSize.width, 'both presentations share a render width');
+assert.ok(artSize.height > 0, 'artwork render box is sized');
+assert.notStrictEqual(artSize.height, vecSize.height, 'artwork keeps its own aspect ratio');
+assert.ok(
+  Math.abs(artSize.width / artSize.height - DE2_ARTWORK.width / DE2_ARTWORK.height) < 0.01,
+  'artwork render box matches the artwork aspect ratio, so nothing is distorted',
+);
+pass('artwork presentation reports an undistorted DOM box');
+
+/*
+ * Baked-in state. The source render shows a POWERED board: LEDs lit, all eight
+ * displays reading "8". If the overlays ever stopped masking that, the board
+ * would silently report state the simulator is not in — so assert that an
+ * all-off board renders as all-off.
+ */
+store().resetBoard();
+useBoardStore.setState({
+  ledR: Array(18).fill(0),
+  ledG: Array(9).fill(0),
+  hex: Array.from({ length: 8 }, () => Array(7).fill(1)),
+});
+const dark = render2d('artwork');
+assert.strictEqual(
+  occurrences(dark, 'data-active="true"'),
+  0,
+  'with nothing driven, no overlay reports itself active',
+);
+assert.strictEqual(
+  occurrences(dark, 'data-lit="true"'),
+  0,
+  'with HEX undriven (active-low 1s), no segment is lit',
+);
+assert.strictEqual(occurrences(dark, 'data-lit="false"'), 56, 'all 8 x 7 segments are drawn unlit');
+
+// Now drive it and confirm the same DOM reports the change.
+useBoardStore.setState({
+  ledR: Array.from({ length: 18 }, (_, i) => (i === 17 ? 1 : 0)),
+  ledG: Array.from({ length: 9 }, (_, i) => (i === 8 ? 1 : 0)),
+  hex: Array.from({ length: 8 }, (_, i) => (i === 7 ? Array(7).fill(0) : Array(7).fill(1))),
+});
+const driven = render2d('artwork');
+assert.ok(
+  /data-testid="de2-ledr-17"[^>]*data-active="true"/.test(driven),
+  'LEDR17 lights when driven',
+);
+assert.ok(
+  /data-testid="de2-ledg-8"[^>]*data-active="true"/.test(driven),
+  'LEDG8 lights when driven',
+);
+assert.ok(
+  /data-testid="de2-ledr-0"[^>]*data-active="false"/.test(driven),
+  'LEDR0 stays dark when undriven',
+);
+assert.strictEqual(occurrences(driven, 'data-lit="true"'), 7, 'exactly HEX7 shows all seven segments');
+assert.ok(
+  driven.includes('data-segments="[0,0,0,0,0,0,0]"'),
+  'the raw active-low segment array is still published verbatim',
+);
+pass('artwork overlays mask baked-in state and follow the simulator');
+
+// Interaction through the artwork overlays, including KEY's active-low write.
+store().resetBoard();
+store().toggleSwitch(17);
+assert.strictEqual(store().switches[17], 1, 'SW17 toggles through the artwork overlay path');
+const swOn = render2d('artwork');
+assert.ok(
+  /data-testid="de2-switch-17"[^>]*data-active="true"/.test(swOn),
+  'the artwork switch overlay reflects the toggle',
+);
+store().toggleSwitch(17);
+assert.strictEqual(store().switches[17], 0, 'SW17 toggles back');
+
+store().setKey(0, true);
+assert.strictEqual(store().keys[0], 0, 'pressing KEY0 writes the ACTIVE-LOW value 0');
+const keyDown = render2d('artwork');
+assert.ok(
+  /data-testid="de2-key-0"[^>]*data-active="true"/.test(keyDown),
+  'the artwork key overlay reports pressed',
+);
+assert.ok(keyDown.includes('aria-pressed="true"'), 'pressed state is exposed to assistive tech');
+store().setKey(0, false);
+assert.strictEqual(store().keys[0], 1, 'releasing KEY0 restores the active-low idle value 1');
+pass('artwork overlays drive SW and KEY with unchanged active-low semantics');
+
+// Whichever presentation ships, it must be a declared one.
+assert.ok(
+  isBoard2DPresentation(ACTIVE_BOARD_2D_PRESENTATION),
+  'the active presentation is one of the declared presentations',
+);
+pass('the shipped 2D presentation is valid');
+
+store().resetBoard();
 
 console.log(`--- DE2 Board Renderer Regression: PASS (${checks.length} checks) ---`);
