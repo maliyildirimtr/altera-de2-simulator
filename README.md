@@ -8,7 +8,7 @@ Browser-based learning tools for digital logic and Electrical & Electronics Engi
 
 | Route | Tool | Current behavior |
 |---|---|---|
-| `#/de2-simulator` | DE2 Simulator | Runs a supported Verilog/SystemVerilog subset in a safe TypeScript evaluator. Switches and buttons drive HDL inputs; LEDs and seven-segment displays show mapped outputs. The LCD is currently visual-only. |
+| `#/de2-simulator` | DE2 Simulator | Runs a supported Verilog/SystemVerilog subset in a safe TypeScript evaluator. Switches and buttons drive HDL inputs; LEDs and seven-segment displays show mapped outputs. The board is drawn as an SVG illustration of the original Terasic DE2 in a 2D or 2.5D view. The LCD is currently visual-only. |
 | `#/waveform` | Waveform | Compiles source and a testbench with local Icarus Verilog WebAssembly in a worker, parses VCD output, and renders interactive timing diagrams. |
 | `#/schematic` | Schematic | Synthesizes HDL with local Yosys WebAssembly and renders an interactive DigitalJS circuit in `SchematicViewport`. |
 | `#/examples` | Examples | Provides 14 curated examples. All open in Schematic and Waveform; 7 also include DE2 mappings. |
@@ -22,12 +22,24 @@ The application is a hash-routed SPA. `#/projects` remains as a compatibility al
 - **Waveform:** `src/services/hardwareSimulator.ts` talks to the active `src/workers/compiler.worker.ts`. The worker loads Icarus assets from `public/`, compiles and simulates the current Monaco editor contents, and returns parsed VCD data. There is no approximate `testbenchParser` fallback.
 - **Schematic:** `src/services/synthesizer.ts` runs `@yowasp/yosys`, converts the netlist with `yosys2digitaljs`, and `src/components/SchematicWorkspace/SchematicViewport.tsx` hosts the DigitalJS circuit.
 
+### DE2 board rendering
+
+`src/store/boardStore.ts` is the single source of simulation state and
+`src/board/de2Layout.ts` is the single source of board geometry, authored in real
+millimetres against the official 203 x 153 mm DE2 outline. The 2D and 2.5D
+renderers both read from those two modules; a 3D view is architected for but
+deliberately disabled rather than faked. See
+[`docs/de2-board-renderers.md`](docs/de2-board-renderers.md) for the signal
+conventions, the 2.5D projection and what adding the 3D renderer involves.
+
 Monaco, jQuery, jQuery UI, DigitalJS, Yosys, and the Icarus assets are bundled or served locally. Runtime CDN access is not required.
 
 ### Current limitations
 
 - The DE2 evaluator supports educational combinational and sequential examples, not the full IEEE 1364/1800 language. Unsupported constructs fail closed.
-- The DE2 LCD is a board mock-up and is not connected to HDL output state.
+- The DE2 LCD is a board mock-up and is not connected to HDL output state; it is drawn unlit.
+- The 3D board view is not implemented. It appears in the view selector as disabled.
+- VHDL is not supported.
 - Icarus WebAssembly has a cold-start cost on the first waveform compile and does not provide every SystemVerilog feature.
 - Yosys is used for synthesis, not testbench simulation. Large schematics may be slow in the browser.
 - Route-level lazy splitting and additional strict-mode cleanup are future improvements, not release blockers.
