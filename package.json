@@ -15,7 +15,9 @@
     "test:dependencies": "node scripts/regression/dependencies.mjs",
     "test:ux": "node scripts/regression/phase12-ux.mjs",
     "test:release": "npm run typecheck && npm run test:security && npm run build",
-    "test:de2": "node scripts/regression/de2-hex-bug.mjs && node scripts/regression/de2-mixed-test.mjs && node scripts/regression/de2-examples-test.mjs"
+    "test:de2-views": "node scripts/regression/de2-board-views.mjs",
+    "board:preview": "node scripts/dev/render-board-preview.mjs",
+    "test:de2": "node scripts/regression/de2-board-views.mjs && node scripts/regression/de2-hex-bug.mjs && node scripts/regression/de2-mixed-test.mjs && node scripts/regression/de2-examples-test.mjs"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
