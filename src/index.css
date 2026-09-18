@@ -405,288 +405,123 @@ textarea:disabled,
 
 
 /* =============================================
-   ALTERA DE2 CYCLONE II PCB BOARD
+   DE2 BOARD RENDERERS (2D / 2.5D)
+
+   The board itself is drawn as SVG from the canonical layout in
+   src/board/de2Layout.ts. Materials live in
+   src/components/Board/boardPalette.ts, so the rules here are limited to
+   interaction affordances: transitions, focus rings and hover states.
+
+   Animations are short and functional, and every one of them is disabled
+   under prefers-reduced-motion at the end of this block.
    ============================================= */
-.pcb-board {
-  background-color: var(--pcb-blue);
-  /* Layered PCB texture: grid + subtle trace patterns */
-  background-image:
-    /* Fine PCB grid */
-    linear-gradient(rgba(14, 60, 105, 0.6) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(14, 60, 105, 0.6) 1px, transparent 1px),
-    /* Coarser routing channel grid */
-    linear-gradient(rgba(20, 75, 130, 0.25) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(20, 75, 130, 0.25) 1px, transparent 1px),
-    /* Diagonal PCB weave texture */
-    repeating-linear-gradient(
-      45deg,
-      transparent,
-      transparent 10px,
-      rgba(10, 45, 80, 0.15) 10px,
-      rgba(10, 45, 80, 0.15) 11px
-    );
-  background-size:
-    5px 5px,
-    5px 5px,
-    25px 25px,
-    25px 25px,
-    20px 20px;
-  box-shadow:
-    inset 0 0 60px rgba(0, 0, 0, 0.6),
-    inset 0 0 20px rgba(0, 30, 80, 0.4),
-    0 0 0 2px #06243d,
-    0 0 0 4px #0a3358,
-    0 8px 24px rgba(0, 0, 0, 0.28);
-  border: 2px solid #1a5080;
-  border-radius: 6px;
-  position: relative;
-  overflow: hidden;
-}
-
-/* PCB edge gold fingers (connector pads along bottom) */
-.pcb-board::before {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 8%;
-  right: 8%;
-  height: 8px;
-  background: repeating-linear-gradient(
-    90deg,
-    #c8961a 0px, #c8961a 8px,
-    transparent 8px, transparent 12px
-  );
-  opacity: 0.6;
-  pointer-events: none;
-}
-
-/* Subtle PCB varnish sheen */
-.pcb-board::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    135deg,
-    rgba(255,255,255,0.03) 0%,
-    transparent 40%,
-    rgba(0,0,0,0.1) 100%
-  );
-  pointer-events: none;
-  border-radius: 6px;
-}
-
-/* =============================================
-   MOUNTING SCREWS — Brass/Gold metallic
-   ============================================= */
-.screw {
-  width: 18px;
-  height: 18px;
-  background: radial-gradient(circle at 38% 35%,
-    #f0d060 0%,
-    #c8961a 35%,
-    #8a6010 65%,
-    #5a3e08 100%
-  );
-  border-radius: 50%;
-  box-shadow:
-    inset 0 2px 4px rgba(255, 255, 180, 0.5),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.6),
-    0 2px 5px rgba(0, 0, 0, 0.7),
-    0 0 0 2px rgba(0,0,0,0.4);
-  position: relative;
-  z-index: 10;
-}
-
-/* Phillips-head cross slot */
-.screw::before {
-  content: '';
-  position: absolute;
-  top: 15%;
-  left: 48%;
-  width: 2px;
-  height: 70%;
-  background: rgba(0,0,0,0.55);
-  transform: translateX(-50%);
-  border-radius: 1px;
-}
-.screw::after {
-  content: '';
-  position: absolute;
-  top: 48%;
-  left: 15%;
-  height: 2px;
-  width: 70%;
-  background: rgba(0,0,0,0.55);
-  transform: translateY(-50%);
-  border-radius: 1px;
-}
-
-/* =============================================
-   SILKSCREEN — White + Yellow reference marks
-   ============================================= */
-.silkscreen {
-  color: var(--silkscreen-white);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-weight: 700;
-  opacity: 0.8;
-  letter-spacing: 1px;
-  text-shadow:
-    0 0 1px rgba(255, 255, 255, 0.4),
-    0 1px 1px rgba(0, 0, 0, 0.6);
-}
-
-.silkscreen-ref {
-  color: var(--silkscreen-yellow);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  opacity: 0.75;
-}
-
-/* =============================================
-   FPGA CHIP — Altera Cyclone II BGA Package
-   ============================================= */
-.fpga-chip {
-  background:
-    linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 50%, #0f0f0f 100%);
-  border: 1px solid #050505;
-  border-top-color: #3a3a3a;
-  border-left-color: #323232;
-  box-shadow:
-    0 8px 20px rgba(0, 0, 0, 0.9),
-    inset 0 1px 2px rgba(255, 255, 255, 0.1),
-    inset 0 -1px 2px rgba(0, 0, 0, 0.8);
+.de2-board {
   position: relative;
 }
 
-/* BGA pin array dots & Silicone Texture */
-.fpga-chip::before {
-  content: '';
-  position: absolute;
-  inset: 8px;
-  background-image:
-    radial-gradient(circle, rgba(50,50,50,0.8) 1.5px, transparent 1.5px);
-  background-size: 8px 8px;
-  opacity: 0.5;
-  pointer-events: none;
+.de2-board-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* Board text is decorative silkscreen, never a selection target. */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
-/* Glossy Silicone Reflection */
-.fpga-chip::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(115deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.01) 35%, transparent 40%, rgba(0,0,0,0.4) 100%);
-  pointer-events: none;
-  border-radius: inherit;
+/* Keep crisp geometry while zooming; SVG scales without resampling. */
+.de2-board-svg text {
+  paint-order: stroke fill;
 }
 
-/* =============================================
-   LCD SCREEN
-   ============================================= */
-.lcd-screen {
-  background-color: #0c3010;
-  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.9);
-  border: 4px solid #111;
-  border-radius: 3px;
-}
-.lcd-backlight {
-  background: linear-gradient(135deg, #8ac520 0%, #6a9e10 100%);
-  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3);
+/* ── Interactive hit targets ─────────────────────────────────────────── */
+.de2-hit {
+  outline: none;
 }
 
-/* =============================================
-   LED INDICATORS
-   ============================================= */
-.led-red {
-  background: radial-gradient(circle at 35% 35%, #ffbaba 0%, #ff1010 40%, #cc0000 75%, #880000 100%);
-  box-shadow: 
-    0 0 12px 3px rgba(255, 0, 0, 0.85),
-    0 0 25px 8px rgba(255, 0, 0, 0.4),
-    inset 0 0 6px rgba(255, 255, 255, 0.7);
-}
-.led-red-off {
-  background: radial-gradient(circle at 35% 35%, #4a1515 0%, #200505 70%, #0a0101 100%);
-  box-shadow: 
-    inset 0 2px 5px rgba(0, 0, 0, 0.9), 
-    inset 0 -1px 2px rgba(255, 255, 255, 0.1),
-    0 1px 1px rgba(255, 255, 255, 0.05);
-}
-.led-green {
-  background: radial-gradient(circle at 35% 35%, #baffba 0%, #10ff10 40%, #00cc00 75%, #008800 100%);
-  box-shadow: 
-    0 0 12px 3px rgba(0, 255, 0, 0.85),
-    0 0 25px 8px rgba(0, 255, 0, 0.4),
-    inset 0 0 6px rgba(255, 255, 255, 0.7);
-}
-.led-green-off {
-  background: radial-gradient(circle at 35% 35%, #154a15 0%, #052005 70%, #010a01 100%);
-  box-shadow: 
-    inset 0 2px 5px rgba(0, 0, 0, 0.9), 
-    inset 0 -1px 2px rgba(255, 255, 255, 0.1),
-    0 1px 1px rgba(255, 255, 255, 0.05);
+.de2-hit:hover {
+  /* A restrained lift, not a glow. */
+  filter: brightness(1.12);
 }
 
-/* =============================================
-   METALLIC PUSH BUTTON (KEY0–KEY3)
-   ============================================= */
-.btn-metallic {
-  background: radial-gradient(circle at 40% 30%, #e0e0e0 0%, #a0a0a0 45%, #666 80%, #333 100%);
-  border: 1px solid #111;
-  box-shadow:
-    0 5px 8px rgba(0, 0, 0, 0.7),
-    0 2px 2px rgba(0, 0, 0, 0.5),
-    inset 0 2px 4px rgba(255, 255, 255, 0.8),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.6);
-  transition: all 0.05s ease;
-}
-.btn-metallic:active, .btn-pressed {
-  background: radial-gradient(circle at 40% 30%, #999 0%, #666 45%, #444 80%, #222 100%);
-  box-shadow:
-    inset 0 4px 8px rgba(0, 0, 0, 0.9),
-    inset 0 1px 2px rgba(0, 0, 0, 0.8),
-    0 1px 1px rgba(255, 255, 255, 0.1);
-  transform: translateY(3px);
+/* ── Focus ring: keyboard only, drawn inside the SVG in board units ──── */
+.de2-focus-ring {
+  stroke: var(--accent-primary, #2563eb);
+  stroke-width: 0.5;
+  opacity: 0;
+  transition: opacity 90ms ease-out;
 }
 
-/* =============================================
-   TOGGLE SWITCH (SW0–SW17)
-   ============================================= */
-.switch-base {
-  background: linear-gradient(to bottom, #111, #050505);
-  border: 1px solid #000;
-  box-shadow:
-    inset 0 6px 12px rgba(0, 0, 0, 0.95),
-    inset 0 1px 3px rgba(0, 0, 0, 0.8),
-    0 1px 2px rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-}
-.switch-toggle {
-  background: linear-gradient(to bottom, #e2e2e2 0%, #a5a5a5 35%, #7a7a7a 60%, #444 100%);
-  border: 1px solid #1a1a1a;
-  box-shadow:
-    inset 0 2px 3px rgba(255, 255, 255, 0.9),
-    inset 0 -1px 2px rgba(0, 0, 0, 0.5),
-    0 4px 6px rgba(0, 0, 0, 0.8),
-    0 2px 3px rgba(0, 0, 0, 0.6);
-  border-radius: 2px;
+.de2-hit:focus-visible .de2-focus-ring {
+  opacity: 1;
 }
 
-/* =============================================
-   7-SEGMENT HEX DISPLAY FRAME
-   ============================================= */
-.hex-frame {
-  background: #000000;
-  border: 2px solid #1a1a1a;
-  border-top-color: #2a2a2a;
-  border-left-color: #252525;
-  border-bottom-color: #0a0a0a;
-  border-right-color: #0a0a0a;
-  box-shadow:
-    0 3px 6px rgba(0, 0, 0, 0.9),
-    inset 0 0 8px rgba(0, 0, 0, 0.8);
-  border-radius: 2px;
+/* Fallback for engines without :focus-visible inside SVG. */
+.de2-hit:focus .de2-focus-ring {
+  opacity: 1;
+}
+
+.de2-hit:focus:not(:focus-visible) .de2-focus-ring {
+  opacity: 0;
+}
+
+/* ── Slide switch lever ──────────────────────────────────────────────── */
+.de2-switch-lever {
+  transition: transform 140ms cubic-bezier(0.34, 1.02, 0.64, 1);
+}
+
+/* ── Push-button cap ─────────────────────────────────────────────────── */
+.de2-key-cap,
+.de2-key-cap-25d {
+  transition: transform 90ms ease-out;
+}
+
+.de2-key-cap[data-pressed='true'] {
+  transform: translateY(0.35px);
+}
+
+/* ── Indicators ──────────────────────────────────────────────────────── */
+.de2-led-lens {
+  transition: fill 70ms linear;
+}
+
+.de2-seg {
+  transition:
+    fill 60ms linear,
+    opacity 60ms linear;
+}
+
+/* ── View mode change ────────────────────────────────────────────────── */
+@keyframes de2ViewEnter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.de2-view-enter {
+  animation: de2ViewEnter 180ms ease-out both;
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .de2-switch-lever,
+  .de2-key-cap,
+  .de2-key-cap-25d,
+  .de2-led-lens,
+  .de2-seg,
+  .de2-focus-ring {
+    transition: none !important;
+  }
+
+  .de2-view-enter {
+    animation: none !important;
+  }
+
+  .de2-hit:hover {
+    filter: none;
+  }
 }
 
 /* =============================================
