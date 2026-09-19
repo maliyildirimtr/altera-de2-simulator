@@ -2,6 +2,9 @@ import React, { useCallback, useMemo } from 'react';
 import {
   HEX_ART,
   KEY_ART,
+  LCD_ART,
+  LED_GREEN_8,
+  LED_GREEN_8_ART,
   LED_GREEN_ART,
   LED_RED_ART,
   SWITCH_ART,
@@ -9,6 +12,7 @@ import {
   ax,
   ay,
 } from '../../../board/de2ArtworkLayout';
+import { LCD_COLS, LCD_ROWS } from '../../../core/peripherals/lcdController';
 import {
   isSegmentLit,
   useHexSegments,
@@ -16,6 +20,7 @@ import {
   useLedGreenValue,
   useLedRedValue,
   useSetKey,
+  useLcdView,
   useSwitchValue,
   useToggleSwitch,
 } from '../../../board/useBoardSelectors';
@@ -57,33 +62,33 @@ import { sevenSegmentShapes, SEGMENT_SLANT_DEG } from '../boardGeometry';
 
 const ART = {
   /** Shadowed channel inside the ivory switch housing. */
-  switchChannel: '#24262A',
-  switchChannelShade: '#0E1013',
+  switchChannel: '#31353B',
+  switchChannelShade: '#15181C',
   /** Moulded black lever. */
-  lever: '#1B1D1F',
-  leverLight: '#4A4C4F',
-  leverDark: '#0A0B0D',
+  lever: '#212327',
+  leverLight: '#4E5157',
+  leverDark: '#0D0F12',
   /** Tact-switch plunger. */
-  plunger: '#2A2F36',
-  plungerLight: '#4C535C',
-  plungerDark: '#12151A',
+  plunger: '#313842',
+  plungerLight: '#565E69',
+  plungerDark: '#171A20',
   /** Seven-segment module face, for erasing the artwork's digit. */
-  hexFaceTop: '#706F71',
-  hexFaceBottom: '#676669',
-  /** Unlit seven-segment geometry, printed faintly on that face. */
-  segOff: '#5D5B5D',
+  hexFaceTop: '#7B706F',
+  hexFaceBottom: '#776C6B',
+  /** Unlit seven-segment geometry: faint and slightly warm on that face. */
+  segOff: '#6B5A56',
   segOn: '#FF3A1C',
   segOnCore: '#FFB49B',
   segOnEdge: '#B81D06',
   /** Unlit lenses, painted over the artwork's lit ones. */
-  ledRedOff: '#4A2A16',
-  ledRedOffEdge: '#2A1509',
-  ledRedOn: '#FFD23A',
-  ledRedOnCore: '#FFFBD6',
-  ledGreenOff: '#1F3A20',
-  ledGreenOffEdge: '#0E1F10',
-  ledGreenOn: '#57E86A',
-  ledGreenOnCore: '#E2FFE4',
+  ledRedOff: '#4A1512',
+  ledRedOffEdge: '#280A08',
+  ledRedOn: '#FF3B2A',
+  ledRedOnCore: '#FFE7E1',
+  ledGreenOff: '#1C3A1E',
+  ledGreenOffEdge: '#0C1F0E',
+  ledGreenOn: '#4BE860',
+  ledGreenOnCore: '#E4FFE6',
 } as const;
 
 /**
@@ -131,7 +136,7 @@ export const ArtworkOverlayDefs: React.FC = () => (
     <radialGradient id="de2a-ledr-on" cx="0.36" cy="0.3" r="0.8">
       <stop offset="0%" stopColor={ART.ledRedOnCore} />
       <stop offset="34%" stopColor={ART.ledRedOn} />
-      <stop offset="100%" stopColor="#C98A00" />
+      <stop offset="100%" stopColor="#A8170A" />
     </radialGradient>
     <radialGradient id="de2a-ledg-on" cx="0.36" cy="0.3" r="0.8">
       <stop offset="0%" stopColor={ART.ledGreenOnCore} />
@@ -142,12 +147,12 @@ export const ArtworkOverlayDefs: React.FC = () => (
     {/* Restrained halos. The artwork already carries ambient board light, so
         these stay small — a big bloom immediately looks like a sticker. */}
     <radialGradient id="de2a-ledr-halo" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0%" stopColor="#FFD23A" stopOpacity="0.3" />
-      <stop offset="36%" stopColor="#FFB800" stopOpacity="0.09" />
-      <stop offset="100%" stopColor="#FFB800" stopOpacity="0" />
+      <stop offset="0%" stopColor="#FF3B2A" stopOpacity="0.3" />
+      <stop offset="36%" stopColor="#E81C08" stopOpacity="0.09" />
+      <stop offset="100%" stopColor="#E81C08" stopOpacity="0" />
     </radialGradient>
     <radialGradient id="de2a-ledg-halo" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0%" stopColor="#57E86A" stopOpacity="0.28" />
+      <stop offset="0%" stopColor="#4BE860" stopOpacity="0.28" />
       <stop offset="36%" stopColor="#25C951" stopOpacity="0.08" />
       <stop offset="100%" stopColor="#25C951" stopOpacity="0" />
     </radialGradient>
@@ -348,15 +353,27 @@ export const KeyOverlay: React.FC<BankProps> = React.memo(({ cx, index }) => {
         fill="transparent"
       />
 
-      {/* The plunger well, repainted so the plunger has somewhere to move into. */}
-      <circle cx={centreX} cy={centreY} r={r * 1.12} fill="#191C21" opacity={0.92} />
+      {/*
+        The well the plunger sits in. Deliberately just a rim and a shadow, not
+        an opaque disc: the artwork already draws the metal bezel around the
+        plunger, and painting over it turns the tact switch into a dark blob.
+      */}
+      <circle
+        cx={centreX}
+        cy={centreY}
+        r={r * 1.04}
+        fill="none"
+        stroke="#14171C"
+        strokeWidth={r * 0.12}
+        opacity={0.7}
+      />
       <ellipse
         cx={centreX}
-        cy={centreY + r * 0.5}
-        rx={r * 1.05}
-        ry={r * 0.55}
+        cy={centreY + r * 0.42}
+        rx={r * 0.92}
+        ry={r * 0.46}
         fill="#000000"
-        opacity={isPressed ? 0.42 : 0.24}
+        opacity={isPressed ? 0.34 : 0.18}
       />
 
       {/* Live plunger */}
@@ -418,11 +435,16 @@ export const LedOverlay: React.FC<BankProps & { kind: 'red' | 'green' }> = React
     const greenValue = useLedGreenValue(isRed ? -1 : index);
     const isOn = (isRed ? redValue : greenValue) === 1;
 
+    // LEDG8 is not part of the green bank: on the real DE2 it sits on its own
+    // between the HEX row and the bank, and the artwork draws it there, a
+    // little smaller. Its row position therefore comes from its own entry.
+    const isLedG8 = !isRed && index === 8;
     const art = isRed ? LED_RED_ART : LED_GREEN_ART;
-    const w = ax(art.width);
-    const h = ay(art.height);
+    const size = isLedG8 ? LED_GREEN_8_ART : art;
+    const w = ax(size.width);
+    const h = ay(size.height);
     const centreX = ax(cx);
-    const centreY = ay(art.centreY);
+    const centreY = ay(isLedG8 ? LED_GREEN_8.cy : art.centreY);
     const x = centreX - w / 2;
     const y = centreY - h / 2;
     const label = `${isRed ? 'LEDR' : 'LEDG'}${index}`;
@@ -586,3 +608,106 @@ export const HexOverlay: React.FC<BankProps> = React.memo(({ cx, index }) => {
   );
 });
 HexOverlay.displayName = 'HexOverlay';
+
+/* ────────────────────────────────────────────────────────────────────────
+ * 16 x 2 character LCD
+ * ──────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The DE2's character LCD, drawn on the artwork's own glass.
+ *
+ * The artwork supplies the module, the bezel and the sage panel; this overlay
+ * supplies only the characters. There is no HTML input, no white box and no
+ * second panel — just text on the glass, which is why it still looks like the
+ * render when the display is blank.
+ *
+ * Everything it draws comes from the store's LCD state, which the pure
+ * HD44780 emulator advances from the compiled design's LCD_* outputs. It
+ * NEVER invents text: with no LCD signals in the design, or before the design
+ * turns the display on, the panel is blank because that is what the hardware
+ * would do.
+ *
+ * `LCD_ON` low blanks the panel and dims the glass; `LCD_BLON` low dims the
+ * backlight without clearing the characters, as on the real module.
+ */
+export const LcdOverlay: React.FC = React.memo(() => {
+  const { line1, line2, visible, backlight, cursor } = useLcdView();
+
+  const gx = ax(LCD_ART.glassX);
+  const gy = ay(LCD_ART.glassY);
+  const gw = ax(LCD_ART.glassWidth);
+  const gh = ay(LCD_ART.glassHeight);
+
+  // Character area, inset inside the glass so text never reaches the bezel.
+  const padX = gw * LCD_ART.insetX;
+  const padY = gh * LCD_ART.insetY;
+  const areaX = gx + padX;
+  const areaY = gy + padY;
+  const areaW = gw - padX * 2;
+  const areaH = gh - padY * 2;
+
+  const cellW = areaW / LCD_COLS;
+  const cellH = areaH / LCD_ROWS;
+  // HD44780 cells are 5 x 8 dots, so the glyph is much taller than it is wide.
+  // Sizing from the cell height rather than its width is what keeps the text
+  // looking like a character module instead of stretched label text.
+  const fontSize = cellH * 0.78;
+
+  const rows = [line1, line2];
+
+  return (
+    <g data-testid="de2-lcd" data-lcd-visible={visible ? 'true' : 'false'} pointerEvents="none">
+      {/* Backlight and power, applied to the glass the artwork already drew.
+          Dimming rather than repainting keeps the artwork's own reflection. */}
+      {!backlight && (
+        <rect x={gx} y={gy} width={gw} height={gh} fill="#0A140C" opacity={0.36} />
+      )}
+      {!visible && <rect x={gx} y={gy} width={gw} height={gh} fill="#0A140C" opacity={0.3} />}
+
+      {visible &&
+        rows.map((text, row) => (
+          <g key={row} data-lcd-row={row}>
+            {Array.from(text).map((ch, col) =>
+              ch === ' ' ? null : (
+                <text
+                  key={col}
+                  x={areaX + cellW * (col + 0.5)}
+                  y={areaY + cellH * (row + 0.5) + fontSize * 0.36}
+                  fontSize={fontSize}
+                  fontFamily="'DejaVu Sans Mono', 'SFMono-Regular', Menlo, Consolas, monospace"
+                  fontWeight={600}
+                  textAnchor="middle"
+                  fill="#1C2A1E"
+                  opacity={0.9}
+                  style={{ userSelect: 'none' }}
+                >
+                  {ch}
+                </text>
+              ),
+            )}
+          </g>
+        ))}
+
+      {/* Block cursor, only when the design actually enabled it. */}
+      {visible && cursor && (
+        <rect
+          x={areaX + cellW * cursor.col + cellW * 0.12}
+          y={areaY + cellH * (cursor.row + 1) - cellH * 0.16}
+          width={cellW * 0.76}
+          height={cellH * 0.1}
+          fill="#1C2A1E"
+          opacity={0.75}
+        />
+      )}
+
+      {/*
+        The accessible text of the panel. Screen readers get the two lines as
+        they are, which is the only way the display is legible to them — the
+        characters above are individually positioned and would otherwise be
+        announced letter by letter.
+      */}
+      <title>{visible ? `LCD: ${line1.trimEnd()} / ${line2.trimEnd()}` : 'LCD: off'}</title>
+    </g>
+  );
+});
+LcdOverlay.displayName = 'LcdOverlay';

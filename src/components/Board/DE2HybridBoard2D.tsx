@@ -5,7 +5,8 @@ import {
   DE2_ARTWORK_SRC,
   HEX_CX,
   KEY_CX,
-  LED_GREEN_CX,
+  LED_GREEN_8,
+  LED_GREEN_BANK_CX,
   LED_RED_CX,
   SWITCH_CX,
 } from '../../board/de2ArtworkLayout';
@@ -13,6 +14,7 @@ import {
   ArtworkOverlayDefs,
   HexOverlay,
   KeyOverlay,
+  LcdOverlay,
   LedOverlay,
   SwitchOverlay,
 } from './primitives/ArtworkOverlays';
@@ -29,9 +31,10 @@ import {
  * and every part whose appearance is fixed, and SVG supplies the five families
  * whose appearance is simulation state.
  *
- *   artwork  →  PCB, FPGA, memory, LCD body, connectors, GPIO headers,
- *               SD slot, silkscreen, passives, mounting hardware
- *   overlays →  SW17..SW0, KEY3..KEY0, LEDR17..LEDR0, LEDG8..LEDG0, HEX7..HEX0
+ *   artwork  →  PCB, FPGA, memory, LCD module and bezel, connectors, GPIO
+ *               headers, SD slot, silkscreen, passives, mounting hardware
+ *   overlays →  SW17..SW0, KEY3..KEY0, LEDR17..LEDR0, LEDG8..LEDG0,
+ *               HEX7..HEX0, and the LCD's 16 x 2 characters
  *
  * ── Why it is one SVG rather than stacked divs ───────────────────────────
  * The whole thing is a single SVG with the artwork placed as an `<image>`
@@ -102,6 +105,10 @@ export const DE2HybridBoard2D: React.FC = React.memo(() => (
       ))}
     </g>
 
+    {/* The LCD sits above the board but below the controls: it is read, not
+        touched, and nothing overlaps it. */}
+    <LcdOverlay />
+
     <g data-overlay="led">
       {LED_RED_CX.map((cx, i) => (
         <LedOverlay
@@ -111,11 +118,17 @@ export const DE2HybridBoard2D: React.FC = React.memo(() => (
           kind="red"
         />
       ))}
-      {LED_GREEN_CX.map((cx, i) => (
+      {/*
+        LEDG8 first, and on its own. It is a single green LED between the HEX
+        bank and the green bank on the real board, so it is not part of the
+        eight-wide row — which is what keeps a tenth green LED from appearing.
+      */}
+      <LedOverlay cx={LED_GREEN_8.cx} index={8} kind="green" />
+      {LED_GREEN_BANK_CX.map((cx, i) => (
         <LedOverlay
-          key={`ledg-${LED_GREEN_CX.length - 1 - i}`}
+          key={`ledg-${LED_GREEN_BANK_CX.length - 1 - i}`}
           cx={cx}
-          index={LED_GREEN_CX.length - 1 - i}
+          index={LED_GREEN_BANK_CX.length - 1 - i}
           kind="green"
         />
       ))}
