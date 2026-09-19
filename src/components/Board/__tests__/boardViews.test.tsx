@@ -12,6 +12,8 @@
 
 /// <reference types="node" />
 import assert from 'node:assert';
+import fs from 'node:fs';
+import path from 'node:path';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
@@ -57,10 +59,22 @@ import {
   DE2_ARTWORK_SRC,
   HEX_CX,
   KEY_CX,
-  LED_GREEN_CX,
+  LCD_ART,
+  LED_GREEN_8,
+  LED_GREEN_BANK_CX,
   LED_RED_CX,
   SWITCH_CX,
 } from '../../../board/de2ArtworkLayout';
+import {
+  LCD_COLS,
+  LCD_ROW_BASE,
+  createLcdState,
+  lcdLines,
+  lcdStep,
+  type LcdBusSignals,
+} from '../../../core/peripherals/lcdController';
+import { collectLcdBus, normaliseLcdSignal } from '../../../core/peripherals/lcdSignals';
+import { autoMapPort } from '../../../utils/parser/pinParser';
 import { ISO, project, faceTransform, sevenSegmentShapes } from '../boardGeometry';
 
 /* ────────────────────────────────────────────────────────────────────────
@@ -577,7 +591,8 @@ const banks: Array<[string, readonly number[], number]> = [
   ['SWITCH_CX', SWITCH_CX, 18],
   ['KEY_CX', KEY_CX, 4],
   ['LED_RED_CX', LED_RED_CX, 18],
-  ['LED_GREEN_CX', LED_GREEN_CX, 9],
+  // LEDG8 is calibrated on its own, so the bank is EIGHT wide, not nine.
+  ['LED_GREEN_BANK_CX', LED_GREEN_BANK_CX, 8],
   ['HEX_CX', HEX_CX, 8],
 ];
 for (const [name, values, expected] of banks) {
@@ -588,6 +603,18 @@ for (const [name, values, expected] of banks) {
   const ascending = values.every((v, i) => i === 0 || v > values[i - 1]);
   assert.ok(ascending, `${name} runs left to right, high index first`);
 }
+assert.ok(
+  LED_GREEN_8.cx > 0 && LED_GREEN_8.cx < 1 && LED_GREEN_8.cy > 0 && LED_GREEN_8.cy < 1,
+  'LEDG8 is calibrated inside the artwork',
+);
+assert.ok(
+  LED_GREEN_8.cx < LED_GREEN_BANK_CX[0],
+  'LEDG8 sits to the LEFT of the green bank, between it and the HEX row',
+);
+assert.ok(
+  LCD_ART.glassWidth > 0 && LCD_ART.glassHeight > 0 && LCD_ART.insetX > 0,
+  'the LCD glass and its character inset are calibrated',
+);
 assert.ok(DE2_ARTWORK.width > 0 && DE2_ARTWORK.height > 0, 'artwork has an intrinsic size');
 pass('artwork calibration covers every live part in normalised coordinates');
 
@@ -687,5 +714,260 @@ assert.ok(
 pass('the shipped 2D presentation is valid');
 
 store().resetBoard();
+
+/* ────────────────────────────────────────────────────────────────────────
+ * 8. Exact DE2 I/O population in the artwork renderer
+ *
+ * The board has a fixed complement of I/O. These are counted in the RENDERED
+ * DOM rather than in the calibration arrays, so a wiring mistake in the
+ * renderer (a duplicated bank, a tenth green LED) fails here even if the
+ * calibration is right.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+const populated = render2d('artwork');
+const exact: Array<[string, number]> = [
+  ['data-testid="de2-switch-', 18],
+  ['data-testid="de2-key-', 4],
+  ['data-testid="de2-ledr-', 18],
+  ['data-testid="de2-ledg-', 9],
+  ['data-testid="de2-hex-', 8],
+  ['data-testid="de2-lcd"', 1],
+];
+for (const [hook, count] of exact) {
+  assert.strictEqual(occurrences(populated, hook), count, `${hook} appears ${count}x`);
+}
+// Every index present exactly once — catches an off-by-one that still totals right.
+for (let i = 0; i < 18; i += 1) {
+  assert.strictEqual(occurrences(populated, `"de2-switch-${i}"`), 1, `SW${i} rendered once`);
+  assert.strictEqual(occurrences(populated, `"de2-ledr-${i}"`), 1, `LEDR${i} rendered once`);
+}
+for (let i = 0; i < 9; i += 1) {
+  assert.strictEqual(occurrences(populated, `"de2-ledg-${i}"`), 1, `LEDG${i} rendered once`);
+}
+assert.strictEqual(occurrences(populated, '"de2-ledg-9"'), 0, 'there is no tenth green LED');
+for (let i = 0; i < 8; i += 1) {
+  assert.strictEqual(occurrences(populated, `"de2-hex-${i}"`), 1, `HEX${i} rendered once`);
+}
+for (let i = 0; i < 4; i += 1) {
+  assert.strictEqual(occurrences(populated, `"de2-key-${i}"`), 1, `KEY${i} rendered once`);
+}
+pass('artwork board renders exactly 18 SW, 4 KEY, 18 LEDR, 9 LEDG, 8 HEX and 1 LCD');
+
+/*
+ * Each red LED stands above its own switch. The artwork's two rows are very
+ * slightly not co-linear — measurement found up to 0.5% of the board width of
+ * drift — so this asserts correspondence within that tolerance rather than
+ * equality. A mis-ordered or off-by-one bank blows straight past it.
+ */
+const ALIGN_TOLERANCE = 0.01;
+for (let i = 0; i < 18; i += 1) {
+  const delta = Math.abs(SWITCH_CX[i] - LED_RED_CX[i]);
+  assert.ok(
+    delta < ALIGN_TOLERANCE,
+    `LEDR and SW at bank position ${i} correspond (drift ${delta.toFixed(4)})`,
+  );
+}
+pass('every red LED is calibrated above its own switch');
+
+/* ────────────────────────────────────────────────────────────────────────
+ * 9. LCD peripheral — the HD44780 decoder, in isolation
+ *
+ * Driven through bus transactions rather than through a Verilog design, which
+ * is the point of keeping the controller a pure module.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+const IDLE: LcdBusSignals = { rs: 0, rw: 0, en: 0, data: 0, on: 1, blon: 1 };
+
+/** One write: EN high, then low. The controller latches on the falling edge. */
+function bus(state: ReturnType<typeof createLcdState>, rs: number, data: number) {
+  const high = lcdStep(state, { ...IDLE, rs, data, en: 1 });
+  return lcdStep(high, { ...IDLE, rs, data, en: 0 });
+}
+function cmd(state: ReturnType<typeof createLcdState>, byte: number) {
+  return bus(state, 0, byte);
+}
+function chr(state: ReturnType<typeof createLcdState>, ch: string) {
+  return bus(state, 1, ch.charCodeAt(0));
+}
+
+// Nothing latches while EN is merely held high.
+let lcd = createLcdState();
+const held = lcdStep(lcd, { ...IDLE, rs: 1, data: 0x41, en: 1 });
+assert.strictEqual(
+  held.ddram[0],
+  0x20,
+  'a write does not latch on the rising edge or while EN is held',
+);
+assert.strictEqual(lcdStep(held, { ...IDLE, rs: 1, data: 0x41, en: 1 }), held, 'a steady bus is a no-op');
+pass('LCD transactions latch on the enable falling edge only');
+
+// Function set, display on, clear — the standard init a teaching design sends.
+lcd = cmd(lcd, 0x38); // 8-bit, 2 line
+lcd = cmd(lcd, 0x0c); // display on, cursor off
+lcd = cmd(lcd, 0x06); // entry mode: increment
+lcd = cmd(lcd, 0x01); // clear
+assert.deepStrictEqual(
+  lcdLines(lcd),
+  [' '.repeat(LCD_COLS), ' '.repeat(LCD_COLS)],
+  'clear display leaves both lines blank',
+);
+assert.strictEqual(lcd.address, 0, 'clear display also returns the cursor home');
+pass('LCD clear display blanks DDRAM and homes the cursor');
+
+// Character writes advance the address counter.
+for (const ch of 'HI') lcd = chr(lcd, ch);
+assert.strictEqual(lcdLines(lcd)[0], 'HI' + ' '.repeat(LCD_COLS - 2), 'characters land from column 0');
+assert.strictEqual(lcd.address, 2, 'the address counter advanced twice');
+pass('LCD character writes land in DDRAM and advance the cursor');
+
+// Explicit DDRAM address, first line.
+lcd = cmd(lcd, 0x80 | 0x05);
+assert.strictEqual(lcd.address, 0x05, 'set DDRAM address moves the cursor');
+lcd = chr(lcd, 'X');
+assert.strictEqual(lcdLines(lcd)[0][5], 'X', 'the character landed at the addressed column');
+pass('LCD set DDRAM address positions the next write');
+
+// Second line lives at 0x40, NOT at 0x10 — the classic 16x2 trap.
+lcd = cmd(lcd, 0x80 | LCD_ROW_BASE[1]);
+for (const ch of 'ROW2') lcd = chr(lcd, ch);
+assert.strictEqual(lcdLines(lcd)[1], 'ROW2' + ' '.repeat(LCD_COLS - 4), 'row 2 starts at DDRAM 0x40');
+assert.ok(!lcdLines(lcd)[0].includes('ROW2'), 'row 2 text did not bleed into row 1');
+pass('LCD row 2 addressing follows the 16x2 DDRAM map');
+
+// Display off blanks the panel but keeps the contents.
+const stored = lcdLines(lcd);
+const blanked = cmd(lcd, 0x08);
+assert.deepStrictEqual(
+  lcdLines(blanked),
+  [' '.repeat(LCD_COLS), ' '.repeat(LCD_COLS)],
+  'display off blanks the panel',
+);
+assert.deepStrictEqual(lcdLines(cmd(blanked, 0x0c)), stored, 'display on restores the same contents');
+pass('LCD display on/off hides characters without losing DDRAM');
+
+// Reads are refused rather than faked.
+const readAttempt = lcdStep(lcdStep(lcd, { ...IDLE, rw: 1, en: 1 }), { ...IDLE, rw: 1, en: 0 });
+assert.strictEqual(readAttempt.unsupportedReads, 1, 'an RW=1 transaction is counted, not guessed at');
+assert.deepStrictEqual(lcdLines(readAttempt), stored, 'a refused read changes nothing');
+pass('LCD reads are declined explicitly instead of fabricated');
+
+/* ────────────────────────────────────────────────────────────────────────
+ * 10. LCD signal plumbing and store integration
+ * ──────────────────────────────────────────────────────────────────────── */
+
+assert.strictEqual(normaliseLcdSignal('LCD_DATA[3]'), 'LCD_DATA[3]', 'bus-indexed name');
+assert.strictEqual(normaliseLcdSignal('lcd_data3'), 'LCD_DATA[3]', 'flattened scalar name');
+assert.strictEqual(normaliseLcdSignal('LCD_EN'), 'LCD_EN', 'control name');
+assert.strictEqual(normaliseLcdSignal('LEDR3'), null, 'an LED is not an LCD signal');
+assert.strictEqual(autoMapPort('LCD_DATA3'), 'LCD_DATA[3]', 'the pin parser maps LCD data bits');
+assert.strictEqual(autoMapPort('LCD_EN'), 'LCD_EN', 'the pin parser maps LCD control lines');
+assert.strictEqual(
+  autoMapPort('LEDR3'),
+  'LEDR[3]',
+  'adding LCD did not steal port names from the LED mapper',
+);
+assert.strictEqual(collectLcdBus({ LEDR0: 1 }, []), null, 'a design with no LCD signals drives no bus');
+const collected = collectLcdBus({ LCD_DATA0: 1, LCD_DATA6: 1, LCD_EN: 1, LCD_RS: 1 }, []);
+assert.ok(collected, 'an LCD design produces a bus');
+assert.strictEqual(collected!.data, 0x41, 'data bits assemble into a byte, LSB first');
+assert.strictEqual(collected!.on, 1, 'LCD_ON defaults high when the design does not drive it');
+pass('LCD signals resolve from both naming styles without disturbing other banks');
+
+// Through the store: a blank panel renders blank, and reset clears a used one.
+store().resetBoard();
+assert.deepStrictEqual(
+  lcdLines(store().lcd),
+  [' '.repeat(LCD_COLS), ' '.repeat(LCD_COLS)],
+  'a reset board has a blank LCD',
+);
+const blankBoard = render2d('artwork');
+assert.ok(
+  blankBoard.includes('data-lcd-visible="false"'),
+  'an undriven LCD renders as off — no demo text is ever invented',
+);
+
+let live = createLcdState();
+live = cmd(live, 0x38);
+live = cmd(live, 0x0c);
+live = cmd(live, 0x01);
+for (const ch of 'ENGINEERING LAB') live = chr(live, ch);
+live = cmd(live, 0x80 | LCD_ROW_BASE[1]);
+for (const ch of 'HELLO FPGA') live = chr(live, ch);
+useBoardStore.setState({ lcd: live });
+
+const shown = render2d('artwork');
+assert.ok(shown.includes('data-lcd-visible="true"'), 'a driven LCD renders as on');
+assert.ok(shown.includes('ENGINEERING LAB'), 'line 1 reaches the panel');
+assert.ok(shown.includes('HELLO FPGA'), 'line 2 reaches the panel');
+
+// Re-rendering must not disturb peripheral state: the controller lives in the
+// store, so repeated renders are pure reads.
+const again = render2d('artwork');
+assert.strictEqual(again, shown, 'rendering the board twice produces identical output');
+assert.deepStrictEqual(lcdLines(store().lcd), lcdLines(live), 'rendering did not mutate LCD state');
+render('2.5d');
+render2d('vector');
+assert.deepStrictEqual(
+  lcdLines(store().lcd),
+  lcdLines(live),
+  'LCD state survives switching presentation and view mode',
+);
+pass('LCD renders live text on the artwork glass and survives re-renders');
+
+store().resetBoard();
+assert.deepStrictEqual(
+  lcdLines(store().lcd),
+  [' '.repeat(LCD_COLS), ' '.repeat(LCD_COLS)],
+  'board reset blanks the LCD',
+);
+assert.strictEqual(store().lcd.address, 0, 'board reset homes the LCD cursor');
+assert.strictEqual(store().lcd.displayOn, false, 'board reset returns the LCD to its power-on state');
+pass('board reset clears the LCD');
+
+/* ────────────────────────────────────────────────────────────────────────
+ * 11. The bundled LCD example actually writes what it claims
+ *
+ * The byte sequence is read out of the SHIPPED SystemVerilog rather than
+ * duplicated here, so the example and this expectation cannot drift apart:
+ * edit the .sv and this check follows it.
+ *
+ * What this does NOT prove is that the design compiles and runs under Icarus
+ * in the browser — that needs the full DE2 suite. It proves the sequence the
+ * example encodes is a correct HD44780 conversation that produces the
+ * advertised screen.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+const examplePath = path.join(process.cwd(), 'src/examples/source/de2_lcd_hello.sv');
+const exampleSource = fs.readFileSync(examplePath, 'utf8');
+
+const sequence: Array<{ rs: number; data: number }> = [];
+const stepRe = /6'd(\d+):\s*begin\s+rs = 1'b([01]);\s*data = 8'h([0-9A-Fa-f]{2});/g;
+for (let m = stepRe.exec(exampleSource); m; m = stepRe.exec(exampleSource)) {
+  sequence[Number(m[1])] = { rs: Number(m[2]), data: parseInt(m[3], 16) };
+}
+assert.ok(sequence.length >= 31, `parsed the example's byte sequence (${sequence.length} bytes)`);
+assert.ok(
+  sequence.every((entry) => entry !== undefined),
+  'the example numbers its steps contiguously from 0',
+);
+
+let demo = createLcdState();
+for (const { rs, data } of sequence) demo = bus(demo, rs, data);
+
+const [demoLine1, demoLine2] = lcdLines(demo);
+assert.strictEqual(demoLine1, 'ENGINEERING LAB'.padEnd(LCD_COLS), 'the example writes line 1');
+assert.strictEqual(demoLine2, 'HELLO FPGA'.padEnd(LCD_COLS), 'the example writes line 2');
+assert.strictEqual(demo.unsupportedReads, 0, 'the example never attempts an LCD read');
+assert.ok(demo.displayOn, 'the example turns the display on, so its text is actually visible');
+
+// And the interactive demo keeps the DE2 contract it teaches.
+const ioSource = fs.readFileSync(
+  path.join(process.cwd(), 'src/examples/source/de2_interactive_io.sv'),
+  'utf8',
+);
+assert.ok(/assign LEDG0 = ~KEY0;/.test(ioSource), 'the I/O demo inverts active-low KEY0');
+assert.ok(/HEX0_6/.test(ioSource), 'the I/O demo drives all seven segments of HEX0');
+assert.ok(!/vhdl/i.test(ioSource) && !/vhdl/i.test(exampleSource), 'no example claims VHDL support');
+pass('the bundled LCD example writes ENGINEERING LAB / HELLO FPGA');
 
 console.log(`--- DE2 Board Renderer Regression: PASS (${checks.length} checks) ---`);
