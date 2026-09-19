@@ -74,6 +74,27 @@ const DIGITS = [
   [0, 0, 0, 1, 1, 1, 1],
 ];
 
+/*
+ * Drive the LCD through the real controller rather than poking strings into
+ * the store: the preview is for checking that text lands on the glass, and it
+ * is only worth looking at if it went through the same command decode the
+ * simulator uses.
+ */
+const lcdPath = findCompiled(compiledRoot, 'lcdController.js');
+let previewLcd;
+if (lcdPath) {
+  const { createLcdState, lcdStep } = require(lcdPath);
+  const write = (state, rs, data) => {
+    const high = lcdStep(state, { rs, rw: 0, en: 1, data, on: 1, blon: 1 });
+    return lcdStep(high, { rs, rw: 0, en: 0, data, on: 1, blon: 1 });
+  };
+  previewLcd = createLcdState();
+  for (const byte of [0x38, 0x0c, 0x06, 0x01, 0x80]) previewLcd = write(previewLcd, 0, byte);
+  for (const ch of 'ENGINEERING LAB') previewLcd = write(previewLcd, 1, ch.charCodeAt(0));
+  previewLcd = write(previewLcd, 0, 0xc0);
+  for (const ch of 'HELLO FPGA') previewLcd = write(previewLcd, 1, ch.charCodeAt(0));
+}
+
 useBoardStore.setState({
   switches: Array.from({ length: 18 }, (_, i) => (i % 3 === 0 ? 1 : 0)),
   keys: [0, 1, 1, 1],
@@ -81,6 +102,7 @@ useBoardStore.setState({
   ledG: Array.from({ length: 9 }, (_, i) => (i < 5 ? 1 : 0)),
   // hex[0] is HEX0, the right-most display, so reverse for a left-to-right 0-7.
   hex: DIGITS.slice().reverse().map((d) => d.slice()),
+  ...(previewLcd ? { lcd: previewLcd } : {}),
 });
 
 fs.mkdirSync(outDir, { recursive: true });
