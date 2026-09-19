@@ -74,7 +74,9 @@ import {
   type LcdBusSignals,
 } from '../../../core/peripherals/lcdController';
 import { collectLcdBus, normaliseLcdSignal } from '../../../core/peripherals/lcdSignals';
-import { autoMapPort } from '../../../utils/parser/pinParser';
+import { autoMapPort, parseQsf } from '../../../utils/parser/pinParser';
+import { parseBitRef, readSignal, readVector, writeSignal } from '../../../core/simulator/vectorSignals';
+import { expandTarget, parseVirtualComponent } from '../../../board/virtualComponents';
 import { ISO, project, faceTransform, sevenSegmentShapes } from '../boardGeometry';
 
 /* ────────────────────────────────────────────────────────────────────────
@@ -1068,5 +1070,309 @@ assert.ok(layer, 'the correction layer is rendered');
 assert.ok(/pointer-events="none"/.test(layer![1]), 'corrections never intercept input');
 assert.ok(/aria-hidden="true"/.test(layer![1]), 'corrections are board printing, not content');
 pass('silkscreen masks and the placeholder patch are applied and inert');
+
+/* ────────────────────────────────────────────────────────────────────────
+ * 13. Vector output propagation to DE2 pins
+ *
+ * The engine stores a vector under its BARE name as a packed integer:
+ * `output [6:0] HEX0; assign HEX0 = 7'b1000000;` produces state.HEX0 === 64
+ * and no `HEX0[n]` keys at all. Pin mappings are per-pin, so a .qsf assigning
+ * seven pins with seven `-to HEX0[0]`..`-to HEX0[6]` lines asks for keys that
+ * do not exist.
+ *
+ * Reading those as 0 is not a harmless default: HEX segments are ACTIVE-LOW,
+ * so 0 lights the segment and every vector-driven display reads "8" whatever
+ * the design computed. Seven independent scalar outputs on the same pins work,
+ * because their names are in the state map verbatim — which is exactly why the
+ * scalar diagnostic passed while the vector version did not.
+ *
+ * These checks run the REAL path: real Verilog through `compileVerilog`, real
+ * pin mappings through `parseQsf`, real `runSimulationCycle`. No mocked store.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+// The resolver, on its own.
+assert.deepStrictEqual(parseBitRef('HEX0[3]'), { base: 'HEX0', bit: 3 }, 'bit select parses');
+assert.deepStrictEqual(parseBitRef(' LCD_DATA [ 7 ] '), { base: 'LCD_DATA', bit: 7 }, 'whitespace tolerated');
+assert.strictEqual(parseBitRef('HEX0'), null, 'a plain name is not a bit reference');
+assert.strictEqual(parseBitRef('BUS[7:4]'), null, 'a RANGE select is not read as one bit');
+
+// 7'b1000000 === 64: bit 0 (segment A) is 0, bit 6 (segment G) is 1.
+const packed = { HEX0: 0b1000000 };
+assert.strictEqual(readSignal(packed, 'HEX0[0]'), 0, 'bit 0 comes from the packed vector');
+assert.strictEqual(readSignal(packed, 'HEX0[6]'), 1, 'bit 6 comes from the packed vector');
+assert.deepStrictEqual(
+  readVector(packed, 'HEX0', 7),
+  [0, 0, 0, 0, 0, 0, 1],
+  'the whole vector resolves LSB-first, so index 0 is segment A and index 6 is G',
+);
+assert.strictEqual(readSignal({ 'HEX0[0]': 1, HEX0: 0 }, 'HEX0[0]'), 1, 'an exact key wins');
+assert.strictEqual(readSignal({ HEX0_3: 1, HEX0: 0 }, 'HEX0[3]'), 1, 'the underscore spelling resolves');
+assert.strictEqual(readSignal({}, 'HEX0[0]'), undefined, 'an absent signal is undefined, NOT 0');
+assert.strictEqual(readSignal({ HEX0: NaN }, 'HEX0[0]'), undefined, 'NaN is not coerced to 0');
+assert.strictEqual(readSignal(undefined, 'HEX0[0]'), undefined, 'a missing state is undefined');
+pass('vector bits resolve from packed or flattened state, and absence is not zero');
+
+// Writing: a bit must be packed into the vector the engine actually declares.
+const vecIn: Record<string, number> = {};
+writeSignal(vecIn, new Set(['SW']), 'SW[0]', 1);
+writeSignal(vecIn, new Set(['SW']), 'SW[3]', 1);
+assert.strictEqual(vecIn.SW, 0b1001, 'bits pack into the declared vector input');
+assert.strictEqual(vecIn['SW[0]'], undefined, 'no phantom per-bit input is created');
+const seeded: Record<string, number> = {};
+writeSignal(seeded, new Set(['KEY']), 'KEY[0]', 0, { KEY: 0b1111 });
+assert.strictEqual(
+  seeded.KEY,
+  0b1110,
+  'packing seeds from the previous value, so unmapped ACTIVE-LOW bits stay released',
+);
+const flatIn: Record<string, number> = {};
+writeSignal(flatIn, new Set(['SW0']), 'SW0', 1);
+assert.strictEqual(flatIn.SW0, 1, 'a declared scalar is written directly');
+const underIn: Record<string, number> = {};
+writeSignal(underIn, new Set(['HEX0_2']), 'HEX0[2]', 1);
+assert.strictEqual(underIn.HEX0_2, 1, 'the underscore spelling is written when declared');
+pass('vector inputs pack into the port the engine declares');
+
+// Virtual-component parsing: every spelling, and no theft from other families.
+assert.deepStrictEqual(parseVirtualComponent('HEX0[6]'), { family: 'HEX', display: 0, segment: 6 }, 'HEX segment');
+assert.deepStrictEqual(parseVirtualComponent('HEX3_2'), { family: 'HEX', display: 3, segment: 2 }, 'HEX underscore');
+assert.deepStrictEqual(parseVirtualComponent('HEX7'), { family: 'HEX', display: 7, segment: null }, 'HEX bus');
+assert.deepStrictEqual(parseVirtualComponent('SW[17]'), { family: 'SW', index: 17 }, 'SW member');
+assert.deepStrictEqual(parseVirtualComponent('LEDR12'), { family: 'LEDR', index: 12 }, 'LEDR member');
+assert.deepStrictEqual(parseVirtualComponent('LEDG'), { family: 'LEDG', index: null }, 'LEDG bus');
+assert.deepStrictEqual(parseVirtualComponent('CLOCK_50'), { family: 'CLOCK_50' }, 'clock');
+assert.strictEqual(parseVirtualComponent('LCD_DATA[3]'), null, 'LCD signals are not read as board banks');
+assert.strictEqual(parseVirtualComponent('LCD_EN'), null, 'LCD control is not read as a board bank');
+assert.strictEqual(parseVirtualComponent(null), null, 'an unmapped port is not a target');
+// A bus name expands by declared width; a scalar of the same name does not.
+assert.strictEqual(expandTarget({ family: 'HEX', display: 0, segment: null }, 'HEX0', 7).length, 7, 'a 7-bit HEX bus expands to 7 segments');
+assert.deepStrictEqual(
+  expandTarget({ family: 'HEX', display: 0, segment: null }, 'HEX0', 7)[6],
+  { signal: 'HEX0[6]', index: 6 },
+  'segment 6 reads bit 6',
+);
+assert.strictEqual(expandTarget({ family: 'SW', index: null }, 'SW', 1).length, 1, 'a scalar named SW is one switch, not eighteen');
+pass('virtual component names parse in every spelling without cross-family theft');
+
+/*
+ * The reported failure, end to end: one vector HEX output, mapped by a real
+ * .qsf, must put [0,0,0,0,0,0,1] on the board — digit "0".
+ */
+store().resetBoard();
+const hexVecEngine = compileVerilog(`module de2_hex_vector_diag (
+  output [6:0] HEX0
+);
+  assign HEX0 = 7'b1000000;
+endmodule
+`);
+assert.ok(hexVecEngine, 'the vector HEX design compiles');
+const hexVecQsf = parseQsf(`
+set_location_assignment PIN_AF10 -to HEX0[0]
+set_location_assignment PIN_AB12 -to HEX0[1]
+set_location_assignment PIN_AC12 -to HEX0[2]
+set_location_assignment PIN_AD11 -to HEX0[3]
+set_location_assignment PIN_AE11 -to HEX0[4]
+set_location_assignment PIN_V14  -to HEX0[5]
+set_location_assignment PIN_V13  -to HEX0[6]
+`);
+assert.strictEqual(hexVecQsf.length, 7, 'the .qsf yields seven pins');
+assert.deepStrictEqual(
+  hexVecQsf.map((m) => m.portName),
+  ['HEX0[0]', 'HEX0[1]', 'HEX0[2]', 'HEX0[3]', 'HEX0[4]', 'HEX0[5]', 'HEX0[6]'],
+  'bracketed .qsf target names survive parsing exactly',
+);
+useBoardStore.setState({ engine: hexVecEngine, pinMappings: hexVecQsf, simState: {} });
+store().runSimulationCycle();
+assert.strictEqual(store().simState.HEX0, 0b1000000, 'the engine stores the vector packed, under its bare name');
+assert.deepStrictEqual(
+  [...store().hex[0]],
+  [0, 0, 0, 0, 0, 0, 1],
+  'HEX0 receives A..F lit and G off — the digit "0"',
+);
+assert.ok(
+  store().hex.slice(1).every((h) => h.every((v) => v === 1)),
+  'the undriven displays stay blank rather than defaulting to lit',
+);
+pass('a packed vector HEX output reaches the board through the real qsf path');
+
+/*
+ * Eight vector displays at once, reading 7 6 5 4 3 2 1 0 left to right.
+ * hex[0] is HEX0, the right-most display, so the expected values are listed
+ * right to left.
+ */
+store().resetBoard();
+const multiEngine = compileVerilog(`module de2_hex_vector_all (
+  output [6:0] HEX0,
+  output [6:0] HEX1,
+  output [6:0] HEX2,
+  output [6:0] HEX3,
+  output [6:0] HEX4,
+  output [6:0] HEX5,
+  output [6:0] HEX6,
+  output [6:0] HEX7
+);
+  assign HEX7 = 7'b1111000;
+  assign HEX6 = 7'b0000010;
+  assign HEX5 = 7'b0010010;
+  assign HEX4 = 7'b0011001;
+  assign HEX3 = 7'b0110000;
+  assign HEX2 = 7'b0100100;
+  assign HEX1 = 7'b1111001;
+  assign HEX0 = 7'b1000000;
+endmodule
+`);
+const HEX_PINS = [
+  ['PIN_AF10', 'PIN_AB12', 'PIN_AC12', 'PIN_AD11', 'PIN_AE11', 'PIN_V14', 'PIN_V13'],
+  ['PIN_V20', 'PIN_V21', 'PIN_W21', 'PIN_Y22', 'PIN_AA24', 'PIN_AA23', 'PIN_AB24'],
+  ['PIN_AB23', 'PIN_V22', 'PIN_AC25', 'PIN_AC26', 'PIN_AB26', 'PIN_AB25', 'PIN_Y24'],
+  ['PIN_Y23', 'PIN_AA25', 'PIN_AA26', 'PIN_Y26', 'PIN_Y25', 'PIN_U22', 'PIN_W24'],
+  ['PIN_U9', 'PIN_U1', 'PIN_U2', 'PIN_T4', 'PIN_R7', 'PIN_R6', 'PIN_T3'],
+  ['PIN_T2', 'PIN_P6', 'PIN_P7', 'PIN_T9', 'PIN_R5', 'PIN_R4', 'PIN_R3'],
+  ['PIN_R2', 'PIN_P4', 'PIN_P3', 'PIN_M2', 'PIN_M3', 'PIN_M5', 'PIN_M4'],
+  ['PIN_L3', 'PIN_L2', 'PIN_L9', 'PIN_L6', 'PIN_L7', 'PIN_P9', 'PIN_N9'],
+];
+const multiQsf = parseQsf(
+  HEX_PINS.flatMap((pins, display) =>
+    pins.map((pin, bit) => `set_location_assignment ${pin} -to HEX${display}[${bit}]`),
+  ).join('\n'),
+);
+assert.strictEqual(multiQsf.length, 56, 'the .qsf yields 8 x 7 pins');
+useBoardStore.setState({ engine: multiEngine, pinMappings: multiQsf, simState: {} });
+store().runSimulationCycle();
+const DIGIT_BITS = [
+  0b1000000, // HEX0 -> 0
+  0b1111001, // HEX1 -> 1
+  0b0100100, // HEX2 -> 2
+  0b0110000, // HEX3 -> 3
+  0b0011001, // HEX4 -> 4
+  0b0010010, // HEX5 -> 5
+  0b0000010, // HEX6 -> 6
+  0b1111000, // HEX7 -> 7
+];
+for (let display = 0; display < 8; display += 1) {
+  const expected = Array.from({ length: 7 }, (_, bit) => (DIGIT_BITS[display] >> bit) & 1);
+  assert.deepStrictEqual(
+    [...store().hex[display]],
+    expected,
+    `HEX${display} shows the digit ${display} its vector encodes`,
+  );
+}
+pass('eight packed vector HEX outputs display 7 6 5 4 3 2 1 0');
+
+/*
+ * The same fix must hold for every other family, in both directions, and the
+ * scalar path that already worked must keep working.
+ */
+store().resetBoard();
+const busEngine = compileVerilog(`module de2_bus_io (
+  input  [17:0] SW,
+  input  [3:0]  KEY,
+  output [17:0] LEDR,
+  output [8:0]  LEDG
+);
+  assign LEDR = SW;
+  assign LEDG = {5'b0, KEY};
+endmodule
+`);
+const busQsf = parseQsf(
+  [
+    'set_location_assignment PIN_N25 -to SW[0]',
+    'set_location_assignment PIN_N26 -to SW[1]',
+    'set_location_assignment PIN_V2  -to SW[17]',
+    'set_location_assignment PIN_G26 -to KEY[0]',
+    'set_location_assignment PIN_AE23 -to LEDR[0]',
+    'set_location_assignment PIN_AF23 -to LEDR[1]',
+    'set_location_assignment PIN_AD12 -to LEDR[17]',
+    'set_location_assignment PIN_AE22 -to LEDG[0]',
+  ].join('\n'),
+);
+useBoardStore.setState({ engine: busEngine, pinMappings: busQsf, simState: {} });
+store().toggleSwitch(0);
+store().toggleSwitch(17);
+store().runSimulationCycle();
+assert.strictEqual(store().simState.SW, 0b100000000000000001, 'switch bits packed into the vector input');
+assert.strictEqual(store().ledR[0], 1, 'a vector LEDR output drives bit 0');
+assert.strictEqual(store().ledR[17], 1, 'a vector LEDR output drives bit 17');
+assert.strictEqual(store().ledR[1], 0, 'an undriven vector bit stays low');
+// KEY is ACTIVE-LOW and only KEY0 is mapped: the other three must read released.
+assert.strictEqual(store().simState.KEY, 0b1111, 'unmapped active-low KEY bits stay released');
+assert.strictEqual(store().ledG[0], 1, 'KEY0 released reads 1 through the vector input');
+store().setKey(0, true);
+store().runSimulationCycle();
+assert.strictEqual(store().simState.KEY, 0b1110, 'pressing KEY0 clears only its own bit');
+assert.strictEqual(store().ledG[0], 0, 'KEY0 pressed reads 0 through the vector input');
+pass('vector SW, KEY, LEDR and LEDG all propagate in both directions');
+
+/*
+ * A bare vector port with NO .qsf at all. `autoMapPort` now recognises a bus
+ * name, and the mapping layer expands it by the port's declared width, so
+ * `output [6:0] HEX0` populates all seven segments on its own.
+ */
+assert.strictEqual(autoMapPort('HEX0'), 'HEX0', 'a bare HEX bus name auto-maps');
+assert.strictEqual(autoMapPort('LEDR'), 'LEDR', 'a bare LEDR bus name auto-maps');
+assert.strictEqual(autoMapPort('LEDR3'), 'LEDR[3]', 'the bus rule does not shadow an indexed name');
+assert.strictEqual(autoMapPort('HEX0_5'), 'HEX0[5]', 'the bus rule does not shadow a segment name');
+store().resetBoard();
+useBoardStore.setState({
+  engine: hexVecEngine,
+  simState: {},
+  pinMappings: [{ portName: 'HEX0', physicalPin: null, virtualComponent: autoMapPort('HEX0') }],
+});
+store().runSimulationCycle();
+assert.deepStrictEqual(
+  [...store().hex[0]],
+  [0, 0, 0, 0, 0, 0, 1],
+  'a bare vector port with no qsf still drives all seven segments',
+);
+pass('a bare vector port maps and expands without a qsf');
+
+// The scalar diagnostic from the bug report must still work unchanged.
+store().resetBoard();
+const scalarEngine = compileVerilog(`module de2_hex_scalar_diag (
+  output SEG_A, output SEG_B, output SEG_C, output SEG_D,
+  output SEG_E, output SEG_F, output SEG_G
+);
+  assign SEG_A = 1'b0;
+  assign SEG_B = 1'b0;
+  assign SEG_C = 1'b0;
+  assign SEG_D = 1'b0;
+  assign SEG_E = 1'b0;
+  assign SEG_F = 1'b0;
+  assign SEG_G = 1'b1;
+endmodule
+`);
+useBoardStore.setState({
+  engine: scalarEngine,
+  simState: {},
+  pinMappings: ['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((seg, bit) => ({
+    portName: `SEG_${seg}`,
+    physicalPin: null,
+    virtualComponent: `HEX0[${bit}]`,
+  })),
+});
+store().runSimulationCycle();
+assert.deepStrictEqual(
+  [...store().hex[0]],
+  [0, 0, 0, 0, 0, 0, 1],
+  'seven scalar outputs on the same pins still display "0"',
+);
+pass('the scalar HEX path is unchanged by the vector fix');
+
+// LCD signal resolution must survive, in both spellings.
+assert.strictEqual(autoMapPort('LCD_DATA[7]'), 'LCD_DATA[7]', 'bracketed LCD data still maps');
+assert.strictEqual(autoMapPort('LCD_DATA7'), 'LCD_DATA[7]', 'scalar LCD data still maps');
+const lcdVector = collectLcdBus({ LCD_DATA: 0b01000001, LCD_EN: 1, LCD_RS: 1 }, [
+  { portName: 'LCD_DATA[0]', physicalPin: null, virtualComponent: 'LCD_DATA[0]' },
+  { portName: 'LCD_DATA[6]', physicalPin: null, virtualComponent: 'LCD_DATA[6]' },
+  { portName: 'LCD_EN', physicalPin: null, virtualComponent: 'LCD_EN' },
+  { portName: 'LCD_RS', physicalPin: null, virtualComponent: 'LCD_RS' },
+]);
+assert.ok(lcdVector, 'an LCD design with a packed data bus produces a bus');
+assert.strictEqual(lcdVector!.en, 1, 'LCD_EN still resolves');
+assert.strictEqual(lcdVector!.rs, 1, 'LCD_RS still resolves');
+pass('LCD signal resolution is unaffected by the vector fix');
+
+store().resetBoard();
+useBoardStore.setState({ engine: null, pinMappings: [], simState: {} });
 
 console.log(`--- DE2 Board Renderer Regression: PASS (${checks.length} checks) ---`);
