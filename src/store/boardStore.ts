@@ -11,6 +11,8 @@ import {
   type LcdState,
 } from '../core/peripherals/lcdController';
 import { collectLcdBus } from '../core/peripherals/lcdSignals';
+import { parseBitRef, readSignal, writeSignal } from '../core/simulator/vectorSignals';
+import { expandTarget, parseVirtualComponent } from '../board/virtualComponents';
 
 interface BoardState {
   // Inputs
@@ -141,19 +143,60 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   runSimulationCycle: () => set((state) => {
     if (!state.engine) return state;
     try {
-      // 1. Map virtual components (SW, KEY) to Engine Inputs
+      // 1. Map virtual components (SW, KEY, CLOCK_50) to engine inputs.
+      //
+      //    Routed through `writeSignal` because a port's name in the pin
+      //    mapping is not necessarily a name the engine accepts: a design
+      //    declaring `input [17:0] SW` has ONE engine input called `SW`, so
+      //    writing `inputs['SW[0]']` would drive nothing and every switch
+      //    would read 0. `writeSignal` packs the bit into the vector instead,
+      //    seeding from the previous state so bits no pin covers keep their
+      //    value — without that, mapping only KEY0 would drive KEY1..KEY3 to
+      //    0, which for an active-low input means "held down".
       const inputs: Record<string, number> = {};
+      const declaredInputs = new Set(state.engine?.inputs ?? []);
+      const portWidth = (portName: string): number =>
+        state.engine?.portWidths?.[portName] ?? 1;
+
+      /*
+       * When a bit is packed into a declared vector, the OTHER bits of that
+       * vector must start from the board rather than from zero. A .qsf that
+       * names only KEY[0] still leaves KEY[3:1] physically connected to three
+       * buttons, and KEY is ACTIVE-LOW — so zeroing them would report three
+       * buttons held down. Seeding from the bank makes the whole declared port
+       * read the board, which is both correct and what a student expects.
+       */
+      const packBank = (values: number[], idle: number, width: number): number => {
+        let packed = 0;
+        for (let bit = 0; bit < Math.min(Math.max(width, 1), 32); bit += 1) {
+          if (values[bit] ?? idle) packed |= 1 << bit;
+        }
+        return packed;
+      };
+      const seedBank = (base: string, values: number[], idle: number): void => {
+        if (inputs[base] === undefined && declaredInputs.has(base)) {
+          inputs[base] = packBank(values, idle, portWidth(base));
+        }
+      };
+
       for (const mapping of state.pinMappings) {
-        if (!mapping.virtualComponent) continue;
-        
-        const match = mapping.virtualComponent.match(/(SW|KEY|LEDR|LEDG|HEX|CLOCK_50)(\d+)?(?:\[(\d+)\])?/);
-        if (match) {
-          const type = match[1];
-          const idx = parseInt(match[2] || match[3] || '0');
-          
-          if (type === 'SW') inputs[mapping.portName] = state.switches[idx] ?? 0;
-          if (type === 'KEY') inputs[mapping.portName] = state.keys[idx] ?? 1;
-          if (type === 'CLOCK_50') inputs[mapping.portName] = state.clockState;
+        const target = parseVirtualComponent(mapping.virtualComponent);
+        if (!target) continue;
+
+        if (target.family === 'CLOCK_50') {
+          writeSignal(inputs, declaredInputs, mapping.portName, state.clockState, state.simState);
+          continue;
+        }
+        if (target.family !== 'SW' && target.family !== 'KEY') continue;
+
+        // KEY's idle value is 1 (released); an unset switch is 0.
+        const values = target.family === 'SW' ? state.switches : state.keys;
+        const idle = target.family === 'SW' ? 0 : 1;
+
+        for (const { signal, index } of expandTarget(target, mapping.portName, portWidth(mapping.portName))) {
+          const ref = parseBitRef(signal);
+          if (ref) seedBank(ref.base, values, idle);
+          writeSignal(inputs, declaredInputs, signal, values[index] ?? idle, state.simState);
         }
       }
 
@@ -191,27 +234,36 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       const newLedG = [...state.ledG];
       const newHex = state.hex.map(h => [...h]);
       
+      //    Read through `readSignal`, which resolves a per-pin name against
+      //    EITHER representation the engine may have produced: the flattened
+      //    key `HEX0[0]`, the underscore spelling `HEX0_0`, or bit 0 of the
+      //    packed vector `HEX0`. The engine stores `output [6:0] HEX0` as a
+      //    single packed integer, so without this a .qsf mapping seven pins
+      //    to HEX0[0..6] resolves nothing.
+      //
+      //    An unresolved signal is LEFT ALONE rather than defaulted to 0.
+      //    That distinction is the whole bug: HEX segments are active-low, so
+      //    coercing a missing value to 0 lights the segment, and a display
+      //    driven by a vector read "8" no matter what the design computed.
       for (const mapping of state.pinMappings) {
-        if (!mapping.virtualComponent) continue;
-        
-        const val = newState?.[mapping.portName] ?? 0;
-        
-        const match = mapping.virtualComponent.match(/(SW|KEY|LEDR|LEDG|HEX)(\d+)?(?:\[(\d+)\])?/);
-        if (match) {
-          const type = match[1];
-          
-          if (type === 'LEDR') {
-            const idx = parseInt(match[2] || match[3] || '0');
-            newLedR[idx] = val;
-          } else if (type === 'LEDG') {
-            const idx = parseInt(match[2] || match[3] || '0');
-            newLedG[idx] = val;
-          } else if (type === 'HEX') {
-            const hexIdx = parseInt(match[2] || '0');
-            const segIdx = parseInt(match[3] || '0');
-            if (newHex[hexIdx]) {
-              newHex[hexIdx][segIdx] = val;
-            }
+        const target = parseVirtualComponent(mapping.virtualComponent);
+        if (!target) continue;
+        if (target.family !== 'LEDR' && target.family !== 'LEDG' && target.family !== 'HEX') {
+          continue;
+        }
+
+        for (const { signal, index } of expandTarget(target, mapping.portName, portWidth(mapping.portName))) {
+          const val = readSignal(newState, signal);
+          if (val === undefined || !Number.isFinite(val)) continue;
+          const bit = val ? 1 : 0;
+
+          if (target.family === 'LEDR') {
+            if (index < newLedR.length) newLedR[index] = bit;
+          } else if (target.family === 'LEDG') {
+            if (index < newLedG.length) newLedG[index] = bit;
+          } else if (target.family === 'HEX') {
+            const display = newHex[target.display];
+            if (display && index < display.length) display[index] = bit;
           }
         }
       }

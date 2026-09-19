@@ -39,6 +39,22 @@ export function autoMapPort(portName: string): string | null {
 
     return `${type}[${indexStr}]`;
   }
+
+  /*
+   * Bare bus names, checked LAST so they can never shadow an indexed match.
+   *
+   *   output [6:0]  HEX0   ->  HEX0    (the whole display)
+   *   output [17:0] LEDR   ->  LEDR    (the whole red bank)
+   *
+   * This is the natural way to write a DE2 design, and without it such a port
+   * maps to nothing at all when there is no .qsf to name the pins
+   * individually. The mapping layer expands a bus name using the port's
+   * declared width, so a scalar port that happens to be called `SW` still
+   * resolves to one switch rather than to eighteen.
+   */
+  if (/^HEX\d+$/.test(upper)) return upper;
+  if (upper === 'SW' || upper === 'KEY' || upper === 'LEDR' || upper === 'LEDG') return upper;
+
   return null;
 }
 
