@@ -1,4 +1,5 @@
 import { pinDictionary } from './de2Dictionary';
+import { normaliseLcdSignal } from '../../core/peripherals/lcdSignals';
 
 export interface ParsedPort {
   portName: string; // The name in the user's verilog top module (e.g. "my_sw[0]")
@@ -14,6 +15,11 @@ export function autoMapPort(portName: string): string | null {
   const upper = portName.toUpperCase();
   
   if (upper === 'CLK' || upper === 'CLOCK') return 'CLOCK_50';
+
+  // LCD signals, before the generic LED/SW matcher below: LCD_DATA3 would
+  // otherwise be caught by the (LED)(\D*)(\d+) branch and mapped to LEDR[3].
+  const lcd = normaliseLcdSignal(portName);
+  if (lcd) return lcd;
 
   // Handle HEX arrays like HEX0[0] or HEX0_0
   const hexMatch = upper.match(/HEX(\d+)\D+(\d+)/);

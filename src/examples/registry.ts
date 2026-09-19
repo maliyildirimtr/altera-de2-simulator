@@ -1,5 +1,10 @@
 import type { LearningExample } from './types';
 
+// DE2 board demos. These have no separate testbench: what they exercise is
+// the interactive board, not a waveform.
+import de2InteractiveIoSrc from './source/de2_interactive_io.sv?raw';
+import de2LcdHelloSrc from './source/de2_lcd_hello.sv?raw';
+
 // Raw SystemVerilog Source Imports
 import basicGatesSrc from './source/basic_gates.sv?raw';
 import basicGatesTb from './source/basic_gates_tb.sv?raw';
@@ -497,6 +502,70 @@ export const EXAMPLES_LIST: LearningExample[] = [
       schematic: true,
       waveform: true,
       de2: false,
+    },
+  },
+  {
+    id: 'de2_interactive_io',
+    title: 'DE2 Interactive I/O Demo',
+    description:
+      'A tour of the DE2 board: switches drive the red LEDs, the push buttons drive green LEDs, four more switches show a hexadecimal digit on HEX0, and CLOCK_50 blinks LEDR17.',
+    difficulty: 'beginner',
+    category: 'fpga',
+    topics: ['DE2 Board', 'Active-Low', 'Seven-Segment', 'Clock Divider'],
+    learningObjectives: [
+      'Drive every family of DE2 I/O from one small design',
+      'See why KEY inputs must be inverted to read as "pressed"',
+      'Encode a hexadecimal digit with ACTIVE-LOW seven-segment patterns',
+    ],
+    topModule: 'de2_interactive_io',
+    source: {
+      filename: 'de2_interactive_io.sv',
+      language: 'systemverilog',
+      code: de2InteractiveIoSrc,
+    },
+    de2: {
+      supported: true,
+      filename: 'de2_interactive_io.sv',
+      source: de2InteractiveIoSrc,
+      topModule: 'de2_interactive_io',
+    },
+    tools: {
+      // Its whole point is the board; a schematic and a waveform of 18 wires
+      // would say less than clicking a switch does.
+      schematic: false,
+      waveform: false,
+      de2: true,
+    },
+  },
+  {
+    id: 'de2_lcd_hello',
+    title: 'DE2 LCD Hello',
+    description:
+      "Writes two lines of text to the DE2's 16x2 character LCD over its HD44780 interface. KEY0 restarts the sequence.",
+    difficulty: 'intermediate',
+    category: 'fpga',
+    topics: ['DE2 Board', 'LCD', 'HD44780', 'Sequencer'],
+    learningObjectives: [
+      'Drive an HD44780 character LCD: function set, display on, clear, address, write',
+      'Latch a byte on the falling edge of an enable strobe',
+      'Understand the 16x2 DDRAM map, where line 2 starts at 0x40 rather than 0x10',
+    ],
+    topModule: 'de2_lcd_hello',
+    source: {
+      filename: 'de2_lcd_hello.sv',
+      language: 'systemverilog',
+      code: de2LcdHelloSrc,
+    },
+    de2: {
+      supported: true,
+      filename: 'de2_lcd_hello.sv',
+      source: de2LcdHelloSrc,
+      topModule: 'de2_lcd_hello',
+    },
+    tools: {
+      schematic: false,
+      waveform: false,
+      de2: true,
     },
   },
 ];

@@ -4,6 +4,13 @@ import { disconnectNet, connectNet, compileVerilog, recompileEngine, type Verilo
 import { buildModuleGraph } from '../utils/parser/graphBuilder';
 import { evaluateGraphTopological } from '../core/simulator/graphEvaluator';
 import { COMPONENT_REGISTRY } from '../utils/components/componentRegistry';
+import {
+  createLcdState,
+  lcdStep,
+  resetLcdState,
+  type LcdState,
+} from '../core/peripherals/lcdController';
+import { collectLcdBus } from '../core/peripherals/lcdSignals';
 
 interface BoardState {
   // Inputs
@@ -14,6 +21,16 @@ interface BoardState {
   ledR: number[];     // 18 red LEDs: 0 or 1
   ledG: number[];     // 9 green LEDs: 0 or 1
   hex: number[][];    // 8 7-segment displays, each with 7 segments (active-low)
+
+  /**
+   * 16x2 character LCD. Decoded by the pure HD44780 emulator in
+   * `src/core/peripherals/lcdController.ts` — the store owns the state, the
+   * controller owns the command semantics, and React only renders the result.
+   * Advanced from the compiled design's LCD_* outputs on every simulation
+   * cycle; left untouched when the design drives no LCD signals at all.
+   */
+  lcd: LcdState;
+
   
   // File Upload and Pin Mapping State
   isUploaderOpen: boolean;
@@ -68,6 +85,7 @@ const INITIAL_HEX = Array(8).fill(Array(7).fill(1)); // Active-low: 1 is off
 let simIntervalTimer: ReturnType<typeof setInterval> | null = null;
 
 export const useBoardStore = create<BoardState>((set, get) => ({
+  lcd: createLcdState(),
   switches: [...INITIAL_SWITCHES],
   keys: [...INITIAL_KEYS],
   ledR: [...INITIAL_LEDR],
@@ -198,10 +216,19 @@ export const useBoardStore = create<BoardState>((set, get) => ({
         }
       }
       
+      // 4. Advance the LCD peripheral from the design's LCD_* outputs.
+      //    `collectLcdBus` returns null when the design drives no LCD signals,
+      //    and `lcdStep` returns the same object when LCD_EN has not moved —
+      //    so on the overwhelming majority of ticks this is a no-op and the
+      //    reference stays stable for React.
+      let newLcd = state.lcd;
+      const lcdBus = collectLcdBus(newState ?? {}, state.pinMappings);
+      if (lcdBus) newLcd = lcdStep(state.lcd, lcdBus);
+
       const newHistory = [...state.waveformHistory, { time: Date.now(), state: { ...newState, 'CLOCK_50': state.clockState } }];
       if (newHistory.length > 50) newHistory.shift();
 
-      return { simState: newState, ledR: newLedR, ledG: newLedG, hex: newHex, waveformHistory: newHistory };
+      return { simState: newState, ledR: newLedR, ledG: newLedG, hex: newHex, lcd: newLcd, waveformHistory: newHistory };
     } catch (err) {
       console.warn('[boardStore] runSimulationCycle error (state preserved):', err);
       return state;
@@ -262,6 +289,8 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       ledR: [...INITIAL_LEDR],
       ledG: [...INITIAL_LEDG],
       hex: [...INITIAL_HEX],
+      // Blank panel, cursor home, display state back to power-on defaults.
+      lcd: resetLcdState(),
       clockState: 0,
       simState: {},
       isSimRunning: false,
