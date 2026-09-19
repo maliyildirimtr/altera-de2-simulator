@@ -970,4 +970,103 @@ assert.ok(/HEX0_6/.test(ioSource), 'the I/O demo drives all seven segments of HE
 assert.ok(!/vhdl/i.test(ioSource) && !/vhdl/i.test(exampleSource), 'no example claims VHDL support');
 pass('the bundled LCD example writes ENGINEERING LAB / HELLO FPGA');
 
+/* ────────────────────────────────────────────────────────────────────────
+ * 12. Silkscreen corrections
+ *
+ * The artwork prints several designators wrong. The renderer masks those rows
+ * and reprints them, which is only safe if the replacement text is centred on
+ * the SAME coordinate the live part uses — otherwise a label and the thing it
+ * names could drift apart, which is worse than a typo.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+const silk = render2d('artwork');
+
+const labelText = (name: string): number =>
+  occurrences(silk, `>${name}</text>`);
+
+for (let i = 0; i < 18; i += 1) {
+  assert.strictEqual(labelText(`LEDR${i}`), 1, `LEDR${i} is printed exactly once`);
+}
+for (let i = 0; i < 9; i += 1) {
+  assert.strictEqual(labelText(`LEDG${i}`), 1, `LEDG${i} is printed exactly once`);
+}
+for (let i = 0; i < 8; i += 1) {
+  assert.strictEqual(labelText(`HEX${i}`), 1, `HEX${i} is printed exactly once`);
+}
+assert.strictEqual(
+  occurrences(silk, 'data-silk-labels="ledr"'),
+  1,
+  'the red designators are one group',
+);
+// The artwork's misprints must not survive as replacement text.
+for (const wrong of ['LED62', 'LED05', 'LEDG9', 'LEDR18']) {
+  assert.strictEqual(labelText(wrong), 0, `${wrong} is not printed`);
+}
+pass('silkscreen prints exactly 18 LEDR, 9 LEDG and 8 HEX designators');
+
+// LEDG8 keeps its own baseline: it is the separate LED up by the HEX row, not
+// a ninth member of the bank, and its label must not join the row below.
+const textAt = (name: string): { x: number; y: number } => {
+  const m = new RegExp(`<text x="([\\d.]+)" y="([\\d.]+)"[^>]*>${name}</text>`).exec(silk);
+  assert.ok(m, `${name} is rendered as positioned text`);
+  return { x: Number(m![1]), y: Number(m![2]) };
+};
+const g8 = textAt('LEDG8');
+const g7 = textAt('LEDG7');
+const g0 = textAt('LEDG0');
+assert.strictEqual(g7.y, g0.y, 'the green bank shares one baseline');
+assert.ok(g8.y < g7.y - 100, 'LEDG8 is printed on its own row, well above the bank');
+assert.ok(g8.x < g7.x, 'LEDG8 is printed to the left of the bank');
+pass('LEDG8 silkscreen stays separate from the green bank');
+
+/*
+ * Exact centring. Each label's x must equal the centre of its own part's
+ * rendered footprint — not approximately, exactly, because both read the same
+ * calibrated coordinate. Any drift here means the label layer stopped sharing
+ * the calibration with the live layer.
+ */
+const partCentre = (testid: string): number => {
+  const block = new RegExp(
+    `data-testid="${testid}"([\\s\\S]*?)(?=data-testid="de2-|</svg>)`,
+  ).exec(silk);
+  assert.ok(block, `${testid} is rendered`);
+  const rect = /<rect x="(-?[\d.]+)" y="-?[\d.]+" width="([\d.]+)"/.exec(block![1]);
+  assert.ok(rect, `${testid} has a footprint rect`);
+  return Number(rect![1]) + Number(rect![2]) / 2;
+};
+for (let i = 0; i < 18; i += 1) {
+  assert.ok(
+    Math.abs(textAt(`LEDR${i}`).x - partCentre(`de2-ledr-${i}`)) < 0.01,
+    `LEDR${i}'s label is centred on its own lens`,
+  );
+}
+for (let i = 0; i < 9; i += 1) {
+  assert.ok(
+    Math.abs(textAt(`LEDG${i}`).x - partCentre(`de2-ledg-${i}`)) < 0.01,
+    `LEDG${i}'s label is centred on its own lens`,
+  );
+}
+for (let i = 0; i < 8; i += 1) {
+  assert.ok(
+    Math.abs(textAt(`HEX${i}`).x - partCentre(`de2-hex-${i}`)) < 0.01,
+    `HEX${i}'s label is centred on its own digit window`,
+  );
+}
+pass('every replacement designator is centred on the part it names');
+
+// The masks and the placeholder patch are present, and the layer stays inert.
+for (const id of ['ledr-labels', 'ledg-labels', 'ledg8-label', 'hex-labels']) {
+  assert.strictEqual(occurrences(silk, `data-silk-mask="${id}"`), 1, `${id} mask is drawn`);
+}
+assert.strictEqual(
+  occurrences(silk, 'data-silk-patch="text-placeholder"'),
+  1,
+  'the "Text" placeholder is covered by its patch',
+);
+const layer = /<g data-testid="de2-silk-corrections"([^>]*)>/.exec(silk);
+assert.ok(layer, 'the correction layer is rendered');
+assert.ok(/pointer-events="none"/.test(layer![1]), 'corrections never intercept input');
+assert.ok(/aria-hidden="true"/.test(layer![1]), 'corrections are board printing, not content');
+pass('silkscreen masks and the placeholder patch are applied and inert');
+
 console.log(`--- DE2 Board Renderer Regression: PASS (${checks.length} checks) ---`);

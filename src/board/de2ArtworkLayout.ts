@@ -237,3 +237,105 @@ export const LCD_ART = {
 /** The DE2's LCD is a 16 x 2 character module. Not configurable. */
 export const LCD_COLUMNS = 16;
 export const LCD_ROWS = 2;
+
+/* ────────────────────────────────────────────────────────────────────────
+ * Silkscreen corrections
+ *
+ * The final artwork has a handful of mistakes printed into it: several LED
+ * designators are misspelt ("LED05" for LEDR5, "LED2" for LEDR2), the green
+ * bank's labels are shifted by one so LEDG6 is missing entirely and one lens
+ * reads "LED62", the HEX labels sit up to 38 px right of the digits they
+ * name, and a placeholder reading "Text" was left on top of two capacitors
+ * beside the LCD.
+ *
+ * None of that is fixable in the renderer by moving a live overlay, because
+ * the mistakes are pixels. So the renderer masks each wrong region with the
+ * board colour measured underneath it and prints the correct text as SVG on
+ * top — the same approach the live overlays already use for the artwork's
+ * baked-in LED and display state.
+ *
+ * Every band was measured from the artwork rather than estimated: the glyph
+ * rows were found by thresholding the white silkscreen ink, and the fill
+ * colour is the artwork's own board colour sampled inside each band with the
+ * glyph pixels excluded.
+ *
+ * These are PRESENTATION corrections. No live position moves: the labels are
+ * centred on the very same calibrated coordinates the LED and digit overlays
+ * use, so a label and its part cannot disagree.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Board colour under the masked label rows. Sampled at the top and bottom of
+ * each band, which agreed to within two levels, so one flat fill is enough —
+ * the artwork has no texture or trace detail in these rows to reproduce.
+ */
+export const SILK_MASK_FILL = '#02375A';
+
+export interface SilkMaskRect {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * The regions repainted before the corrected text is drawn.
+ *
+ * Each is bounded tightly to the glyph row it covers: the LED rows stop short
+ * of the thin silkscreen boundary line above them and of the lenses below,
+ * and the HEX row stops above the display modules. Nothing here overlaps a
+ * component, a pad or a trace.
+ */
+export const SILK_MASKS: readonly SilkMaskRect[] = [
+  // Red LED designators, above the LEDR row.
+  { id: 'ledr-labels', x: 0.025977, y: 0.825034, width: 0.630144, height: 0.016151 },
+  // Green bank designators, above the LEDG row.
+  { id: 'ledg-labels', x: 0.658693, y: 0.825034, width: 0.294496, height: 0.016151 },
+  // LEDG8's own designator, which sits up by the HEX row.
+  { id: 'ledg8-label', x: 0.242027, y: 0.746972, width: 0.033436, height: 0.015478 },
+  // HEX designators, above the display modules.
+  { id: 'hex-labels', x: 0.034979, y: 0.715343, width: 0.401235, height: 0.016824 },
+];
+
+/**
+ * Type and placement for the replacement silkscreen.
+ *
+ * `charWidth` exists so each label is drawn with an explicit `textLength`.
+ * That makes the result deterministic across machines and fonts — a label
+ * occupies exactly the width calibrated for it, so it can never overflow into
+ * its neighbour on a system whose condensed face is missing. The value is the
+ * per-character width measured from the artwork's own labels.
+ */
+export const SILK_TEXT = {
+  /** Cap height 29 px in the artwork; 40 gives the same cap height. */
+  fontSize: 0.013459,
+  charWidth: 0.004244,
+  /** Matches the artwork's remaining silkscreen, a hair warmer. */
+  fill: '#F4F2F0',
+  /** Baselines, measured from the bottom of the artwork's own glyph rows. */
+  ledBaseline: 0.83782,
+  ledG8Baseline: 0.759758,
+  hexBaseline: 0.730821,
+} as const;
+
+/**
+ * The "Text" placeholder is the one correction a flat patch cannot make: it
+ * lies across two electrolytic capacitors, an IC and a silver part, so
+ * painting board colour over it would destroy more than it fixed.
+ *
+ * Instead a small artwork-derived patch image covers just that rectangle. It
+ * was built from the artwork itself — the two capacitors are the same part, so
+ * the heavily obscured right-hand one was rebuilt by copying its clean twin,
+ * the left one from its own mirror, and only the remaining board and IC
+ * pixels were reconstructed by inpainting. Pixels the placeholder did not
+ * cover are unchanged.
+ */
+export const DE2_ARTWORK_PATCH_SRC = '/boards/de2/de2-board-patch.webp';
+
+export const SILK_PATCH = {
+  x: 0.436214,
+  y: 0.453567,
+  width: 0.136317,
+  height: 0.094213,
+} as const;

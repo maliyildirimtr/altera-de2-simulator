@@ -18,6 +18,7 @@ import {
   LedOverlay,
   SwitchOverlay,
 } from './primitives/ArtworkOverlays';
+import { SilkscreenCorrections } from './primitives/SilkscreenCorrections';
 
 /**
  * Artwork-based 2D DE2 board: a premium render of the real hardware with live
@@ -33,6 +34,8 @@ import {
  *
  *   artwork  →  PCB, FPGA, memory, LCD module and bezel, connectors, GPIO
  *               headers, SD slot, silkscreen, passives, mounting hardware
+ *   silk fix →  the few designators and one placeholder the artwork prints
+ *               wrong (see `SilkscreenCorrections`)
  *   overlays →  SW17..SW0, KEY3..KEY0, LEDR17..LEDR0, LEDG8..LEDG0,
  *               HEX7..HEX0, and the LCD's 16 x 2 characters
  *
@@ -95,6 +98,16 @@ export const DE2HybridBoard2D: React.FC = React.memo(() => (
       pointerEvents="none"
       style={{ userSelect: 'none', WebkitUserDrag: 'none' } as React.CSSProperties}
     />
+
+    {/*
+      Corrections for mistakes printed into the artwork — misspelt LED
+      designators, HEX labels offset from their digits, a leftover "Text"
+      placeholder. Drawn directly on top of the artwork and beneath every live
+      overlay, because it is part of the board's printing rather than part of
+      its state. It moves nothing: each label is centred on the same
+      calibrated coordinate its live part uses.
+    */}
+    <SilkscreenCorrections />
 
     {/* ── Live simulation state ──
         Ordered so that the parts a user reaches for sit above the parts they
