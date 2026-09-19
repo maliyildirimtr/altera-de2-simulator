@@ -16,6 +16,7 @@ import { LCD_COLS, LCD_ROWS } from '../../../core/peripherals/lcdController';
 import {
   isSegmentLit,
   useHexSegments,
+  useLcdDebug,
   useKeyPressed,
   useLedGreenValue,
   useLedRedValue,
@@ -631,7 +632,8 @@ HexOverlay.displayName = 'HexOverlay';
  * backlight without clearing the characters, as on the real module.
  */
 export const LcdOverlay: React.FC = React.memo(() => {
-  const { line1, line2, visible, backlight, cursor } = useLcdView();
+  const { line1, line2, visible, backlight, cursor, initialised } = useLcdView();
+  const dbg = useLcdDebug();
 
   const gx = ax(LCD_ART.glassX);
   const gy = ay(LCD_ART.glassY);
@@ -656,7 +658,42 @@ export const LcdOverlay: React.FC = React.memo(() => {
   const rows = [line1, line2];
 
   return (
-    <g data-testid="de2-lcd" data-lcd-visible={visible ? 'true' : 'false'} pointerEvents="none">
+    <g
+      data-testid="de2-lcd"
+      data-lcd-visible={visible ? 'true' : 'false'}
+      /*
+       * The panel's own state, on the element itself.
+       *
+       * Not debug scaffolding. SVG text is the one thing a renderer can draw
+       * that is invisible to a DOM assertion — glyphs laid out as <text>
+       * children tell you nothing about whether the right characters arrived —
+       * so these attributes are how a regression proves the simulation reaches
+       * the DOM rather than stopping in the store, and how the panel can be
+       * read in a browser without a console hook.
+       */
+      data-line1={line1}
+      data-line2={line2}
+      data-display-on={String(visible)}
+      data-powered={String(backlight)}
+      /*
+       * And what the signal chain has done: whether the design drives an LCD
+       * bus at all, how many enable edges latched, what was written last, and
+       * whether the design's own sequencer is advancing. Four questions that
+       * between them locate a blank display in one look, which took three
+       * rounds of debugging without them. Every attribute here is asserted by
+       * the renderer regression; nothing is published that nothing checks.
+       */
+      data-lcd-initialised={String(initialised)}
+      data-lcd-bus-seen={String(dbg.busSeen)}
+      data-lcd-falling-edges={String(dbg.fallingEdges)}
+      data-lcd-step={dbg.step === null ? 'n/a' : String(dbg.step)}
+      data-lcd-last-command={
+        dbg.lastByte < 0
+          ? 'none'
+          : `${dbg.lastWasCommand ? 'cmd' : 'data'} 0x${dbg.lastByte.toString(16).padStart(2, '0')}`
+      }
+      pointerEvents="none"
+    >
       {/* Backlight and power, applied to the glass the artwork already drew.
           Dimming rather than repainting keeps the artwork's own reflection. */}
       {!backlight && (
