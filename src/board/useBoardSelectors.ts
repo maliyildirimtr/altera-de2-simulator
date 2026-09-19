@@ -14,6 +14,7 @@
 import { useShallow } from 'zustand/react/shallow';
 import { lcdCursor, lcdIsVisible, lcdLines } from '../core/peripherals/lcdController';
 import { useBoardStore } from '../store/boardStore';
+import type { LcdDebug } from '../store/boardStore';
 
 /** `1` when SW`index` is up. */
 export function useSwitchValue(index: number): number {
@@ -73,6 +74,11 @@ export function useSetKey() {
  * ──────────────────────────────────────────────────────────────────────── */
 
 export interface LcdView {
+  /**
+   * True once the design has performed any LCD write. Distinguishes a panel
+   * nothing is driving from one a design has deliberately blanked.
+   */
+  initialised: boolean;
   /** Exactly LCD_COLS characters. */
   line1: string;
   line2: string;
@@ -107,6 +113,7 @@ export function useLcdView(): LcdView {
         line2,
         visible: lcdIsVisible(s.lcd),
         backlight: s.lcd.backlight,
+        initialised: s.lcd.initialised,
         cursorRow: cursor?.row ?? -1,
         cursorCol: cursor?.col ?? -1,
       };
@@ -118,6 +125,20 @@ export function useLcdView(): LcdView {
     line2: flat.line2,
     visible: flat.visible,
     backlight: flat.backlight,
+    initialised: flat.initialised,
     cursor: flat.cursorRow >= 0 ? { row: flat.cursorRow, col: flat.cursorCol } : null,
   };
+}
+
+/**
+ * What the LCD signal chain has done, for the attributes the panel publishes.
+ *
+ * A single object read straight from the store, deliberately NOT merged into
+ * `useLcdView`: the panel's appearance must never depend on diagnostic data,
+ * and keeping the two subscriptions apart is what guarantees it cannot start
+ * to. The object is replaced every evaluation by design, so there is nothing
+ * here to memoise.
+ */
+export function useLcdDebug(): LcdDebug {
+  return useBoardStore((s) => s.lcdDebug);
 }

@@ -1607,4 +1607,290 @@ pass('board reset clears the LCD and the example rewrites it afterwards');
 store().resetBoard();
 useBoardStore.setState({ engine: null, pinMappings: [], simState: {} });
 
+/* ────────────────────────────────────────────────────────────────────────
+ * 16. The LCD reaches the DOM, and no clock edge is ever skipped
+ *
+ * Section 15 stops at the store. These checks carry the chain the rest of the
+ * way — store -> selector -> DE2HybridBoard2D -> rendered attributes — and
+ * pin down the scheduling bug that made the panel blank in the browser while
+ * every store-level test passed.
+ *
+ * THE BUG: `tickClock` used to defer its evaluation with setTimeout(0). When a
+ * board re-render outlasted the auto-simulation interval, two toggles landed
+ * before the timer queue drained, the second overwrote clockState, and one
+ * clock transition was never evaluated. A counter loses an increment; an
+ * edge-latched peripheral loses the transaction entirely. LCD_ON and LCD_BLON
+ * are level-sensitive and still got through, so the glass lit up with no
+ * character on it — exactly the reported symptom.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+/** Runs the LCD example under a chosen scheduling pattern. */
+function runLcdSchedule(ticksPerDrain: number): void {
+  store().resetBoard();
+  useBoardStore.setState({ engine: lcdEngine, pinMappings: lcdMappings, simState: {} });
+  for (let i = 0; i < 200; i += 1) {
+    for (let t = 0; t < ticksPerDrain; t += 1) store().tickClock();
+  }
+}
+
+// One tick per drain: the easy case, and the one the old code passed.
+runLcdSchedule(1);
+assert.strictEqual(lcdLines(store().lcd)[0].trimEnd(), 'ENGINEERING LAB', 'one tick per drain works');
+
+/*
+ * Two toggles back to back, which is what a busy UI thread produces. Under the
+ * deferred scheduler this dropped every other transition and left the panel
+ * powered but blank. It must now be indistinguishable from the easy case.
+ */
+runLcdSchedule(2);
+const [burstLine1, burstLine2] = lcdLines(store().lcd);
+assert.strictEqual(burstLine1.trimEnd(), 'ENGINEERING LAB', 'coalesced clock toggles do not drop edges');
+assert.strictEqual(burstLine2.trimEnd(), 'HELLO FPGA', 'coalesced clock toggles do not drop edges');
+assert.ok(store().lcd.displayOn, 'the display-on command survives coalesced toggles');
+
+/*
+ * And the failure signature itself must not recur: powered WITHOUT displayOn is
+ * the fingerprint of a lost enable edge, because power and backlight are
+ * level-sensitive while every command needs an edge. If this ever holds again,
+ * the panel is lighting up with nothing on it.
+ */
+runLcdSchedule(3);
+assert.ok(
+  !(store().lcd.powered && !store().lcd.displayOn),
+  'the panel is never powered-but-blank, which is the lost-edge fingerprint',
+);
+pass('no clock edge is dropped, whatever the tick scheduling');
+
+// Now the DOM. Driven by the simulator, read off the rendered element.
+runLcdSchedule(1);
+const lcdDom = render2d('artwork');
+const lcdEl = /<g data-testid="de2-lcd"([^>]*)>/.exec(lcdDom);
+assert.ok(lcdEl, 'the LCD element is rendered');
+const attrs = lcdEl![1];
+const attr = (name: string): string => {
+  const m = new RegExp(`${name}="([^"]*)"`).exec(attrs);
+  assert.ok(m, `${name} is present on the LCD element`);
+  return m![1];
+};
+assert.strictEqual(attr('data-line1'), 'ENGINEERING LAB ', 'data-line1 reaches the DOM');
+assert.strictEqual(attr('data-line2'), 'HELLO FPGA      ', 'data-line2 reaches the DOM');
+assert.strictEqual(attr('data-display-on'), 'true', 'data-display-on reaches the DOM');
+assert.strictEqual(attr('data-lcd-visible'), 'true', 'the panel reports itself visible');
+
+// The characters must exist as real text nodes, not just as attributes.
+const row0 = /<g data-lcd-row="0">([\s\S]*?)<\/g>/.exec(lcdDom);
+const row1 = /<g data-lcd-row="1">([\s\S]*?)<\/g>/.exec(lcdDom);
+assert.ok(row0 && row1, 'both character rows are rendered when the display is on');
+const glyphs = (row: string): string =>
+  [...row.matchAll(/<text[^>]*>([^<])<\/text>/g)].map((m) => m[1]).join('');
+assert.strictEqual(glyphs(row0![1]), 'ENGINEERINGLAB', 'row 0 renders one text node per non-blank glyph');
+assert.strictEqual(glyphs(row1![1]), 'HELLOFPGA', 'row 1 renders one text node per non-blank glyph');
+// Nothing may hide them: no zero opacity, and the glyph fill is the dark ink.
+assert.ok(!/<text[^>]*opacity="0"/.test(lcdDom), 'no character is rendered fully transparent');
+assert.ok(/<text[^>]*fill="#1C2A1E"/.test(lcdDom), 'characters use the dark LCD ink');
+
+// And with the panel off, the rows are gone rather than blank-but-present.
+store().resetBoard();
+const darkDom = render2d('artwork');
+assert.ok(!/data-lcd-row/.test(darkDom), 'a reset panel renders no character rows at all');
+assert.ok(/data-line1="                "/.test(darkDom), 'a reset panel reports blank lines in the DOM');
+pass('live LCD text reaches the rendered DOM as real text nodes');
+
+store().resetBoard();
+useBoardStore.setState({ engine: null, pinMappings: [], simState: {} });
+
+/* ────────────────────────────────────────────────────────────────────────
+ * 17. The run loop, and inputs nobody mapped
+ *
+ * Three rounds of Node tests agreed with each other and disagreed with
+ * Chrome. Each time the reason was the same: the test built a favourable
+ * environment the browser never provides. These checks remove the two
+ * remaining ways that could happen.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+/*
+ * ORDERING. `tickClock` must COMMIT the new clock level and only then
+ * evaluate. Proven, not assumed: the design below copies CLOCK_50 to an
+ * output, so if evaluation ran against the pre-commit level the output would
+ * lag the committed clock by one tick forever.
+ */
+const clockProbe = compileVerilog(`module p (input CLOCK_50, output SEEN);
+  assign SEEN = CLOCK_50;
+endmodule
+`);
+store().resetBoard();
+useBoardStore.setState({ engine: clockProbe, pinMappings: [], simState: {} });
+for (let i = 0; i < 6; i += 1) {
+  store().tickClock();
+  assert.strictEqual(
+    store().simState.CLOCK_50,
+    store().clockState,
+    `tick ${i}: the evaluated clock is the committed clock`,
+  );
+  assert.strictEqual(
+    store().simState.SEEN,
+    store().clockState,
+    `tick ${i}: evaluation observed the NEW level, so the commit preceded it`,
+  );
+}
+pass('tickClock commits the clock before evaluating, and evaluates exactly once');
+
+/*
+ * THE BROWSER BUG. An engine input with no resolved pin mapping used to
+ * default to 0. KEY is ACTIVE-LOW, so any design whose reset is `~KEY0` was
+ * held permanently in reset — `step` pinned at 0, LCD_EN stuck high, no enable
+ * edge, and because LCD_ON/LCD_BLON are level-sensitive the panel lit up with
+ * nothing on it.
+ *
+ * Mappings go missing easily: the workspace only auto-assigns ports when
+ * `pinMappings.length === 0`, so a table left from a previous design suppresses
+ * auto-mapping, and a port `autoMapPort` cannot place stores an empty
+ * virtualComponent. Both are exercised here.
+ */
+const MAPPING_CONDITIONS: Array<[string, () => ParsedPort[]]> = [
+  ['auto-mapped', () => lcdMappings],
+  ['no pin mappings at all', () => []],
+  [
+    'mapped but KEY0 left blank',
+    () => lcdMappings.map((m) => (m.portName === 'KEY0' ? { ...m, virtualComponent: '' } : m)),
+  ],
+];
+for (const [label, build] of MAPPING_CONDITIONS) {
+  store().resetBoard();
+  useBoardStore.setState({ engine: lcdEngine, pinMappings: build(), simState: {} });
+  for (let i = 0; i < 200; i += 1) store().tickClock();
+
+  assert.strictEqual(store().simState.KEY0, 1, `${label}: KEY0 reads RELEASED, not held down`);
+  assert.strictEqual(lcdLines(store().lcd)[0].trimEnd(), 'ENGINEERING LAB', `${label}: line 1`);
+  assert.strictEqual(lcdLines(store().lcd)[1].trimEnd(), 'HELLO FPGA', `${label}: line 2`);
+  // The exact real-browser fingerprint must be unreachable.
+  assert.ok(
+    !(store().lcd.powered && !store().lcd.displayOn),
+    `${label}: never powered-but-blank`,
+  );
+}
+pass('a DE2 input reaches the design even when no pin mapping names it');
+
+// Active-low is still honoured once a mapping exists: pressing must register.
+store().resetBoard();
+useBoardStore.setState({ engine: lcdEngine, pinMappings: [], simState: {} });
+store().setKey(0, true);
+store().tickClock();
+assert.strictEqual(store().simState.KEY0, 0, 'an actually-pressed KEY0 still reads 0');
+store().setKey(0, false);
+store().tickClock();
+assert.strictEqual(store().simState.KEY0, 1, 'releasing restores 1');
+pass('the unmapped-input fallback does not override a real KEY press');
+
+/*
+ * THE RUN LOOP. Driven through the store's own auto-simulation, with the
+ * interval stubbed so the REAL callback is captured and fired — rather than a
+ * guessed schedule of hand-called actions, which is what hid this class of bug
+ * three times.
+ */
+type Timer = { id: number; fn: () => void };
+const liveTimers = new Map<number, Timer>();
+let nextTimerId = 1;
+const realSetInterval = globalThis.setInterval;
+const realClearInterval = globalThis.clearInterval;
+(globalThis as unknown as Record<string, unknown>).setInterval = (fn: () => void) => {
+  const id = nextTimerId++;
+  liveTimers.set(id, { id, fn });
+  return id as unknown as ReturnType<typeof setInterval>;
+};
+(globalThis as unknown as Record<string, unknown>).clearInterval = (id: number) => {
+  liveTimers.delete(id);
+};
+
+try {
+  store().resetBoard();
+  useBoardStore.setState({ engine: lcdEngine, pinMappings: [], simState: {} });
+
+  store().startAutoSimulation();
+  assert.strictEqual(liveTimers.size, 1, 'Run creates exactly one timer');
+
+  // Starting again must REPLACE, not accumulate — this is what a recompile does.
+  store().startAutoSimulation();
+  assert.strictEqual(liveTimers.size, 1, 'restarting replaces the timer instead of adding one');
+
+  const timer = [...liveTimers.values()][0];
+  const levels: number[] = [store().clockState];
+  for (let i = 0; i < 200; i += 1) {
+    timer.fn();
+    levels.push(store().clockState);
+  }
+  // Consecutive firings must alternate, with no repeat and no skip.
+  for (let i = 1; i < levels.length; i += 1) {
+    assert.notStrictEqual(levels[i], levels[i - 1], `firing ${i} changed the clock level`);
+  }
+  assert.strictEqual(
+    store().lcdDebug.cycle,
+    200,
+    'each timer firing produced exactly one evaluation — no duplicates, none skipped',
+  );
+  assert.ok(store().lcdDebug.fallingEdges > 25, 'the peripheral saw the enable edges');
+  assert.strictEqual(
+    lcdLines(store().lcd)[0].trimEnd(),
+    'ENGINEERING LAB',
+    'the example completes through the REAL run loop',
+  );
+  assert.strictEqual(lcdLines(store().lcd)[1].trimEnd(), 'HELLO FPGA', 'line 2 through the run loop');
+
+  store().stopAutoSimulation();
+  assert.strictEqual(liveTimers.size, 0, 'Pause leaves zero active timers');
+  assert.strictEqual(store().isSimRunning, false, 'Pause clears the running flag');
+
+  // And a reset while stopped must not resurrect a timer.
+  store().resetBoard();
+  assert.strictEqual(liveTimers.size, 0, 'reset leaves no timer behind');
+} finally {
+  (globalThis as unknown as Record<string, unknown>).setInterval = realSetInterval;
+  (globalThis as unknown as Record<string, unknown>).clearInterval = realClearInterval;
+}
+pass('the real run loop owns one timer and never skips or repeats a transition');
+
+// The diagnostics the panel publishes must actually track the chain.
+store().resetBoard();
+useBoardStore.setState({ engine: lcdEngine, pinMappings: [], simState: {} });
+for (let i = 0; i < 200; i += 1) store().tickClock();
+const dbg = store().lcdDebug;
+assert.ok(dbg.busSeen, 'the diagnostics record that an LCD bus was seen');
+assert.ok(dbg.fallingEdges >= 30, `the diagnostics counted the enable edges (${dbg.fallingEdges})`);
+assert.strictEqual(dbg.step, 62, 'the diagnostics expose the sequencer step');
+assert.ok(dbg.cycle >= 200, 'the diagnostics count simulation cycles');
+const dbgDom = render2d('artwork');
+assert.ok(/data-lcd-falling-edges="3\d"/.test(dbgDom), 'the edge count reaches the DOM');
+assert.ok(/data-lcd-step="62"/.test(dbgDom), 'the sequencer step reaches the DOM');
+assert.ok(/data-lcd-last-command="data 0x41"/.test(dbgDom), 'the last latched byte reaches the DOM');
+assert.ok(/data-lcd-bus-seen="true"/.test(dbgDom), 'bus presence reaches the DOM');
+assert.ok(/data-lcd-initialised="true"/.test(dbgDom), 'the driven flag reaches the DOM');
+assert.ok(/data-powered="true"/.test(dbgDom), 'module power reaches the DOM');
+
+/*
+ * Nothing is published that nothing checks. Every `data-` attribute the panel
+ * emits is asserted somewhere in this file, so a diagnostic cannot rot into
+ * dead scaffolding without a test noticing it is unclaimed.
+ */
+const PUBLISHED = [
+  'data-lcd-visible', 'data-line1', 'data-line2', 'data-display-on', 'data-powered',
+  'data-lcd-initialised', 'data-lcd-bus-seen', 'data-lcd-falling-edges',
+  'data-lcd-step', 'data-lcd-last-command',
+];
+const dbgEl = /<g data-testid="de2-lcd"([^>]*)>/.exec(dbgDom);
+assert.ok(dbgEl, 'the LCD panel element is in the rendered board');
+const emitted = [...dbgEl[1].matchAll(/\s(data-[a-z0-9-]+)=/g)].map((m) => m[1]);
+for (const name of new Set(emitted)) {
+  assert.ok(
+    PUBLISHED.includes(name) || name === 'data-testid',
+    `${name} is emitted by the LCD panel but nothing asserts it — claim it or drop it`,
+  );
+}
+for (const name of PUBLISHED) {
+  assert.ok(dbgDom.includes(`${name}=`), `${name} is asserted but no longer emitted`);
+}
+pass('the LCD diagnostics reach the DOM so the chain can be read in a browser');
+
+store().resetBoard();
+useBoardStore.setState({ engine: null, pinMappings: [], simState: {} });
+
 console.log(`--- DE2 Board Renderer Regression: PASS (${checks.length} checks) ---`);

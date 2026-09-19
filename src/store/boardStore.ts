@@ -13,6 +13,49 @@ import {
 import { collectLcdBus } from '../core/peripherals/lcdSignals';
 import { parseBitRef, readSignal, writeSignal } from '../core/simulator/vectorSignals';
 import { expandTarget, parseVirtualComponent } from '../board/virtualComponents';
+import { autoMapPort } from '../utils/parser/pinParser';
+
+/**
+ * What the LCD signal chain has actually done, as a value the panel can
+ * publish and a test can assert.
+ *
+ * These are not tracing hooks left in by accident. Each one answers a question
+ * that could otherwise only be answered by guessing at a runtime from outside
+ * it, and answering them wrongly is what made a blank display take three
+ * rounds of debugging: whether the design drives an LCD at all, whether its
+ * enable line is pulsing, what it last wrote, and whether its own sequencer is
+ * advancing. Cheap to keep, and the difference between a diagnosis and a
+ * hypothesis.
+ */
+export interface LcdDebug {
+  /** Evaluations since the last reset. One per clock transition, exactly. */
+  cycle: number;
+  /** Falling LCD_EN edges the peripheral actually latched on. */
+  fallingEdges: number;
+  /** The last byte latched, and whether it was a command or a character. */
+  lastByte: number;
+  lastWasCommand: boolean;
+  /**
+   * True once `collectLcdBus` has returned a bus for this design. Separates
+   * "this design has a blank display" from "this design has no display".
+   */
+  busSeen: boolean;
+  /**
+   * The design's own `step` register, when it has one. A driver that is stuck
+   * shows it here, which is the difference between a peripheral fault and a
+   * design that never got going.
+   */
+  step: number | null;
+}
+
+const INITIAL_LCD_DEBUG: LcdDebug = {
+  cycle: 0,
+  fallingEdges: 0,
+  lastByte: -1,
+  lastWasCommand: false,
+  busSeen: false,
+  step: null,
+};
 
 interface BoardState {
   // Inputs
@@ -23,6 +66,16 @@ interface BoardState {
   ledR: number[];     // 18 red LEDs: 0 or 1
   ledG: number[];     // 9 green LEDs: 0 or 1
   hex: number[][];    // 8 7-segment displays, each with 7 segments (active-low)
+
+  /**
+   * Diagnostics for the LCD signal chain, so the whole path can be read off
+   * one DOM element in a real browser instead of guessed at from a Node test.
+   *
+   * Kept in the store rather than inside `lcdController`: the controller is a
+   * pure decoder and must stay free of counters. Nothing here feeds back into
+   * simulation — it is recorded alongside, never read by, the peripheral.
+   */
+  lcdDebug: LcdDebug;
 
   /**
    * 16x2 character LCD. Decoded by the pure HD44780 emulator in
@@ -88,6 +141,7 @@ let simIntervalTimer: ReturnType<typeof setInterval> | null = null;
 
 export const useBoardStore = create<BoardState>((set, get) => ({
   lcd: createLcdState(),
+  lcdDebug: { ...INITIAL_LCD_DEBUG },
   switches: [...INITIAL_SWITCHES],
   keys: [...INITIAL_KEYS],
   ledR: [...INITIAL_LEDR],
@@ -205,12 +259,50 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       inputs['clk'] = state.clockState;
       inputs['CLK'] = state.clockState;
 
-      // Ensure all engine inputs are populated (fallback to existing simState value)
+      /*
+       * Any engine input still undriven gets one more chance to be recognised
+       * as DE2 hardware BEFORE falling back to a raw default.
+       *
+       * This matters far more than it looks. An undriven input used to default
+       * to 0, and KEY is ACTIVE-LOW — so a design whose reset is `~KEY0` was
+       * held permanently in reset the moment its pin mapping was missing or
+       * blank, with no diagnostic anywhere. That is what kept the LCD example's
+       * sequencer pinned at step 0: LCD_EN stayed high, no enable edge ever
+       * fell, and because LCD_ON/LCD_BLON are level-sensitive the panel lit up
+       * with nothing on it.
+       *
+       * Mappings go missing easily: the workspace only auto-assigns ports when
+       * `pinMappings.length === 0`, so a table left over from a previous design
+       * suppresses auto-mapping entirely, and `autoMapPort` returning null
+       * stores an empty virtualComponent.
+       *
+       * So a port literally NAMED after a DE2 input is now driven by that
+       * input's board state whether or not the mapping table says so — which is
+       * what a student naming a port `KEY0` expects, and it makes the board the
+       * single source for every recognised input. Only genuinely unrecognised
+       * names fall back to the previous value.
+       */
       if (state.engine?.inputs) {
         for (const inputName of state.engine.inputs) {
-          if (inputs[inputName] === undefined) {
-            inputs[inputName] = state.simState[inputName] ?? 0;
+          if (inputs[inputName] !== undefined) continue;
+
+          const implied = parseVirtualComponent(autoMapPort(inputName));
+          if (implied && (implied.family === 'SW' || implied.family === 'KEY')) {
+            const values = implied.family === 'SW' ? state.switches : state.keys;
+            const idle = implied.family === 'SW' ? 0 : 1;
+            for (const { signal, index } of expandTarget(implied, inputName, portWidth(inputName))) {
+              const ref = parseBitRef(signal);
+              if (ref) seedBank(ref.base, values, idle);
+              writeSignal(inputs, declaredInputs, signal, values[index] ?? idle, state.simState);
+            }
+            if (inputs[inputName] !== undefined) continue;
           }
+          if (implied && implied.family === 'CLOCK_50') {
+            inputs[inputName] = state.clockState;
+            continue;
+          }
+
+          inputs[inputName] = state.simState[inputName] ?? 0;
         }
       }
 
@@ -277,10 +369,26 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       const lcdBus = collectLcdBus(newState ?? {}, state.pinMappings);
       if (lcdBus) newLcd = lcdStep(state.lcd, lcdBus);
 
+      /*
+       * Diagnostics, recorded ALONGSIDE the peripheral and never read by it.
+       * The edge is recomputed here from the same pre-step level the controller
+       * saw, rather than inferred from the controller afterwards, so a change
+       * to either one can never quietly make the other lie.
+       */
+      const fell = lcdBus !== null && state.lcd.prevEn === 1 && (lcdBus.en ? 1 : 0) === 0;
+      const newLcdDebug: LcdDebug = {
+        cycle: state.lcdDebug.cycle + 1,
+        fallingEdges: state.lcdDebug.fallingEdges + (fell ? 1 : 0),
+        lastByte: fell && lcdBus ? lcdBus.data : state.lcdDebug.lastByte,
+        lastWasCommand: fell && lcdBus ? lcdBus.rs === 0 : state.lcdDebug.lastWasCommand,
+        busSeen: state.lcdDebug.busSeen || lcdBus !== null,
+        step: typeof newState?.step === 'number' ? newState.step : null,
+      };
+
       const newHistory = [...state.waveformHistory, { time: Date.now(), state: { ...newState, 'CLOCK_50': state.clockState } }];
       if (newHistory.length > 50) newHistory.shift();
 
-      return { simState: newState, ledR: newLedR, ledG: newLedG, hex: newHex, lcd: newLcd, waveformHistory: newHistory };
+      return { simState: newState, ledR: newLedR, ledG: newLedG, hex: newHex, lcd: newLcd, lcdDebug: newLcdDebug, waveformHistory: newHistory };
     } catch (err) {
       console.warn('[boardStore] runSimulationCycle error (state preserved):', err);
       return state;
@@ -305,12 +413,35 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     return { keys: newKeys };
   }),
 
-  tickClock: () => set((state) => {
+  /*
+   * Advances the clock and evaluates the design IN THE SAME TASK.
+   *
+   * This used to defer the evaluation with `setTimeout(..., 0)`. That is a
+   * silent edge-eater: if two `tickClock` calls land before the timer queue
+   * drains — which happens whenever a board re-render takes longer than the
+   * auto-simulation interval — the second toggle overwrites `clockState` and
+   * both queued evaluations then run against the same final level. One clock
+   * transition is simply never evaluated.
+   *
+   * For a counter that shows up as a skipped increment. For a peripheral that
+   * latches on an edge it is fatal: an LCD_EN pulse that lived entirely inside
+   * the skipped transition is never seen, so the LCD stays blank while its
+   * level-sensitive signals (LCD_ON / LCD_BLON) still get through — the glass
+   * lights up and no character ever appears.
+   *
+   * Evaluating synchronously makes "one evaluation per clock transition" an
+   * invariant of the store rather than something that depends on how busy the
+   * UI thread happens to be.
+   */
+  tickClock: () => {
+    const state = get();
     const newClock = state.clockState === 0 ? 1 : 0;
-    const newSimState = { ...state.simState, 'CLOCK_50': newClock, 'clk': newClock, 'CLK': newClock };
-    setTimeout(() => useBoardStore.getState().runSimulationCycle(), 0);
-    return { clockState: newClock, simState: newSimState };
-  }),
+    set({
+      clockState: newClock,
+      simState: { ...state.simState, 'CLOCK_50': newClock, 'clk': newClock, 'CLK': newClock },
+    });
+    get().runSimulationCycle();
+  },
 
   setLedR: (index, value) => set((state) => {
     const newLedR = [...state.ledR];
@@ -343,6 +474,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       hex: [...INITIAL_HEX],
       // Blank panel, cursor home, display state back to power-on defaults.
       lcd: resetLcdState(),
+      lcdDebug: { ...INITIAL_LCD_DEBUG },
       clockState: 0,
       simState: {},
       isSimRunning: false,
