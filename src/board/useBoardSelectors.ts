@@ -12,6 +12,7 @@
  */
 
 import { useShallow } from 'zustand/react/shallow';
+import { lcdCursor, lcdIsVisible, lcdLines } from '../core/peripherals/lcdController';
 import { useBoardStore } from '../store/boardStore';
 
 /** `1` when SW`index` is up. */
@@ -65,4 +66,58 @@ export function useToggleSwitch() {
 
 export function useSetKey() {
   return useBoardStore((s) => s.setKey);
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+ * 16 x 2 character LCD
+ * ──────────────────────────────────────────────────────────────────────── */
+
+export interface LcdView {
+  /** Exactly LCD_COLS characters. */
+  line1: string;
+  line2: string;
+  /** Powered AND display-on: whether the panel shows anything at all. */
+  visible: boolean;
+  backlight: boolean;
+  /** Block cursor position, or null when the design did not enable one. */
+  cursor: { row: number; col: number } | null;
+}
+
+/**
+ * Everything a renderer needs to draw the LCD, derived from the store's
+ * controller state.
+ *
+ * The derivation lives here rather than in the component so that both the
+ * shape of the data and the rule for "is this panel showing anything" have one
+ * definition. The renderer receives two strings of exactly `LCD_COLS`
+ * characters and never sees DDRAM, an address counter or a command byte.
+ *
+ * The selector returns only primitives so the shallow comparison actually
+ * bites: `lcdLines` builds new strings and `lcdCursor` a new object on every
+ * call, so returning them directly would report a change on every simulation
+ * tick even while the panel sits idle. The cursor is reassembled afterwards.
+ */
+export function useLcdView(): LcdView {
+  const flat = useBoardStore(
+    useShallow((s) => {
+      const [line1, line2] = lcdLines(s.lcd);
+      const cursor = lcdCursor(s.lcd);
+      return {
+        line1,
+        line2,
+        visible: lcdIsVisible(s.lcd),
+        backlight: s.lcd.backlight,
+        cursorRow: cursor?.row ?? -1,
+        cursorCol: cursor?.col ?? -1,
+      };
+    }),
+  );
+
+  return {
+    line1: flat.line1,
+    line2: flat.line2,
+    visible: flat.visible,
+    backlight: flat.backlight,
+    cursor: flat.cursorRow >= 0 ? { row: flat.cursorRow, col: flat.cursorCol } : null,
+  };
 }
