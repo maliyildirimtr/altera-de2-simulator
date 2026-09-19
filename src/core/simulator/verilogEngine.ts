@@ -1,5 +1,6 @@
 import { Parser } from './expression/parser';
 import { evaluateStmt, createSafeState, isEdgeActive, commitNextState } from './expression/evaluator';
+import { buildConstantTable } from './namedConstants';
 import type { EvalContext } from './expression/evaluator';
 
 export interface VerilogModule {
@@ -195,6 +196,15 @@ export function elaborateEngine(modules: Record<string, any>, topModule: string)
   let combinedRawAssignLogic = "";
   let combinedRawAlwaysLogic = "";
 
+  /*
+   * Named constants for the flattened design. `flatten` visits the top module
+   * first, so first-write-wins means a top-level constant is not shadowed by a
+   * submodule that happens to use the same name. Constants are compile-time
+   * values and are not net-renamed by the instance prefixing below, which is
+   * why they are merged by name rather than per instance.
+   */
+  const combinedConstants: Record<string, number> = {};
+
   const submoduleMirrors: { internal: string; external: string }[] = [];
 
   function flatten(modName: string, instPrefix: string, connections: Record<string, string> | null) {
@@ -257,6 +267,11 @@ export function elaborateEngine(modules: Record<string, any>, topModule: string)
       return res;
     }
 
+    const modConstants: Record<string, number> = mod.constants ?? {};
+    for (const [name, value] of Object.entries(modConstants)) {
+      if (!(name in combinedConstants)) combinedConstants[name] = value;
+    }
+
     if (mod.assignLogic) {
       combinedAssignLogic += `// --- Flattened ${modName} ${instPrefix} ---\n`;
       combinedAssignLogic += applyDict(mod.assignLogic) + '\n';
@@ -289,7 +304,15 @@ export function elaborateEngine(modules: Record<string, any>, topModule: string)
     const moduleAST = parser.parseModuleBody();
 
     const evaluate = (inputs: Record<string, number>, st: Record<string, number>) => {
-      const state = createSafeState(st);
+      /*
+       * Named constants form the BASE layer, with runtime state written over
+       * the top. Ordering matters: a constant must be visible to every
+       * expression, but must never mask a real signal that happens to share
+       * its name. Since constants are numbers in the ordinary state, they work
+       * in comparisons, arithmetic and case items with no special handling
+       * anywhere in the evaluator.
+       */
+      const state = createSafeState({ ...combinedConstants, ...st });
 
       // Inputs
       for (const i of topInputs) {
@@ -475,6 +498,13 @@ export interface InternalModuleDef {
   wires: string[];
   regs: string[];
   portWidths?: Record<string, number>;
+  /**
+   * Resolved `localparam` / `parameter` values for this module, as numbers.
+   * Seeded into the evaluation state so identifier resolution finds them by
+   * the same path it finds a wire — no expression text is ever rewritten.
+   * See `namedConstants.ts`.
+   */
+  constants?: Record<string, number>;
   assignLogic: string;
   rawAssignLogic: string;
   alwaysLogic: string;
@@ -723,12 +753,22 @@ export function compileVerilog(code: string): VerilogModule {
     const uniqueWires = Array.from(new Set(wires)).filter(Boolean);
     const uniqueRegs = Array.from(new Set(regs)).filter(Boolean);
 
+    /*
+     * Named constants. Resolved here, at compile time, from the module body.
+     * An unresolvable or circular declaration throws rather than defaulting to
+     * 0: a design running on a silently wrong constant is worse than one that
+     * refuses to compile, and that silent 0 is exactly what made the LCD
+     * example sit dead with no diagnostic.
+     */
+    const constants = buildConstantTable(bodyStr);
+
     modules[modName] = { 
       inputs: uniqueInputs, 
       outputs: uniqueOutputs, 
       wires: uniqueWires, 
       regs: uniqueRegs, 
       portWidths,
+      constants,
       assignLogic, 
       rawAssignLogic, 
       alwaysLogic,

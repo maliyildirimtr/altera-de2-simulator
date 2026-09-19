@@ -75,6 +75,8 @@ import {
 } from '../../../core/peripherals/lcdController';
 import { collectLcdBus, normaliseLcdSignal } from '../../../core/peripherals/lcdSignals';
 import { autoMapPort, parseQsf } from '../../../utils/parser/pinParser';
+import type { ParsedPort } from '../../../utils/parser/pinParser';
+import { NamedConstantError, buildConstantTable } from '../../../core/simulator/namedConstants';
 import { parseBitRef, readSignal, readVector, writeSignal } from '../../../core/simulator/vectorSignals';
 import { expandTarget, parseVirtualComponent } from '../../../board/virtualComponents';
 import { ISO, project, faceTransform, sevenSegmentShapes } from '../boardGeometry';
@@ -1371,6 +1373,236 @@ assert.ok(lcdVector, 'an LCD design with a packed data bus produces a bus');
 assert.strictEqual(lcdVector!.en, 1, 'LCD_EN still resolves');
 assert.strictEqual(lcdVector!.rs, 1, 'LCD_RS still resolves');
 pass('LCD signal resolution is unaffected by the vector fix');
+
+store().resetBoard();
+useBoardStore.setState({ engine: null, pinMappings: [], simState: {} });
+
+/* ────────────────────────────────────────────────────────────────────────
+ * 14. HDL named constants, and the LCD example on the real path
+ *
+ * The engine previously had no notion of `localparam` / `parameter`. An
+ * unknown identifier resolved to 0, so `if (step < LAST_STEP)` silently became
+ * `if (step < 0)` — never true. No compile error, just dead logic. That is
+ * what held LCD_EN high forever and blanked the display: the peripheral was
+ * fine and was simply never handed a transaction.
+ *
+ * Constants are now resolved at compile time and seeded into the evaluation
+ * state, so identifier resolution finds them the same way it finds a wire. No
+ * expression text is rewritten, which is why a constant cannot corrupt a
+ * comment, a string, or a longer identifier that contains its name.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+/** Runs a design for `posedges` clock edges through the production path. */
+function runDesign(source: string, posedges: number, mappings?: ParsedPort[]): void {
+  const built = compileVerilog(source);
+  assert.ok(built, 'design compiles');
+  store().resetBoard();
+  useBoardStore.setState({
+    engine: built,
+    pinMappings: mappings ?? [],
+    simState: {},
+  });
+  // tickClock toggles the clock; two toggles is one full cycle, so a posedge
+  // needs two. runSimulationCycle is invoked synchronously here for the same
+  // reason the browser defers it — one evaluation per clock transition.
+  for (let i = 0; i < posedges * 2; i += 1) {
+    store().tickClock();
+    store().runSimulationCycle();
+  }
+}
+
+const CONST_FORMS: Array<[string, string]> = [
+  ['localparam without type', 'localparam LAST = 62;'],
+  ['localparam int', 'localparam int LAST = 62;'],
+  ['parameter without type', 'parameter LAST = 62;'],
+  ['parameter int', 'parameter int LAST = 62;'],
+  ['localparam with width', "localparam [6:0] LAST = 7'd62;"],
+  ['localparam logic with width', "localparam logic [6:0] LAST = 7'd62;"],
+];
+for (const [label, decl] of CONST_FORMS) {
+  runDesign(
+    `module p (input CLOCK_50, output [6:0] OUT);
+  ${decl}
+  logic [6:0] step;
+  always_ff @(posedge CLOCK_50) begin
+    if (step < LAST) step <= step + 7'd1;
+  end
+  assign OUT = step;
+endmodule
+`,
+    6,
+  );
+  assert.strictEqual(store().simState.LAST, 62, `${label}: the constant resolves to 62`);
+  assert.strictEqual(store().simState.step, 6, `${label}: the counter advances past the comparison`);
+}
+pass('localparam and parameter resolve, with and without a type or width');
+
+// Arithmetic, and one constant defined from another.
+runDesign(
+  `module p (input CLOCK_50, output [7:0] OUT);
+  localparam WIDTH = 8;
+  localparam MAX = WIDTH - 1;
+  logic [7:0] acc;
+  always_ff @(posedge CLOCK_50) begin
+    if (acc < MAX) acc <= acc + 8'd1;
+  end
+  assign OUT = acc;
+endmodule
+`,
+  20,
+);
+assert.strictEqual(store().simState.WIDTH, 8, 'a constant used in arithmetic resolves');
+assert.strictEqual(store().simState.MAX, 7, 'a constant defined from another constant resolves');
+assert.strictEqual(store().simState.acc, 7, 'the design saturates at the derived constant');
+pass('named constants work in arithmetic and may reference each other');
+
+// Case items.
+runDesign(
+  `module p (input CLOCK_50, output [7:0] OUT);
+  localparam STATE_A = 2;
+  localparam STATE_B = 4;
+  logic [3:0] tick;
+  logic [7:0] code;
+  always_ff @(posedge CLOCK_50) begin
+    if (tick < 6) tick <= tick + 4'd1;
+  end
+  always_comb begin
+    case (tick)
+      STATE_A: code = 8'hAA;
+      STATE_B: code = 8'hBB;
+      default: code = 8'h11;
+    endcase
+  end
+  assign OUT = code;
+endmodule
+`,
+  4,
+);
+assert.strictEqual(store().simState.tick, 4, 'the counter reached the second labelled state');
+assert.strictEqual(store().simState.code, 0xbb, 'a named constant works as a case item');
+pass('named constants work as case labels');
+
+// Invalid declarations FAIL LOUDLY. Silently defaulting to 0 is the bug.
+assert.strictEqual(
+  buildConstantTable('localparam GOOD = 4; localparam ALSO = GOOD + 4;').ALSO,
+  8,
+  'a resolvable table builds',
+);
+/*
+ * A constant expression uses the engine's OWN expression language — there is
+ * no second, divergent one — so an operator the engine does not tokenise is
+ * not available in a constant either. It now fails loudly and by name instead
+ * of silently becoming 0, which is the whole point of this layer.
+ */
+assert.throws(
+  () => buildConstantTable('localparam SCALED = 4 * 2;'),
+  (err: unknown) =>
+    err instanceof NamedConstantError &&
+    err.constantName === 'SCALED' &&
+    /cannot evaluate at compile time/.test((err as Error).message),
+  'an operator outside the engine expression grammar is a clear error, not a zero',
+);
+assert.deepStrictEqual(buildConstantTable('wire x;'), {}, 'a design with no constants costs nothing');
+assert.throws(
+  () => buildConstantTable('localparam A = B + 1;\nlocalparam B = A;'),
+  (err: unknown) =>
+    err instanceof NamedConstantError && /circular/i.test((err as Error).message),
+  'a circular constant is rejected by name, not left to become 0',
+);
+assert.throws(
+  () => buildConstantTable('localparam BAD = ;'),
+  (err: unknown) => err instanceof NamedConstantError,
+  'a constant with no value is rejected',
+);
+// And the error escapes compileVerilog rather than producing a dead design.
+assert.throws(
+  () => compileVerilog('module p (output X);\n localparam A = B + 1;\n localparam B = A;\n assign X = 1\'b1;\nendmodule\n'),
+  (err: unknown) => err instanceof NamedConstantError,
+  'compiling a design with a circular constant fails loudly',
+);
+pass('unresolvable and circular constants are compile errors, never silent zeros');
+
+// A constant must not be substituted into a name that merely contains it.
+runDesign(
+  `module p (input CLOCK_50, output [7:0] OUT);
+  localparam LEN = 3;
+  logic [7:0] LENGTH;
+  always_ff @(posedge CLOCK_50) begin
+    LENGTH <= LEN + 8'd10;
+  end
+  assign OUT = LENGTH;
+endmodule
+`,
+  4,
+);
+assert.strictEqual(store().simState.LEN, 3, 'the short constant resolves');
+assert.strictEqual(
+  store().simState.LENGTH,
+  13,
+  'a signal whose name CONTAINS a constant name is untouched — no text substitution',
+);
+pass('constant resolution never rewrites a longer identifier that contains its name');
+
+/* ────────────────────────────────────────────────────────────────────────
+ * 15. DE2 LCD Hello on the production path
+ *
+ * The real bundled example, unmodified, through compileVerilog -> simulation
+ * cycles -> runSimulationCycle -> the LCD bus -> lcdController -> boardStore.
+ * No replayed bytes and no injected text: if the HDL does not perform the
+ * transactions, these assertions fail.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+const lcdExample = fs.readFileSync(
+  path.join(process.cwd(), 'src/examples/source/de2_lcd_hello.sv'),
+  'utf8',
+);
+assert.ok(
+  /localparam/.test(lcdExample),
+  'the example still uses the localparam it was written with — the engine supports it now',
+);
+
+const lcdEngine = compileVerilog(lcdExample);
+assert.ok(lcdEngine, 'the LCD example compiles');
+const lcdMappings: ParsedPort[] = [...(lcdEngine.inputs ?? []), ...(lcdEngine.outputs ?? [])].map(
+  (portName) => ({ portName, physicalPin: null, virtualComponent: autoMapPort(portName) }),
+);
+
+function runLcdExample(): void {
+  store().resetBoard();
+  useBoardStore.setState({ engine: lcdEngine, pinMappings: lcdMappings, simState: {} });
+  for (let i = 0; i < 200; i += 1) {
+    store().tickClock();
+    store().runSimulationCycle();
+  }
+}
+
+runLcdExample();
+const [helloLine1, helloLine2] = lcdLines(store().lcd);
+assert.strictEqual(helloLine1.trimEnd(), 'ENGINEERING LAB', 'line 1 comes from simulated HDL writes');
+assert.strictEqual(helloLine2.trimEnd(), 'HELLO FPGA', 'line 2 comes from simulated HDL writes');
+assert.strictEqual(helloLine1.length, LCD_COLS, 'line 1 is padded to the panel width');
+assert.strictEqual(helloLine2.length, LCD_COLS, 'line 2 is padded to the panel width');
+assert.ok(store().lcd.displayOn, 'the example turned the display on via 0x0C');
+assert.ok(store().lcd.powered, 'LCD_ON is asserted by the example');
+assert.strictEqual(store().lcd.unsupportedReads, 0, 'the example never attempts an LCD read');
+// The characters really did arrive as DDRAM writes, at the documented addresses.
+assert.strictEqual(store().lcd.ddram[0x00], 'E'.charCodeAt(0), 'line 1 starts at DDRAM 0x00');
+assert.strictEqual(store().lcd.ddram[0x40], 'H'.charCodeAt(0), 'line 2 starts at DDRAM 0x40');
+pass('the bundled LCD example writes ENGINEERING LAB / HELLO FPGA through the real simulator');
+
+// Board reset must blank it, and re-running must write it again.
+store().resetBoard();
+const [resetLine1, resetLine2] = lcdLines(store().lcd);
+assert.strictEqual(resetLine1, ' '.repeat(LCD_COLS), 'board reset blanks line 1');
+assert.strictEqual(resetLine2, ' '.repeat(LCD_COLS), 'board reset blanks line 2');
+assert.strictEqual(store().lcd.address, 0, 'board reset homes the cursor');
+assert.strictEqual(store().lcd.displayOn, false, 'board reset returns the display to power-on state');
+
+runLcdExample();
+const [againLine1, againLine2] = lcdLines(store().lcd);
+assert.strictEqual(againLine1, 'ENGINEERING LAB '.padEnd(LCD_COLS), 'line 1 is rewritten after a reset');
+assert.strictEqual(againLine2, 'HELLO FPGA'.padEnd(LCD_COLS), 'line 2 is rewritten after a reset');
+pass('board reset clears the LCD and the example rewrites it afterwards');
 
 store().resetBoard();
 useBoardStore.setState({ engine: null, pinMappings: [], simState: {} });
