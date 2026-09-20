@@ -55,16 +55,34 @@ import {
 } from '../../../board/board2dPresentation';
 import type { Board2DPresentation } from '../../../board/board2dPresentation';
 import {
+  ARTWORK_PLANE,
+  ARTWORK_SILHOUETTE,
   DE2_ARTWORK,
+  DE2_ARTWORK_ASPECT,
   DE2_ARTWORK_SRC,
+  DE2_ARTWORK_TRANSPARENT_SRC,
   HEX_CX,
   KEY_CX,
   LCD_ART,
   LED_GREEN_8,
   LED_GREEN_BANK_CX,
   LED_RED_CX,
+  PCB_BODY,
+  RAISED_PARTS_25D,
   SWITCH_CX,
+  ax,
+  ay,
+  partFootprint,
 } from '../../../board/de2ArtworkLayout';
+import {
+  SCENE,
+  SCENE_ASPECT,
+  SCENE_VIEWBOX,
+  heightUnits,
+  planeTransform25d,
+  project25d,
+} from '../../../board/de2Scene25D';
+import type { Board25DPresentation } from '../../../board/board25dPresentation';
 import {
   LCD_COLS,
   LCD_ROW_BASE,
@@ -1889,6 +1907,414 @@ for (const name of PUBLISHED) {
   assert.ok(dbgDom.includes(`${name}=`), `${name} is asserted but no longer emitted`);
 }
 pass('the LCD diagnostics reach the DOM so the chain can be read in a browser');
+
+store().resetBoard();
+useBoardStore.setState({ engine: null, pinMappings: [], simState: {} });
+
+/* ────────────────────────────────────────────────────────────────────────
+ * 18. The artwork 2.5D scene
+ *
+ * Semantic and structural, never pixel-perfect. A test that asserts a shadow's
+ * opacity locks the look and breaks on every visual change; these assert the
+ * things that must be true for the view to be CORRECT rather than for it to
+ * look like it does today.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+function render25d(presentation25d: Board25DPresentation): string {
+  return renderToStaticMarkup(
+    React.createElement(DE2BoardRenderer, {
+      mode: '2.5d' as const,
+      detail: 'high' as const,
+      presentation25d,
+    }),
+  );
+}
+
+store().resetBoard();
+useBoardStore.setState({ engine: null, pinMappings: [], simState: {} });
+
+const scene = render25d('artwork');
+
+assert.ok(scene.includes('data-testid="de2-board-2-5d"'), 'the 2.5D root carries its test hook');
+assert.ok(scene.includes('data-board-view="2.5d"'), 'the 2.5D root reports its view mode');
+assert.ok(
+  scene.includes('data-board-presentation="artwork"'),
+  'the 2.5D root reports which renderer drew it',
+);
+assert.ok(
+  render25d('vector').includes('data-board-view="2.5d"'),
+  'the vector 2.5D is still reachable as a fallback',
+);
+assert.notStrictEqual(
+  render25d('vector'),
+  scene,
+  'the two 2.5D presentations are different renderers, not the same output',
+);
+pass('the artwork 2.5D renderer mounts, and the vector 2.5D remains available');
+
+/* The transparent master, placed by the one mapping that bridges the files. */
+assert.ok(
+  scene.includes(DE2_ARTWORK_TRANSPARENT_SRC),
+  'the 2.5D scene draws the transparent artwork',
+);
+assert.ok(
+  !scene.includes('de2-board-final'),
+  'the 2.5D scene does not fall back to the cropped opaque artwork',
+);
+const plane = new RegExp(
+  `href="${DE2_ARTWORK_TRANSPARENT_SRC}" x="${ARTWORK_PLANE.x}" y="${ARTWORK_PLANE.y}"` +
+    ` width="${ARTWORK_PLANE.width}" height="${ARTWORK_PLANE.height}"`,
+);
+assert.ok(plane.test(scene), 'the artwork is placed at the calibrated plane offset');
+pass('the 2.5D scene is drawn from the transparent master at its calibrated placement');
+
+/*
+ * The PCB body is its own shape, not the alpha contour.
+ *
+ * This is the brief's hardest constraint, and it is checkable: if the board
+ * outline were the silhouette, the substrate would have to reach every edge of
+ * it. It must instead sit strictly INSIDE on all four sides, because the
+ * standoffs, the DC jack and the SD socket overhang the fibreglass.
+ */
+const sil = ARTWORK_SILHOUETTE;
+assert.ok(PCB_BODY.x > sil.x, 'the substrate starts inside the silhouette on the left');
+assert.ok(PCB_BODY.y > sil.y, 'the substrate starts inside the silhouette at the top');
+assert.ok(
+  PCB_BODY.x + PCB_BODY.width < sil.x + sil.width,
+  'the substrate ends inside the silhouette on the right',
+);
+assert.ok(
+  PCB_BODY.y + PCB_BODY.height < sil.y + sil.height,
+  'the substrate ends inside the silhouette at the bottom',
+);
+assert.ok(sil.y < 0, 'hardware overhangs the top edge of the board, which is why the master exists');
+assert.ok(sil.x + sil.width > 1, 'hardware overhangs the right edge of the board');
+assert.ok(scene.includes('data-pcb-edge="front"'), 'the substrate is extruded as its own layer');
+assert.ok(scene.includes('data-pcb-surface'), 'the substrate has a top face under the artwork');
+pass('PCB thickness follows the substrate, never the alpha silhouette');
+
+/*
+ * The anti-ghosting invariant.
+ *
+ * Lifting a crop uncovers the copy of the part still in the artwork. What
+ * hides it is the extruded face, and the ONLY reason that is safe without
+ * masking the artwork's alpha is that every part's lower edge sits over the
+ * board — never over the transparent background above it. If a future part
+ * breaks that, a dark rectangle appears in the empty sky, so it is asserted
+ * rather than remembered.
+ */
+for (const group of RAISED_PARTS_25D) {
+  assert.ok(group.parts.length > 0, `${group.id} lifts at least one part`);
+  assert.ok(group.heightMm > 0, `${group.id} has a real height`);
+  for (const part of group.parts) {
+    const bottom = part.y + part.height;
+    assert.ok(
+      bottom > PCB_BODY.y && bottom < PCB_BODY.y + PCB_BODY.height,
+      `${group.id}: a lifted part's lower edge must sit over the board (found ${bottom.toFixed(4)})`,
+    );
+    const foot = partFootprint(part);
+    assert.ok(
+      foot.x >= part.x - 1e-6 && foot.x + foot.width <= part.x + part.width + 1e-6,
+      `${group.id}: a footprint must lie inside its own crop`,
+    );
+    assert.ok(foot.width > 0, `${group.id}: a footprint has width`);
+  }
+}
+pass('every lifted part meets the board, so its extruded face can never fall on empty background');
+
+/* The face that hides the ghost is the face that shows the depth: one number. */
+const faceCount = occurrences(scene, 'data-raised-face=');
+const partCount = RAISED_PARTS_25D.reduce((n, g) => n + g.parts.length, 0);
+assert.strictEqual(faceCount, partCount, 'every lifted part is given exactly one extruded face');
+for (const group of RAISED_PARTS_25D) {
+  const drop = heightUnits(group.heightMm) * SCENE.lift;
+  const rect = new RegExp(`data-raised-face="${group.id}"[^>]*height="([\\d.]+)"`).exec(scene);
+  assert.ok(rect, `${group.id} renders an extruded face`);
+  assert.ok(
+    Math.abs(Number(rect[1]) - drop) < 0.01,
+    `${group.id}: the face height must equal the projected lift (${rect[1]} vs ${drop.toFixed(3)})`,
+  );
+}
+pass('each extruded face is exactly as tall as its own lift, so no height can leave a seam');
+
+/* The projection: shallow, top-down dominant, and derived from one angle. */
+assert.ok(
+  SCENE.tiltDeg >= 8 && SCENE.tiltDeg <= 15,
+  `the tilt stays in the shallow product-view band (${SCENE.tiltDeg}deg)`,
+);
+assert.ok(SCENE.depth > 0.9 && SCENE.depth < 1, 'the board plane is foreshortened, but barely');
+assert.ok(SCENE.lift > 0 && SCENE.lift < SCENE.depth, 'height lifts less than depth foreshortens');
+assert.ok(
+  Math.abs(SCENE.depth ** 2 + SCENE.lift ** 2 - 1) < 1e-9,
+  'depth and lift come from the same angle rather than being dialled in separately',
+);
+assert.strictEqual(planeTransform25d(0).includes('scale(1 '), true, 'the board plane is one scale');
+assert.ok(
+  !/\d+px/.test(scene),
+  'the scene carries no screen-pixel lengths, so depth scales with the board',
+);
+pass('the 2.5D projection is a shallow tilt in board space, from a single angle');
+
+/*
+ * The scene frame is derived from the geometry, so a taller part cannot end up
+ * clipped. Checked against the extremes rather than against the numbers.
+ */
+{
+  const left = ax(sil.x);
+  const right = ax(sil.x + sil.width);
+  assert.ok(SCENE_VIEWBOX.x < left, 'the frame contains the leftmost hardware');
+  assert.ok(SCENE_VIEWBOX.x + SCENE_VIEWBOX.width > right, 'the frame contains the rightmost hardware');
+  let highest = Infinity;
+  let lowest = -Infinity;
+  for (const group of RAISED_PARTS_25D) {
+    const h = heightUnits(group.heightMm);
+    for (const part of group.parts) {
+      highest = Math.min(highest, project25d(0, ay(part.y), h).y);
+      lowest = Math.max(lowest, project25d(0, ay(part.y + part.height), 0).y);
+    }
+  }
+  assert.ok(SCENE_VIEWBOX.y < highest, 'the frame contains the tallest lifted part');
+  assert.ok(SCENE_VIEWBOX.y + SCENE_VIEWBOX.height > lowest, 'the frame contains the near edge');
+  assert.ok(
+    SCENE_ASPECT > DE2_ARTWORK_ASPECT,
+    'the tilted scene is proportionally wider than the flat board',
+  );
+}
+pass('the scene frame is computed from the geometry it has to contain');
+
+/* Live overlays must sit in the plane of the part they belong to. */
+for (const [id, needle] of [
+  ['hex', 'data-overlay="hex"'],
+  ['lcd', 'data-testid="de2-lcd"'],
+  ['switches', 'data-testid="de2-switch-17"'],
+  ['keys', 'data-testid="de2-key-3"'],
+] as const) {
+  const open = scene.indexOf(`data-scene-raised="${id}"`);
+  assert.ok(open > -1, `${id} is a raised group`);
+  const next = scene.indexOf('data-scene-raised="', open + 1);
+  const end = next === -1 ? scene.length : next;
+  assert.ok(
+    scene.slice(open, end).includes(needle),
+    `the ${id} overlay is drawn in the raised plane of the part it belongs to`,
+  );
+}
+assert.ok(
+  scene.indexOf('data-overlay="led"') < scene.indexOf('data-scene-raised='),
+  'the LEDs stay on the board plane rather than being lifted',
+);
+pass('live overlays ride at the height of the hardware they are drawn on');
+
+/*
+ * The HEX designators are the one row of silkscreen printed above its part, so
+ * they are lifted with the modules; everything else stays on the board. Both
+ * copies exist — the flat one is covered — so the count is doubled here and
+ * unchanged in 2D.
+ */
+assert.strictEqual(
+  occurrences(scene, 'data-silk-labels="hex"'),
+  2,
+  '2.5D draws the HEX designators on the board and again at the modules height',
+);
+assert.strictEqual(
+  occurrences(render2d('artwork'), 'data-silk-labels="hex"'),
+  1,
+  'the 2D board is unchanged: one HEX designator row, on the board',
+);
+for (let i = 0; i < 8; i += 1) {
+  assert.ok(scene.includes(`>HEX${i}</text>`), `HEX${i} is still labelled in 2.5D`);
+}
+pass('the HEX designators survive the modules being raised');
+
+/* ── One simulation, two renderers ──
+   Drive the store, then assert both views report the same board. */
+store().resetBoard();
+store().toggleSwitch(3);
+store().toggleSwitch(11);
+store().setKey(1, true);
+store().setLedR(7, 1);
+store().setLedG(2, 1);
+
+const flatBoard = render2d('artwork');
+const tilted = render25d('artwork');
+
+for (const [name, needle] of [
+  ['SW3 raised', /data-testid="de2-switch-3"[^>]*aria-checked="true"/],
+  ['SW11 raised', /data-testid="de2-switch-11"[^>]*aria-checked="true"/],
+  ['SW0 lowered', /data-testid="de2-switch-0"[^>]*aria-checked="false"/],
+  ['KEY1 pressed', /data-testid="de2-key-1"[^>]*data-active="true"/],
+  ['KEY0 released', /data-testid="de2-key-0"[^>]*data-active="false"/],
+] as const) {
+  assert.ok(needle.test(flatBoard), `2D shows ${name}`);
+  assert.ok(needle.test(tilted), `2.5D shows ${name}`);
+}
+assert.strictEqual(
+  occurrences(tilted, 'role="switch"'),
+  18,
+  '2.5D exposes all 18 switches as controls',
+);
+assert.strictEqual(occurrences(tilted, 'aria-label="Press KEY'), 4, '2.5D exposes all 4 keys');
+assert.strictEqual(
+  occurrences(tilted, 'tabindex="0"'),
+  22,
+  '2.5D keeps every control keyboard reachable',
+);
+pass('switches, keys and LEDs read identically in 2D and 2.5D, from the one store');
+
+/* Vector HEX output, through the real compile + auto-map path, seen in 2.5D. */
+{
+  const digits = [
+    [0, 0, 0, 0, 0, 0, 1], // 0
+    [1, 0, 0, 1, 1, 1, 1], // 1
+    [0, 0, 1, 0, 0, 1, 0], // 2
+    [0, 0, 0, 0, 1, 1, 0], // 3
+    [1, 0, 0, 1, 1, 0, 0], // 4
+    [0, 1, 0, 0, 1, 0, 0], // 5
+    [0, 1, 0, 0, 0, 0, 0], // 6
+    [0, 0, 0, 1, 1, 1, 1], // 7
+  ];
+  const pack = (bits: number[]): number =>
+    bits.reduce((v, bit, s) => (bit ? v | (1 << s) : v), 0);
+
+  // A real design, compiled by the real engine: HEXn shows digit n, so the
+  // board reads 76543210 from HEX7 down to HEX0.
+  const body = digits
+    .map((bits, d) => `  assign HEX${d} = 7'd${pack(bits)};`)
+    .join('\n');
+  const ports = digits.map((_, d) => `  output [6:0] HEX${d}`).join(',\n');
+  const engine = compileVerilog(`module de2_hex_all_digits (\n${ports}\n);\n${body}\nendmodule\n`);
+  assert.ok(engine, 'the eight-display design compiles');
+
+  // Mapped the way the workspace maps a design with no .qsf.
+  const mappings: ParsedPort[] = digits.map((_, d) => ({
+    portName: `HEX${d}`,
+    physicalPin: null,
+    virtualComponent: autoMapPort(`HEX${d}`) ?? '',
+  }));
+
+  store().resetBoard();
+  useBoardStore.setState({ engine, pinMappings: mappings, simState: {} });
+  store().runSimulationCycle();
+
+  for (let d = 0; d < 8; d += 1) {
+    assert.deepStrictEqual([...store().hex[d]], digits[d], `HEX${d} holds digit ${d}`);
+  }
+
+  const shown = render25d('artwork');
+  for (let d = 0; d < 8; d += 1) {
+    assert.ok(shown.includes(`data-testid="de2-hex-${d}"`), `HEX${d} is drawn in the 2.5D scene`);
+  }
+  const lit = digits.reduce((n, bits) => n + bits.filter((b) => b === 0).length, 0);
+  assert.strictEqual(
+    occurrences(shown, 'data-lit="true"'),
+    lit,
+    'the 2.5D scene lights exactly the segments the packed vector outputs asked for',
+  );
+  assert.strictEqual(
+    occurrences(render2d('artwork'), 'data-lit="true"'),
+    lit,
+    'and 2D lights exactly the same ones, from the same store',
+  );
+  pass('the 76543210 vector HEX diagnostic reads correctly in the 2.5D scene');
+}
+
+/* LCD text, through the real controller, on the projected glass. */
+{
+  store().resetBoard();
+  let lcd = createLcdState();
+  const write = (rs: number, data: number): void => {
+    lcd = lcdStep(lcd, { rs, rw: 0, en: 1, data, on: 1, blon: 1 });
+    lcd = lcdStep(lcd, { rs, rw: 0, en: 0, data, on: 1, blon: 1 });
+  };
+  write(0, 0x38);
+  write(0, 0x0c);
+  write(0, 0x01);
+  write(0, 0x80);
+  for (const ch of 'ENGINEERING LAB') write(1, ch.charCodeAt(0));
+  write(0, 0xc0);
+  for (const ch of 'HELLO FPGA') write(1, ch.charCodeAt(0));
+  useBoardStore.setState({ lcd });
+
+  const withText = render25d('artwork');
+  assert.ok(withText.includes('data-line1="ENGINEERING LAB "'), '2.5D publishes LCD line 1');
+  assert.ok(withText.includes('data-line2="HELLO FPGA      "'), '2.5D publishes LCD line 2');
+  assert.ok(withText.includes('data-lcd-visible="true"'), 'the 2.5D panel reports itself lit');
+  const rows = withText.match(/<g data-lcd-row="\d">/g);
+  assert.strictEqual(rows?.length, 2, 'both character rows are drawn on the projected glass');
+  for (const ch of ['E', 'N', 'G', 'L', 'A', 'B', 'H', 'O', 'F', 'P']) {
+    assert.ok(withText.includes(`>${ch}</text>`), `'${ch}' is a real text node in the 2.5D scene`);
+  }
+  pass('the LCD renders ENGINEERING LAB / HELLO FPGA on the raised module in 2.5D');
+}
+
+/* ── Switching view must not disturb the simulation ── */
+{
+  const before = {
+    switches: [...store().switches],
+    keys: [...store().keys],
+    hex: store().hex.map((h) => [...h]),
+    ledR: [...store().ledR],
+    ledG: [...store().ledG],
+    lcd: store().lcd,
+    clock: store().clockState,
+    sim: store().simState,
+  };
+  render2d('artwork');
+  render25d('artwork');
+  render2d('artwork');
+  render25d('vector');
+  render('3d');
+  render2d('artwork');
+
+  assert.deepStrictEqual(store().switches, before.switches, 'switch state survives view switching');
+  assert.deepStrictEqual(store().keys, before.keys, 'key state survives view switching');
+  assert.deepStrictEqual(store().hex, before.hex, 'HEX values survive view switching');
+  assert.deepStrictEqual(store().ledR, before.ledR, 'LEDR survives view switching');
+  assert.deepStrictEqual(store().ledG, before.ledG, 'LEDG survives view switching');
+  assert.strictEqual(store().lcd, before.lcd, 'the LCD is not even re-decoded by a view switch');
+  assert.strictEqual(store().clockState, before.clock, 'the clock is not restarted');
+  assert.strictEqual(store().simState, before.sim, 'the simulation state object is untouched');
+  pass('2D -> 2.5D -> 2D is a renderer swap and nothing else');
+}
+
+/* Reset reaches the 2.5D view like any other. */
+store().resetBoard();
+assert.deepStrictEqual(store().switches, Array(18).fill(0), 'reset lowers every switch');
+assert.deepStrictEqual(store().keys, Array(4).fill(1), 'reset releases every key (active-low high)');
+{
+  const cleared = render25d('artwork');
+  assert.ok(
+    /data-testid="de2-switch-3"[^>]*aria-checked="false"/.test(cleared),
+    'the 2.5D scene shows the reset switches',
+  );
+  assert.ok(cleared.includes('data-line1="                "'), 'the 2.5D LCD reads blank after reset');
+  assert.ok(cleared.includes('data-lcd-visible="false"'), 'the reset 2.5D panel is dark');
+}
+pass('board reset clears the 2.5D view through the same store');
+
+/* Zoom and fit: the DOM box each renderer asks for. */
+{
+  const art = boardRenderSize('2.5d', 'artwork', 'artwork');
+  const vec = boardRenderSize('2.5d', 'artwork', 'vector');
+  const flat2d = boardRenderSize('2d', 'artwork');
+  assert.strictEqual(art.width, flat2d.width, 'the artwork 2.5D shares the 2D render width');
+  assert.strictEqual(vec.width, flat2d.width, 'the vector 2.5D shares the 2D render width');
+  assert.ok(art.height > 0 && art.height < flat2d.height, 'the tilted board is shorter than the flat one');
+  assert.notStrictEqual(art.height, vec.height, 'each 2.5D renderer reports its own proportions');
+  pass('each 2.5D presentation reports its own DOM box to the viewport');
+}
+
+/* The 3D placeholder is untouched by any of this. */
+{
+  const placeholder = render('3d');
+  assert.ok(
+    placeholder.includes('data-testid="de2-board-3d-placeholder"'),
+    'the 3D placeholder still renders',
+  );
+  assert.ok(!placeholder.includes('de2-board-2-5d'), 'the 3D placeholder is not the 2.5D scene');
+  assert.ok(!placeholder.includes(DE2_ARTWORK_TRANSPARENT_SRC), '3D draws no board artwork');
+  assert.strictEqual(isBoardViewModeEnabled('3d'), false, '3D is still disabled');
+  pass('the 3D placeholder is unchanged and still safely disabled');
+}
 
 store().resetBoard();
 useBoardStore.setState({ engine: null, pinMappings: [], simState: {} });

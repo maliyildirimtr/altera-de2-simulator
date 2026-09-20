@@ -339,3 +339,409 @@ export const SILK_PATCH = {
   width: 0.136317,
   height: 0.094213,
 } as const;
+
+/* ────────────────────────────────────────────────────────────────────────
+ * Transparent artwork, and the board geometry the 2.5D scene extrudes
+ *
+ * ── Why a second artwork file ─────────────────────────────────────────────
+ * The delivered 2D artwork is a CROP: it was trimmed to the PCB, which cuts
+ * off the connectors, jacks and standoffs that overhang the substrate on the
+ * real board. Flat, that loss is invisible. Tilted, it is not — a board whose
+ * ports stop exactly at the PCB edge reads as a sticker.
+ *
+ * The transparent master is the same render, uncropped, with everything
+ * outside the hardware alpha-zero. So the 2.5D view can show the overhang,
+ * and the board can sit on a background instead of inside a rectangle.
+ *
+ * ── Why it needs no second calibration ───────────────────────────────────
+ * Measured rather than assumed: the transparent file is the FULL source
+ * render, and the delivered 2D artwork is its crop at (104, 152) sized
+ * 3888 x 2972 — which is exactly the viewBox the 2D renderer already uses.
+ * So placing the transparent image at (-104, -152) at 4096 x 3277 inside that
+ * same viewBox lands its board precisely where the 2D artwork's board sits.
+ *
+ * Every existing normalised coordinate in this file therefore applies to the
+ * transparent artwork unchanged, and the 2.5D renderer introduces no second
+ * coordinate system. The mapping was verified end-to-end rather than trusted:
+ * segmenting the switch housings and the tact bodies out of the transparent
+ * file and normalising them through this placement reproduces `SWITCH_CX` and
+ * `KEY_CX` — measured independently, from the cropped artwork — to within
+ * 0.0004 of the board width, about 1.6 px in the source render.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+/** Runtime transparent artwork. Alpha-preserving WebP; PNG master alongside. */
+export const DE2_ARTWORK_TRANSPARENT_SRC = '/boards/de2/de2-board-transparent.webp';
+
+/** The transparent PNG master, kept for re-export and re-measurement. */
+export const DE2_ARTWORK_TRANSPARENT_MASTER = '/boards/de2/de2-board-transparent.png';
+
+/**
+ * Where the transparent artwork sits in the artwork viewBox, in viewBox units.
+ *
+ * These four numbers are the entire bridge between the two files. They are the
+ * crop documented above, negated: the 2D artwork is the source render cropped
+ * at (104, 152), so the uncropped render begins 104 units left and 152 units
+ * above the viewBox origin and extends to the full 4096 x 3277.
+ */
+export const ARTWORK_PLANE = { x: -104, y: -152, width: 4096, height: 3277 } as const;
+
+/**
+ * The full hardware silhouette, normalised, including everything that
+ * overhangs the substrate. Measured from the master's alpha channel.
+ *
+ * Used ONLY to size the 2.5D scene so nothing is clipped. It is emphatically
+ * NOT the board outline — see `PCB_BODY`.
+ */
+export const ARTWORK_SILHOUETTE = {
+  x: -0.018776,
+  y: -0.040377,
+  width: 1.034208,
+  height: 1.038358,
+} as const;
+
+/**
+ * The PCB substrate, and nothing else.
+ *
+ * ── Why this is measured separately from the alpha ───────────────────────
+ * The alpha contour is the whole board ASSEMBLY. Extruding it would put PCB
+ * thickness around the DC jack, the VGA shield, the SD socket and all four
+ * corner standoffs — every one of which overhangs the substrate — and the
+ * result is a thick lip tracing the outline of the hardware rather than a
+ * board with an edge. The two shapes are genuinely different, and only one of
+ * them is fibreglass.
+ *
+ * So the substrate was segmented by its own solder-mask colour and its four
+ * straight edges taken as the mode of the per-scanline extents, which is
+ * robust to the parts sitting on top of them: 81% of scanlines agree on the
+ * left edge, 72% on the right, 98% on the bottom.
+ *
+ * The corners are square. That was settled by rendering the detected
+ * rectangle back over the artwork and looking at it, after two automated
+ * radius probes disagreed — 127 px against 33 px. Both were reading the
+ * corner standoffs, which overhang the board on all four corners, rather than
+ * the board. A hair of radius is kept so the extruded edge does not come to a
+ * hard point.
+ */
+export const PCB_BODY = {
+  x: 0.001783,
+  y: 0.004486,
+  width: 0.996434,
+  height: 0.992732,
+  /** ~0.6 mm. Enough to soften the extrusion, too small to read as a fillet. */
+  radius: 0.0029,
+} as const;
+
+/**
+ * Solder-mask colours, sampled from the artwork's own lower edge so the
+ * extruded side cannot disagree with the surface above it.
+ *
+ * One light direction for the whole scene — upper left — so every side face
+ * darkens downward.
+ */
+export const PCB_SUBSTRATE = {
+  surface: '#0A3757',
+  faceTop: '#072B44',
+  faceBottom: '#041622',
+} as const;
+
+/**
+ * One piece of artwork the 2.5D scene lifts off the board.
+ *
+ * `x/y/width/height` is the CROP — what gets lifted. `footX/footWidth` is
+ * where the part actually meets the board, when that is narrower than the
+ * crop, and it is what the extruded face is drawn to. The distinction is not
+ * pedantic: the DC jack's crop is 10% wider than the jack, and a face drawn
+ * to the crop puts a black bar across the board on either side of it.
+ *
+ * `faceTop/faceBottom` are sampled from this part's own lower body. A single
+ * grey for a whole group paints the ivory switch housings and the pink MIC
+ * jack with the same dark shadow, which is the difference between a part with
+ * a side and a part with a hole under it.
+ */
+export interface ArtworkPart {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  footX?: number;
+  footWidth?: number;
+  faceTop?: string;
+  faceBottom?: string;
+}
+
+/**
+ * A group of artwork lifted to the same height.
+ *
+ * `parts` is a UNION, not a bounding box, and that distinction is load
+ * bearing. The VGA connector is a T — a wide shield above a narrower shell —
+ * and its bounding box has two corners of bare PCB in it. Lifting the box
+ * would carry two tabs of board into the air with the connector. Two rects
+ * that follow the part do not.
+ */
+export interface RaisedPartGroup {
+  id: string;
+  /** Height above the PCB in millimetres, from the real part. */
+  heightMm: number;
+  parts: readonly ArtworkPart[];
+  /** Fallback side colours, for groups whose members are identical. */
+  faceTop: string;
+  faceBottom: string;
+}
+
+/**
+ * Body of one slide switch, and of one tact switch, as the artwork draws them.
+ *
+ * Deliberately not `SWITCH_ART.bodyWidth`: that value is the hit area, inset
+ * inside the moulding on purpose. A crop must contain the whole housing or it
+ * shears the part in half, so these are the measured outer bounds — the widest
+ * and tallest found across the bank, so no member is clipped by a size taken
+ * from its neighbour.
+ */
+export const SWITCH_BODY_25D = { width: 0.025789, height: 0.088291, top: 0.884522 } as const;
+export const KEY_BODY_25D = { width: 0.054595, height: 0.075729, top: 0.898161 } as const;
+
+/** Per-member parts for a bank, centred on the calibration this file owns. */
+function bankParts(
+  centres: readonly number[],
+  body: { width: number; height: number; top: number },
+): readonly ArtworkPart[] {
+  return centres.map((cx) => ({
+    x: cx - body.width / 2,
+    y: body.top,
+    width: body.width,
+    height: body.height,
+  }));
+}
+
+/**
+ * What gains height, and how much.
+ *
+ * Heights are the real parts' heights in millimetres, so the hierarchy is the
+ * board's own rather than an arranged one. The scene scales them; see
+ * `de2Scene25D.ts`.
+ *
+ * What is NOT here is as considered as what is. The LED lenses stand about
+ * 0.9 mm off the board: at this tilt that projects to under a pixel, so
+ * lifting them would cost 27 clipped crops and 27 extruded faces to move
+ * nothing, while risking a visible seam under every lens. They stay on the
+ * board plane, drawn by the same overlay the 2D view uses. So do the
+ * resistors, the small capacitors, the crystal cans, the voltage regulators,
+ * the memory packages, the silkscreen and the traces. A part that cannot
+ * separate from the artwork cleanly is better left in it.
+ */
+export const RAISED_PARTS_25D: readonly RaisedPartGroup[] = [
+  {
+    id: 'connectors',
+    heightMm: 11,
+    /** Tall hardware along the top edge. Several of these overhang the substrate, which is the reason the transparent master exists. */
+    faceTop: '#5A6268',
+    faceBottom: '#34393C',
+    parts: [
+      // DC IN
+      {
+        x: 0.048422, y: -0.040377, width: 0.124554, height: 0.170121,
+        footX: 0.055556, footWidth: 0.111385,
+        faceTop: '#666464', faceBottom: '#3C3B3A',
+      },
+      // USB device
+      {
+        x: 0.175446, y: 0.014177, width: 0.070233, height: 0.109825,
+        footX: 0.180384, footWidth: 0.059808,
+        faceTop: '#737270', faceBottom: '#434241',
+      },
+      // USB blaster
+      {
+        x: 0.247325, y: 0.028174, width: 0.066667, height: 0.100135,
+        footX: 0.251440, footWidth: 0.057888,
+        faceTop: '#767472', faceBottom: '#454442',
+      },
+      // MIC
+      {
+        x: 0.314815, y: -0.005922, width: 0.045816, height: 0.133513,
+        footX: 0.318107, footWidth: 0.041975,
+        faceTop: '#935267', faceBottom: '#56303C',
+      },
+      // LINE IN
+      {
+        x: 0.368587, y: 0.015971, width: 0.042250, height: 0.108031,
+        footX: 0.370233, footWidth: 0.040329,
+        faceTop: '#0A5E92', faceBottom: '#053755',
+      },
+      // LINE OUT
+      {
+        x: 0.422908, y: -0.005563, width: 0.043621, height: 0.130283,
+        footX: 0.424280, footWidth: 0.041701,
+        faceTop: '#73905B', faceBottom: '#435435',
+      },
+      // VIDEO IN
+      {
+        x: 0.473388, y: -0.018484, width: 0.053498, height: 0.120233,
+        faceTop: '#6C6967', faceBottom: '#3F3D3C',
+      },
+      // VGA shield
+      {
+        x: 0.545267, y: -0.021714, width: 0.145405, height: 0.053477,
+        faceTop: '#3A4D5C', faceBottom: '#222D36',
+      },
+      // VGA shell
+      {
+        x: 0.582030, y: 0.031763, width: 0.076818, height: 0.088650,
+        faceTop: '#033055', faceBottom: '#011C31',
+      },
+      // ETHERNET
+      {
+        x: 0.700549, y: -0.015253, width: 0.082305, height: 0.148228,
+        footX: 0.700549, footWidth: 0.079835,
+        faceTop: '#767473', faceBottom: '#454443',
+      },
+      // RS-232
+      {
+        x: 0.787517, y: -0.028892, width: 0.153086, height: 0.142844,
+        footX: 0.787517, footWidth: 0.148971,
+        faceTop: '#4A4847', faceBottom: '#2B2A2A',
+      },
+      // USB host
+      {
+        x: 0.945542, y: 0.085240, width: 0.063923, height: 0.101570,
+        footX: 0.955144, footWidth: 0.048834,
+        faceTop: '#777675', faceBottom: '#464544',
+      },
+    ],
+  },
+  {
+    id: 'gpio',
+    heightMm: 8.4,
+    /** Shrouded 2x20 headers and their socket strips. */
+    faceTop: '#353332',
+    faceBottom: '#1F1E1D',
+    parts: [
+      // GPIO 0
+      {
+        x: 0.842112, y: 0.176402, width: 0.054595, height: 0.413459,
+        footX: 0.842661, footWidth: 0.053498,
+        faceTop: '#262421', faceBottom: '#161513',
+      },
+      // GPIO 1
+      {
+        x: 0.931824, y: 0.197218, width: 0.057339, height: 0.392284,
+        faceTop: '#222021', faceBottom: '#141313',
+      },
+      // socket strip 0
+      {
+        x: 0.817970, y: 0.229161, width: 0.017284, height: 0.345985,
+        footX: 0.818793, footWidth: 0.016187,
+        faceTop: '#4D4C4A', faceBottom: '#2D2C2B',
+      },
+      // socket strip 1
+      {
+        x: 0.911797, y: 0.229161, width: 0.015364, height: 0.345985,
+        faceTop: '#413F3E', faceBottom: '#262524',
+      },
+    ],
+  },
+  {
+    id: 'lcd',
+    heightMm: 9.4,
+    /** The 16 x 2 module as ONE assembly: frame, bezel, mounting ears and glass together, because that is how it is bolted to the board. */
+    faceTop: '#3B4A3C',
+    faceBottom: '#222B23',
+    parts: [
+      // LCD module
+      {
+        x: 0.056900, y: 0.488600, width: 0.349300, height: 0.167300,
+        // Clamped to the crop: the segmentation that found this footprint
+        // works in source pixels, and rounding put its left edge a quarter of
+        // a thousandth outside the crop it belongs to. A face drawn wider than
+        // the part it stands under is exactly what the footprint exists to
+        // prevent, so the measurement is trimmed rather than trusted.
+        footX: 0.056900, footWidth: 0.339671,
+        faceTop: '#3B4A3C', faceBottom: '#222B23',
+      },
+    ],
+  },
+  {
+    id: 'hex',
+    heightMm: 7.2,
+    /** Three housings, eight digits. HEX7-6, HEX5-4 and HEX3-0 share packages on the real DE2, and the artwork draws them that way. */
+    faceTop: '#675654',
+    faceBottom: '#3C3231',
+    parts: [
+      // HEX7-6
+      {
+        x: 0.027800, y: 0.734100, width: 0.089200, height: 0.079000,
+        faceTop: '#655755', faceBottom: '#3B3331',
+      },
+      // HEX5-4
+      {
+        x: 0.136500, y: 0.733400, width: 0.092200, height: 0.079700,
+        faceTop: '#655453', faceBottom: '#3B3130',
+      },
+      // HEX3-0
+      {
+        x: 0.286800, y: 0.734100, width: 0.149800, height: 0.078600,
+        faceTop: '#6B5856', faceBottom: '#3F3332',
+      },
+    ],
+  },
+  {
+    id: 'sdcard',
+    heightMm: 3.0,
+    /** Push-push SD socket. Its shell overhangs the right-hand edge. */
+    faceTop: '#727170',
+    faceBottom: '#434241',
+    parts: [
+      // SD CARD
+      {
+        x: 0.858299, y: 0.600269, width: 0.140466, height: 0.176223,
+        footX: 0.859671, footWidth: 0.138272,
+        faceTop: '#727170', faceBottom: '#434241',
+      },
+    ],
+  },
+  {
+    id: 'fpga',
+    heightMm: 2.6,
+    /** Cyclone II EP2C35F672C6. A BGA sits low; this is the smallest lift in the scene that still reads as a package on a board. */
+    faceTop: '#2E3031',
+    faceBottom: '#1B1C1C',
+    parts: [
+      // Cyclone II
+      {
+        x: 0.608642, y: 0.440556, width: 0.147599, height: 0.185195,
+        footX: 0.609191, footWidth: 0.145405,
+        faceTop: '#2E3031', faceBottom: '#1B1C1C',
+      },
+    ],
+  },
+  {
+    id: 'switches',
+    heightMm: 4,
+    /** SW17..SW0. The housing rises; the lever inside it is the live part. */
+    faceTop: '#7B7876',
+    faceBottom: '#484644',
+    parts: bankParts(SWITCH_CX, SWITCH_BODY_25D),
+  },
+  {
+    id: 'keys',
+    heightMm: 3.6,
+    /** KEY3..KEY0. Stainless bodies; the plunger is the live part. */
+    faceTop: '#767371',
+    faceBottom: '#454342',
+    parts: bankParts(KEY_CX, KEY_BODY_25D),
+  },
+];
+
+/** Lookup by id, so a renderer can ask for one group without scanning. */
+export function raisedPart(id: string): RaisedPartGroup {
+  const found = RAISED_PARTS_25D.find((p) => p.id === id);
+  if (!found) throw new Error(`No raised 2.5D part group '${id}'`);
+  return found;
+}
+
+/** Where a part meets the board: its footprint if it has one, else its crop. */
+export function partFootprint(part: ArtworkPart): { x: number; width: number } {
+  return {
+    x: part.footX ?? part.x,
+    width: part.footWidth ?? part.width,
+  };
+}
