@@ -64,7 +64,7 @@ interface LabelProps {
  * stroke, no shadow and no glow, because real silkscreen is flat ink and
  * anything else immediately reads as user interface rather than as board.
  */
-const SilkLabel: React.FC<LabelProps> = React.memo(({ cx, baseline, text }) => {
+export const SilkLabel: React.FC<LabelProps> = React.memo(({ cx, baseline, text }) => {
   const width = ax(SILK_TEXT.charWidth) * text.length;
   return (
     <text
@@ -84,6 +84,35 @@ const SilkLabel: React.FC<LabelProps> = React.memo(({ cx, baseline, text }) => {
   );
 });
 SilkLabel.displayName = 'SilkLabel';
+
+/**
+ * The HEX7..HEX0 designators, on their own.
+ *
+ * Extracted so a renderer can place this row at a height other than the
+ * board plane. The 2.5D view needs that: it lifts the display modules off the
+ * board, and a 7 mm package tilted toward the viewer covers the silkscreen
+ * printed directly behind it. Drawing this row at the modules' own height
+ * keeps each designator above the display it names, which is the only thing
+ * the label is for.
+ *
+ * `SilkscreenCorrections` renders it in place, so the 2D board is unchanged.
+ */
+export const SilkHexLabels: React.FC = React.memo(() => (
+  <g data-silk-labels="hex">
+    {HEX_CX.map((cx, i) => {
+      const index = HEX_CX.length - 1 - i;
+      return (
+        <SilkLabel
+          key={`hex-${index}`}
+          cx={cx}
+          baseline={SILK_TEXT.hexBaseline}
+          text={`HEX${index}`}
+        />
+      );
+    })}
+  </g>
+));
+SilkHexLabels.displayName = 'SilkHexLabels';
 
 export const SilkscreenCorrections: React.FC = React.memo(() => (
   <g data-testid="de2-silk-corrections" pointerEvents="none" aria-hidden="true">
@@ -155,19 +184,7 @@ export const SilkscreenCorrections: React.FC = React.memo(() => (
       })}
     </g>
 
-    <g data-silk-labels="hex">
-      {HEX_CX.map((cx, i) => {
-        const index = HEX_CX.length - 1 - i;
-        return (
-          <SilkLabel
-            key={`hex-${index}`}
-            cx={cx}
-            baseline={SILK_TEXT.hexBaseline}
-            text={`HEX${index}`}
-          />
-        );
-      })}
-    </g>
+    <SilkHexLabels />
   </g>
 ));
 SilkscreenCorrections.displayName = 'SilkscreenCorrections';
