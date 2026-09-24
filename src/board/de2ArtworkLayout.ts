@@ -440,53 +440,66 @@ export const PCB_BODY = {
  */
 export const PCB_SUBSTRATE = {
   surface: '#0A3757',
-  faceTop: '#072B44',
-  faceBottom: '#041622',
+  /*
+    The near edge, lit from above.
+
+    Brighter than a literal reading of the photographs would give, for the
+    same reason the slab is thicker than 1.6 mm: this face is the one cue that
+    says "object", it is already foreshortened to a third of its height by the
+    camera, and painted at the true shadowed tone it disappears into a dark
+    canvas. Top-lit, so it falls off downward.
+  */
+  faceTop: '#12507A',
+  faceBottom: '#072940',
 } as const;
 
 /**
- * One piece of artwork the 2.5D scene lifts off the board.
+ * One piece of hardware the 2.5D scene lifts off the board.
  *
- * `x/y/width/height` is the CROP — what gets lifted. `footX/footWidth` is
- * where the part actually meets the board, when that is narrower than the
- * crop, and it is what the extruded face is drawn to. The distinction is not
- * pedantic: the DC jack's crop is 10% wider than the jack, and a face drawn
- * to the crop puts a black bar across the board on either side of it.
+ * `x/y/width/height` is the CROP — the artwork region that IS this part, and
+ * therefore both the hole punched in the base artwork and the window the
+ * raised copy shows. One rectangle doing both jobs is what makes it impossible
+ * for a component to appear twice.
  *
- * `faceTop/faceBottom` are sampled from this part's own lower body. A single
- * grey for a whole group paints the ivory switch housings and the pink MIC
- * jack with the same dark shadow, which is the difference between a part with
- * a side and a part with a hole under it.
+ * `footX/footWidth` is where the part actually meets the board, when that is
+ * narrower than the crop, and it is what the part's wall is drawn to. Not
+ * pedantic: the DC jack's crop is 10% wider than the jack, and a wall spanning
+ * the crop puts a bar across the board on either side of it.
+ *
+ * `heightMm` is the real part's real height. Each part carries its own, so the
+ * top row is twelve heights rather than one — an RJ45 stands 13.5 mm and an
+ * audio jack 6, and under a perspective camera that difference is visible.
+ *
+ * `wallTop/wallBottom` are sampled from this part's own body. One grey for a
+ * whole row paints the ivory switch housings and the pink MIC jack with the
+ * same dark shadow, which is the difference between a part with a side and a
+ * part with a hole under it.
  */
-export interface ArtworkPart {
+export interface RaisedPart {
+  id: string;
+  group: RaisedGroupId;
+  /** Human name, for accessibility and for reading the DOM. */
+  label: string;
   x: number;
   y: number;
   width: number;
   height: number;
   footX?: number;
   footWidth?: number;
-  faceTop?: string;
-  faceBottom?: string;
+  heightMm: number;
+  wallTop: string;
+  wallBottom: string;
 }
 
-/**
- * A group of artwork lifted to the same height.
- *
- * `parts` is a UNION, not a bounding box, and that distinction is load
- * bearing. The VGA connector is a T — a wide shield above a narrower shell —
- * and its bounding box has two corners of bare PCB in it. Lifting the box
- * would carry two tabs of board into the air with the connector. Two rects
- * that follow the part do not.
- */
-export interface RaisedPartGroup {
-  id: string;
-  /** Height above the PCB in millimetres, from the real part. */
-  heightMm: number;
-  parts: readonly ArtworkPart[];
-  /** Fallback side colours, for groups whose members are identical. */
-  faceTop: string;
-  faceBottom: string;
-}
+export type RaisedGroupId =
+  | 'connectors'
+  | 'gpio'
+  | 'lcd'
+  | 'hex'
+  | 'sdcard'
+  | 'fpga'
+  | 'switches'
+  | 'keys';
 
 /**
  * Body of one slide switch, and of one tact switch, as the artwork draws them.
@@ -500,248 +513,378 @@ export interface RaisedPartGroup {
 export const SWITCH_BODY_25D = { width: 0.025789, height: 0.088291, top: 0.884522 } as const;
 export const KEY_BODY_25D = { width: 0.054595, height: 0.075729, top: 0.898161 } as const;
 
-/** Per-member parts for a bank, centred on the calibration this file owns. */
-function bankParts(
-  centres: readonly number[],
-  body: { width: number; height: number; top: number },
-): readonly ArtworkPart[] {
-  return centres.map((cx) => ({
-    x: cx - body.width / 2,
-    y: body.top,
-    width: body.width,
-    height: body.height,
-  }));
-}
-
 /**
- * What gains height, and how much.
+ * Every part the 2.5D scene can lift, measured from the transparent master.
  *
- * Heights are the real parts' heights in millimetres, so the hierarchy is the
- * board's own rather than an arranged one. The scene scales them; see
- * `de2Scene25D.ts`.
+ * Heights are the real hardware's, in millimetres. The scene applies one
+ * shared presentation gain in `de2Scene3D.ts`; keeping the source values real
+ * preserves the height hierarchy between unlike parts.
  *
  * What is NOT here is as considered as what is. The LED lenses stand about
- * 0.9 mm off the board: at this tilt that projects to under a pixel, so
- * lifting them would cost 27 clipped crops and 27 extruded faces to move
- * nothing, while risking a visible seam under every lens. They stay on the
- * board plane, drawn by the same overlay the 2D view uses. So do the
- * resistors, the small capacitors, the crystal cans, the voltage regulators,
- * the memory packages, the silkscreen and the traces. A part that cannot
- * separate from the artwork cleanly is better left in it.
+ * 0.9 mm off the board, which is a fraction of a scene unit: lifting them
+ * would add 27 crops and 27 seams to move nothing, and their light is the
+ * depth cue that actually reads. So do the resistors, the small capacitors,
+ * the crystal cans, the regulators, the memory packages, the silkscreen and
+ * the traces. A part that cannot separate from the artwork cleanly is better
+ * left in it.
  */
-export const RAISED_PARTS_25D: readonly RaisedPartGroup[] = [
+export const RAISED_PARTS: readonly RaisedPart[] = [
   {
-    id: 'connectors',
+    id: 'dc-in', group: 'connectors', label: 'DC IN barrel jack',
+    x: 0.048422, y: -0.040377, width: 0.124554, height: 0.170121,
+    footX: 0.055556, footWidth: 0.111385,
     heightMm: 11,
-    /** Tall hardware along the top edge. Several of these overhang the substrate, which is the reason the transparent master exists. */
-    faceTop: '#5A6268',
-    faceBottom: '#34393C',
-    parts: [
-      // DC IN
-      {
-        x: 0.048422, y: -0.040377, width: 0.124554, height: 0.170121,
-        footX: 0.055556, footWidth: 0.111385,
-        faceTop: '#666464', faceBottom: '#3C3B3A',
-      },
-      // USB device
-      {
-        x: 0.175446, y: 0.014177, width: 0.070233, height: 0.109825,
-        footX: 0.180384, footWidth: 0.059808,
-        faceTop: '#737270', faceBottom: '#434241',
-      },
-      // USB blaster
-      {
-        x: 0.247325, y: 0.028174, width: 0.066667, height: 0.100135,
-        footX: 0.251440, footWidth: 0.057888,
-        faceTop: '#767472', faceBottom: '#454442',
-      },
-      // MIC
-      {
-        x: 0.314815, y: -0.005922, width: 0.045816, height: 0.133513,
-        footX: 0.318107, footWidth: 0.041975,
-        faceTop: '#935267', faceBottom: '#56303C',
-      },
-      // LINE IN
-      {
-        x: 0.368587, y: 0.015971, width: 0.042250, height: 0.108031,
-        footX: 0.370233, footWidth: 0.040329,
-        faceTop: '#0A5E92', faceBottom: '#053755',
-      },
-      // LINE OUT
-      {
-        x: 0.422908, y: -0.005563, width: 0.043621, height: 0.130283,
-        footX: 0.424280, footWidth: 0.041701,
-        faceTop: '#73905B', faceBottom: '#435435',
-      },
-      // VIDEO IN
-      {
-        x: 0.473388, y: -0.018484, width: 0.053498, height: 0.120233,
-        faceTop: '#6C6967', faceBottom: '#3F3D3C',
-      },
-      // VGA shield
-      {
-        x: 0.545267, y: -0.021714, width: 0.145405, height: 0.053477,
-        faceTop: '#3A4D5C', faceBottom: '#222D36',
-      },
-      // VGA shell
-      {
-        x: 0.582030, y: 0.031763, width: 0.076818, height: 0.088650,
-        faceTop: '#033055', faceBottom: '#011C31',
-      },
-      // ETHERNET
-      {
-        x: 0.700549, y: -0.015253, width: 0.082305, height: 0.148228,
-        footX: 0.700549, footWidth: 0.079835,
-        faceTop: '#767473', faceBottom: '#454443',
-      },
-      // RS-232
-      {
-        x: 0.787517, y: -0.028892, width: 0.153086, height: 0.142844,
-        footX: 0.787517, footWidth: 0.148971,
-        faceTop: '#4A4847', faceBottom: '#2B2A2A',
-      },
-      // USB host
-      {
-        x: 0.945542, y: 0.085240, width: 0.063923, height: 0.101570,
-        footX: 0.955144, footWidth: 0.048834,
-        faceTop: '#777675', faceBottom: '#464544',
-      },
-    ],
+    wallTop: '#666464', wallBottom: '#3C3B3A',
   },
   {
-    id: 'gpio',
-    heightMm: 8.4,
-    /** Shrouded 2x20 headers and their socket strips. */
-    faceTop: '#353332',
-    faceBottom: '#1F1E1D',
-    parts: [
-      // GPIO 0
-      {
-        x: 0.842112, y: 0.176402, width: 0.054595, height: 0.413459,
-        footX: 0.842661, footWidth: 0.053498,
-        faceTop: '#262421', faceBottom: '#161513',
-      },
-      // GPIO 1
-      {
-        x: 0.931824, y: 0.197218, width: 0.057339, height: 0.392284,
-        faceTop: '#222021', faceBottom: '#141313',
-      },
-      // socket strip 0
-      {
-        x: 0.817970, y: 0.229161, width: 0.017284, height: 0.345985,
-        footX: 0.818793, footWidth: 0.016187,
-        faceTop: '#4D4C4A', faceBottom: '#2D2C2B',
-      },
-      // socket strip 1
-      {
-        x: 0.911797, y: 0.229161, width: 0.015364, height: 0.345985,
-        faceTop: '#413F3E', faceBottom: '#262524',
-      },
-    ],
+    id: 'usb-device', group: 'connectors', label: 'USB device (type B)',
+    x: 0.175446, y: 0.014177, width: 0.070233, height: 0.109825,
+    footX: 0.180384, footWidth: 0.059808,
+    heightMm: 11,
+    wallTop: '#737270', wallBottom: '#434241',
   },
   {
-    id: 'lcd',
-    heightMm: 9.4,
-    /** The 16 x 2 module as ONE assembly: frame, bezel, mounting ears and glass together, because that is how it is bolted to the board. */
-    faceTop: '#3B4A3C',
-    faceBottom: '#222B23',
-    parts: [
-      // LCD module
-      {
-        x: 0.056900, y: 0.488600, width: 0.349300, height: 0.167300,
-        // Clamped to the crop: the segmentation that found this footprint
-        // works in source pixels, and rounding put its left edge a quarter of
-        // a thousandth outside the crop it belongs to. A face drawn wider than
-        // the part it stands under is exactly what the footprint exists to
-        // prevent, so the measurement is trimmed rather than trusted.
-        footX: 0.056900, footWidth: 0.339671,
-        faceTop: '#3B4A3C', faceBottom: '#222B23',
-      },
-    ],
+    id: 'usb-blaster', group: 'connectors', label: 'USB Blaster (type B)',
+    x: 0.247325, y: 0.028174, width: 0.066667, height: 0.100135,
+    footX: 0.251440, footWidth: 0.057888,
+    heightMm: 11,
+    wallTop: '#767472', wallBottom: '#454442',
   },
   {
-    id: 'hex',
-    heightMm: 7.2,
-    /** Three housings, eight digits. HEX7-6, HEX5-4 and HEX3-0 share packages on the real DE2, and the artwork draws them that way. */
-    faceTop: '#675654',
-    faceBottom: '#3C3231',
-    parts: [
-      // HEX7-6
-      {
-        x: 0.027800, y: 0.734100, width: 0.089200, height: 0.079000,
-        faceTop: '#655755', faceBottom: '#3B3331',
-      },
-      // HEX5-4
-      {
-        x: 0.136500, y: 0.733400, width: 0.092200, height: 0.079700,
-        faceTop: '#655453', faceBottom: '#3B3130',
-      },
-      // HEX3-0
-      {
-        x: 0.286800, y: 0.734100, width: 0.149800, height: 0.078600,
-        faceTop: '#6B5856', faceBottom: '#3F3332',
-      },
-    ],
+    id: 'mic', group: 'connectors', label: 'MIC jack',
+    x: 0.314815, y: -0.005922, width: 0.045816, height: 0.133513,
+    footX: 0.318107, footWidth: 0.041975,
+    heightMm: 6,
+    wallTop: '#935267', wallBottom: '#56303C',
   },
   {
-    id: 'sdcard',
-    heightMm: 3.0,
-    /** Push-push SD socket. Its shell overhangs the right-hand edge. */
-    faceTop: '#727170',
-    faceBottom: '#434241',
-    parts: [
-      // SD CARD
-      {
-        x: 0.858299, y: 0.600269, width: 0.140466, height: 0.176223,
-        footX: 0.859671, footWidth: 0.138272,
-        faceTop: '#727170', faceBottom: '#434241',
-      },
-    ],
+    id: 'line-in', group: 'connectors', label: 'LINE IN jack',
+    x: 0.368587, y: 0.015971, width: 0.042250, height: 0.108031,
+    footX: 0.370233, footWidth: 0.040329,
+    heightMm: 6,
+    wallTop: '#0A5E92', wallBottom: '#053755',
   },
   {
-    id: 'fpga',
+    id: 'line-out', group: 'connectors', label: 'LINE OUT jack',
+    x: 0.422908, y: -0.005563, width: 0.043621, height: 0.130283,
+    footX: 0.424280, footWidth: 0.041701,
+    heightMm: 6,
+    wallTop: '#73905B', wallBottom: '#435435',
+  },
+  {
+    id: 'video-in', group: 'connectors', label: 'VIDEO IN (RCA)',
+    x: 0.473388, y: -0.018484, width: 0.053498, height: 0.120233,
+    heightMm: 10,
+    wallTop: '#6C6967', wallBottom: '#3F3D3C',
+  },
+  {
+    id: 'vga-shield', group: 'connectors', label: 'VGA shield',
+    x: 0.545267, y: -0.021714, width: 0.145405, height: 0.053477,
+    heightMm: 13,
+    wallTop: '#3A4D5C', wallBottom: '#222D36',
+  },
+  {
+    id: 'vga-shell', group: 'connectors', label: 'VGA shell',
+    x: 0.582030, y: 0.031763, width: 0.076818, height: 0.088650,
+    heightMm: 13,
+    wallTop: '#033055', wallBottom: '#011C31',
+  },
+  {
+    id: 'ethernet', group: 'connectors', label: 'Ethernet RJ45',
+    x: 0.700549, y: -0.015253, width: 0.082305, height: 0.148228,
+    footX: 0.700549, footWidth: 0.079835,
+    heightMm: 13.5,
+    wallTop: '#767473', wallBottom: '#454443',
+  },
+  {
+    id: 'rs232', group: 'connectors', label: 'RS-232 DB9',
+    x: 0.787517, y: -0.028892, width: 0.153086, height: 0.142844,
+    footX: 0.787517, footWidth: 0.148971,
+    heightMm: 12.5,
+    wallTop: '#4A4847', wallBottom: '#2B2A2A',
+  },
+  {
+    id: 'usb-host', group: 'connectors', label: 'USB host (type A)',
+    x: 0.945542, y: 0.085240, width: 0.063923, height: 0.101570,
+    footX: 0.955144, footWidth: 0.048834,
+    heightMm: 6.5,
+    wallTop: '#777675', wallBottom: '#464544',
+  },
+  {
+    id: 'gpio0', group: 'gpio', label: 'GPIO 0 header',
+    x: 0.842112, y: 0.176402, width: 0.054595, height: 0.413459,
+    footX: 0.842661, footWidth: 0.053498,
+    heightMm: 8.5,
+    wallTop: '#262421', wallBottom: '#161513',
+  },
+  {
+    id: 'gpio1', group: 'gpio', label: 'GPIO 1 header',
+    x: 0.931824, y: 0.197218, width: 0.057339, height: 0.392284,
+    heightMm: 8.5,
+    wallTop: '#222021', wallBottom: '#141313',
+  },
+  {
+    id: 'gpio0-strip', group: 'gpio', label: 'GPIO 0 socket strip',
+    x: 0.817970, y: 0.229161, width: 0.017284, height: 0.345985,
+    footX: 0.818793, footWidth: 0.016187,
+    heightMm: 8.5,
+    wallTop: '#4D4C4A', wallBottom: '#2D2C2B',
+  },
+  {
+    id: 'gpio1-strip', group: 'gpio', label: 'GPIO 1 socket strip',
+    x: 0.911797, y: 0.229161, width: 0.015364, height: 0.345985,
+    heightMm: 8.5,
+    wallTop: '#413F3E', wallBottom: '#262524',
+  },
+  {
+    id: 'lcd', group: 'lcd', label: '16 x 2 LCD module',
+    x: 0.056900, y: 0.488600, width: 0.349300, height: 0.167300,
+    footX: 0.056900, footWidth: 0.339918,
+    heightMm: 9.5,
+    wallTop: '#3B4A3C', wallBottom: '#222B23',
+  },
+  {
+    id: 'sdcard', group: 'sdcard', label: 'SD card socket',
+    x: 0.858299, y: 0.600269, width: 0.140466, height: 0.176223,
+    footX: 0.859671, footWidth: 0.138272,
+    heightMm: 3,
+    wallTop: '#727170', wallBottom: '#434241',
+  },
+  {
+    id: 'fpga', group: 'fpga', label: 'Cyclone II EP2C35',
+    x: 0.608642, y: 0.440556, width: 0.147599, height: 0.185195,
+    footX: 0.609191, footWidth: 0.145405,
     heightMm: 2.6,
-    /** Cyclone II EP2C35F672C6. A BGA sits low; this is the smallest lift in the scene that still reads as a package on a board. */
-    faceTop: '#2E3031',
-    faceBottom: '#1B1C1C',
-    parts: [
-      // Cyclone II
-      {
-        x: 0.608642, y: 0.440556, width: 0.147599, height: 0.185195,
-        footX: 0.609191, footWidth: 0.145405,
-        faceTop: '#2E3031', faceBottom: '#1B1C1C',
-      },
-    ],
+    wallTop: '#2E3031', wallBottom: '#1B1C1C',
   },
   {
-    id: 'switches',
+    id: 'hex-76', group: 'hex', label: 'HEX7 / HEX6 module',
+    x: 0.027800, y: 0.734100, width: 0.089200, height: 0.079000,
+    heightMm: 7,
+    wallTop: '#655755', wallBottom: '#3B3331',
+  },
+  {
+    id: 'hex-54', group: 'hex', label: 'HEX5 / HEX4 module',
+    x: 0.136500, y: 0.733400, width: 0.092200, height: 0.079700,
+    heightMm: 7,
+    wallTop: '#655453', wallBottom: '#3B3130',
+  },
+  {
+    id: 'hex-3210', group: 'hex', label: 'HEX3..HEX0 module',
+    x: 0.286800, y: 0.734100, width: 0.149800, height: 0.078600,
+    heightMm: 7,
+    wallTop: '#6B5856', wallBottom: '#3F3332',
+  },
+  {
+    id: 'sw-17', group: 'switches', label: 'SW17',
+    x: 0.028515, y: 0.884522, width: 0.025789, height: 0.088291,
     heightMm: 4,
-    /** SW17..SW0. The housing rises; the lever inside it is the live part. */
-    faceTop: '#7B7876',
-    faceBottom: '#484644',
-    parts: bankParts(SWITCH_CX, SWITCH_BODY_25D),
+    wallTop: '#787674', wallBottom: '#464544',
   },
   {
-    id: 'keys',
-    heightMm: 3.6,
-    /** KEY3..KEY0. Stainless bodies; the plunger is the live part. */
-    faceTop: '#767371',
-    faceBottom: '#454342',
-    parts: bankParts(KEY_CX, KEY_BODY_25D),
+    id: 'sw-16', group: 'switches', label: 'SW16',
+    x: 0.062851, y: 0.884522, width: 0.025789, height: 0.088291,
+    footX: 0.063512, footWidth: 0.024691,
+    heightMm: 4,
+    wallTop: '#787674', wallBottom: '#464544',
+  },
+  {
+    id: 'sw-15', group: 'switches', label: 'SW15',
+    x: 0.097059, y: 0.884522, width: 0.025789, height: 0.088291,
+    footX: 0.098080, footWidth: 0.024417,
+    heightMm: 4,
+    wallTop: '#7B7A78', wallBottom: '#484746',
+  },
+  {
+    id: 'sw-14', group: 'switches', label: 'SW14',
+    x: 0.132296, y: 0.884522, width: 0.025789, height: 0.088291,
+    heightMm: 4,
+    wallTop: '#7A7876', wallBottom: '#474645',
+  },
+  {
+    id: 'sw-13', group: 'switches', label: 'SW13',
+    x: 0.167275, y: 0.884522, width: 0.025789, height: 0.088291,
+    footX: 0.168038, footWidth: 0.024691,
+    heightMm: 4,
+    wallTop: '#787673', wallBottom: '#464543',
+  },
+  {
+    id: 'sw-12', group: 'switches', label: 'SW12',
+    x: 0.201484, y: 0.884522, width: 0.025789, height: 0.088291,
+    heightMm: 4,
+    wallTop: '#797775', wallBottom: '#474644',
+  },
+  {
+    id: 'sw-11', group: 'switches', label: 'SW11',
+    x: 0.237105, y: 0.884522, width: 0.025789, height: 0.088291,
+    footX: 0.237723, footWidth: 0.024691,
+    heightMm: 4,
+    wallTop: '#7A7875', wallBottom: '#474645',
+  },
+  {
+    id: 'sw-10', group: 'switches', label: 'SW10',
+    x: 0.271957, y: 0.884522, width: 0.025789, height: 0.088291,
+    heightMm: 4,
+    wallTop: '#797775', wallBottom: '#474645',
+  },
+  {
+    id: 'sw-9', group: 'switches', label: 'SW9',
+    x: 0.307193, y: 0.884522, width: 0.025789, height: 0.088291,
+    footX: 0.307682, footWidth: 0.024966,
+    heightMm: 4,
+    wallTop: '#797775', wallBottom: '#474644',
+  },
+  {
+    id: 'sw-8', group: 'switches', label: 'SW8',
+    x: 0.342944, y: 0.884522, width: 0.025789, height: 0.088291,
+    heightMm: 4,
+    wallTop: '#7A7976', wallBottom: '#474745',
+  },
+  {
+    id: 'sw-7', group: 'switches', label: 'SW7',
+    x: 0.378181, y: 0.884522, width: 0.025789, height: 0.088291,
+    footX: 0.378738, footWidth: 0.024691,
+    heightMm: 4,
+    wallTop: '#797876', wallBottom: '#474645',
+  },
+  {
+    id: 'sw-6', group: 'switches', label: 'SW6',
+    x: 0.413675, y: 0.884522, width: 0.025789, height: 0.088291,
+    heightMm: 4,
+    wallTop: '#7B7976', wallBottom: '#484745',
+  },
+  {
+    id: 'sw-5', group: 'switches', label: 'SW5',
+    x: 0.449040, y: 0.884522, width: 0.025789, height: 0.088291,
+    heightMm: 4,
+    wallTop: '#797875', wallBottom: '#474645',
+  },
+  {
+    id: 'sw-4', group: 'switches', label: 'SW4',
+    x: 0.485048, y: 0.884522, width: 0.025789, height: 0.088291,
+    heightMm: 4,
+    wallTop: '#797775', wallBottom: '#474644',
+  },
+  {
+    id: 'sw-3', group: 'switches', label: 'SW3',
+    x: 0.519641, y: 0.884522, width: 0.025789, height: 0.088291,
+    heightMm: 4,
+    wallTop: '#7B7875', wallBottom: '#484644',
+  },
+  {
+    id: 'sw-2', group: 'switches', label: 'SW2',
+    x: 0.554620, y: 0.884522, width: 0.025789, height: 0.088291,
+    footX: 0.555144, footWidth: 0.024966,
+    heightMm: 4,
+    wallTop: '#787673', wallBottom: '#464543',
+  },
+  {
+    id: 'sw-1', group: 'switches', label: 'SW1',
+    x: 0.589600, y: 0.884522, width: 0.025789, height: 0.088291,
+    heightMm: 4,
+    wallTop: '#797774', wallBottom: '#474544',
+  },
+  {
+    id: 'sw-0', group: 'switches', label: 'SW0',
+    x: 0.625223, y: 0.884522, width: 0.025789, height: 0.088291,
+    footX: 0.625652, footWidth: 0.024966,
+    heightMm: 4,
+    wallTop: '#7B7876', wallBottom: '#484645',
+  },
+  {
+    id: 'key-3', group: 'keys', label: 'KEY3',
+    x: 0.668305, y: 0.898161, width: 0.054595, height: 0.075729,
+    heightMm: 3.5,
+    wallTop: '#777573', wallBottom: '#464443',
+  },
+  {
+    id: 'key-2', group: 'keys', label: 'KEY2',
+    x: 0.739163, y: 0.898161, width: 0.054595, height: 0.075729,
+    footX: 0.739163, footWidth: 0.053772,
+    heightMm: 3.5,
+    wallTop: '#787674', wallBottom: '#464544',
+  },
+  {
+    id: 'key-1', group: 'keys', label: 'KEY1',
+    x: 0.809123, y: 0.898161, width: 0.054595, height: 0.075729,
+    heightMm: 3.5,
+    wallTop: '#767472', wallBottom: '#454442',
+  },
+  {
+    id: 'key-0', group: 'keys', label: 'KEY0',
+    x: 0.880881, y: 0.898161, width: 0.054595, height: 0.075729,
+    footX: 0.880881, footWidth: 0.052949,
+    heightMm: 3.5,
+    wallTop: '#757371', wallBottom: '#454342',
   },
 ];
 
-/** Lookup by id, so a renderer can ask for one group without scanning. */
-export function raisedPart(id: string): RaisedPartGroup {
-  const found = RAISED_PARTS_25D.find((p) => p.id === id);
-  if (!found) throw new Error(`No raised 2.5D part group '${id}'`);
+/** The parts of one group, in the order they were measured. */
+export function raisedGroup(group: RaisedGroupId): readonly RaisedPart[] {
+  return RAISED_PARTS.filter((p) => p.group === group);
+}
+
+/** One part by id. Throws rather than returning undefined: a missing part is a bug. */
+export function raisedPartById(id: string): RaisedPart {
+  const found = RAISED_PARTS.find((p) => p.id === id);
+  if (!found) throw new Error(`No raised DE2 part '${id}'`);
   return found;
 }
 
 /** Where a part meets the board: its footprint if it has one, else its crop. */
-export function partFootprint(part: ArtworkPart): { x: number; width: number } {
+export function partFootprint(part: RaisedPart): { x: number; width: number } {
   return {
     x: part.footX ?? part.x,
     width: part.footWidth ?? part.width,
   };
 }
+
+/**
+ * The four corner standoffs, measured from the artwork.
+ *
+ * The artwork shows their heads — a steel screw on a brass barrel at each
+ * corner, overhanging the substrate. What it cannot show is the barrel BELOW
+ * the board, which is what makes the DE2 read as an object resting on a desk
+ * rather than a picture lying on one. The scene draws that part.
+ *
+ * Centres are the centroid of the non-solder-mask pixels in a box around each
+ * measured PCB corner, which locates the head without needing to separate
+ * steel from brass. The four agree to within 0.0013 of the board width, so the
+ * board is square and the measurement is believable.
+ */
+export interface Standoff {
+  id: string;
+  /** Normalised centre of the barrel. */
+  cx: number;
+  cy: number;
+  /** Barrel diameter, normalised to board width. */
+  diameter: number;
+}
+
+export const STANDOFFS: readonly Standoff[] = [
+  { id: 'top-left', cx: 0.009137, cy: 0.027595, diameter: 0.029114 },
+  { id: 'top-right', cx: 0.988445, cy: 0.026546, diameter: 0.028834 },
+  { id: 'bottom-left', cx: 0.008633, cy: 0.973901, diameter: 0.029674 },
+  { id: 'bottom-right', cx: 0.987244, cy: 0.974622, diameter: 0.029674 },
+];
+
+/** Brass barrel, and the surface the board stands on. */
+export const STANDOFF_MATERIAL = {
+  barrelDark: '#6B5320',
+  barrelLight: '#C79A46',
+  barrelEdge: '#8A6A2C',
+} as const;
+
+export const GROUND_MATERIAL = {
+  /**
+   * The desk. Two neutrals, not one: a surface painted in a single flat colour
+   * is indistinguishable from the app background, and then the board's shadow
+   * has nothing to fall on and the board reads as a cut-out again. `lit` is
+   * the pool under the scene's light, `edge` is where it falls away.
+   */
+  lit: '#1B222C',
+  edge: '#0E1116',
+  /** Kept for callers that only want the flat tone. */
+  surface: '#0E1116',
+  shadow: '#000000',
+} as const;

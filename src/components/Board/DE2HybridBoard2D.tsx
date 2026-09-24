@@ -1,15 +1,5 @@
 import React from 'react';
-import {
-  ARTWORK_VIEWBOX,
-  DE2_ARTWORK,
-  DE2_ARTWORK_SRC,
-  HEX_CX,
-  KEY_CX,
-  LED_GREEN_8,
-  LED_GREEN_BANK_CX,
-  LED_RED_CX,
-  SWITCH_CX,
-} from '../../board/de2ArtworkLayout';
+import { DE2_REFERENCE_2D } from '../../board/de2ReferenceAssets';
 import {
   ArtworkOverlayDefs,
   HexOverlay,
@@ -18,7 +8,8 @@ import {
   LedOverlay,
   SwitchOverlay,
 } from './primitives/ArtworkOverlays';
-import { SilkscreenCorrections } from './primitives/SilkscreenCorrections';
+
+const { layout } = DE2_REFERENCE_2D;
 
 /**
  * Artwork-based 2D DE2 board: a premium render of the real hardware with live
@@ -67,14 +58,14 @@ export const DE2HybridBoard2D: React.FC = React.memo(() => (
     data-board-view="2d"
     data-board-presentation="artwork"
     className="de2-board-svg"
-    viewBox={ARTWORK_VIEWBOX}
+    viewBox={`0 0 ${DE2_REFERENCE_2D.width} ${DE2_REFERENCE_2D.height}`}
     width="100%"
     height="100%"
     preserveAspectRatio="xMidYMid meet"
     role="group"
     aria-label="Altera DE2 development board, top view"
   >
-    <ArtworkOverlayDefs />
+    <ArtworkOverlayDefs layout={layout} />
 
     {/*
       Static board artwork.
@@ -89,11 +80,12 @@ export const DE2HybridBoard2D: React.FC = React.memo(() => (
       carry their own roles, so the image needs no separate announcement.
     */}
     <image
-      href={DE2_ARTWORK_SRC}
+      data-runtime-board-asset="2d"
+      href={DE2_REFERENCE_2D.src}
       x={0}
       y={0}
-      width={DE2_ARTWORK.width}
-      height={DE2_ARTWORK.height}
+      width={DE2_REFERENCE_2D.width}
+      height={DE2_REFERENCE_2D.height}
       preserveAspectRatio="xMidYMid meet"
       pointerEvents="none"
       style={{ userSelect: 'none', WebkitUserDrag: 'none' } as React.CSSProperties}
@@ -107,28 +99,32 @@ export const DE2HybridBoard2D: React.FC = React.memo(() => (
       its state. It moves nothing: each label is centred on the same
       calibrated coordinate its live part uses.
     */}
-    <SilkscreenCorrections />
-
     {/* ── Live simulation state ──
         Ordered so that the parts a user reaches for sit above the parts they
         only read, which is also the order the vector renderer uses. */}
     <g data-overlay="hex">
-      {HEX_CX.map((cx, i) => (
-        <HexOverlay key={`hex-${HEX_CX.length - 1 - i}`} cx={cx} index={HEX_CX.length - 1 - i} />
+      {layout.hex.centres.map((point, i) => (
+        <HexOverlay
+          key={`hex-${layout.hex.centres.length - 1 - i}`}
+          point={point}
+          index={layout.hex.centres.length - 1 - i}
+          layout={layout}
+        />
       ))}
     </g>
 
     {/* The LCD sits above the board but below the controls: it is read, not
         touched, and nothing overlaps it. */}
-    <LcdOverlay />
+    <LcdOverlay layout={layout} />
 
     <g data-overlay="led">
-      {LED_RED_CX.map((cx, i) => (
+      {layout.leds.red.map((point, i) => (
         <LedOverlay
-          key={`ledr-${LED_RED_CX.length - 1 - i}`}
-          cx={cx}
-          index={LED_RED_CX.length - 1 - i}
+          key={`ledr-${layout.leds.red.length - 1 - i}`}
+          point={point}
+          index={layout.leds.red.length - 1 - i}
           kind="red"
+          layout={layout}
         />
       ))}
       {/*
@@ -136,27 +132,34 @@ export const DE2HybridBoard2D: React.FC = React.memo(() => (
         bank and the green bank on the real board, so it is not part of the
         eight-wide row — which is what keeps a tenth green LED from appearing.
       */}
-      <LedOverlay cx={LED_GREEN_8.cx} index={8} kind="green" />
-      {LED_GREEN_BANK_CX.map((cx, i) => (
+      <LedOverlay point={layout.leds.green8} index={8} kind="green" layout={layout} />
+      {layout.leds.green.map((point, i) => (
         <LedOverlay
-          key={`ledg-${LED_GREEN_BANK_CX.length - 1 - i}`}
-          cx={cx}
-          index={LED_GREEN_BANK_CX.length - 1 - i}
+          key={`ledg-${layout.leds.green.length - 1 - i}`}
+          point={point}
+          index={layout.leds.green.length - 1 - i}
           kind="green"
+          layout={layout}
         />
       ))}
     </g>
 
     <g data-overlay="input">
-      {SWITCH_CX.map((cx, i) => (
+      {layout.switches.centres.map((point, i) => (
         <SwitchOverlay
-          key={`sw-${SWITCH_CX.length - 1 - i}`}
-          cx={cx}
-          index={SWITCH_CX.length - 1 - i}
+          key={`sw-${layout.switches.centres.length - 1 - i}`}
+          point={point}
+          index={layout.switches.centres.length - 1 - i}
+          layout={layout}
         />
       ))}
-      {KEY_CX.map((cx, i) => (
-        <KeyOverlay key={`key-${KEY_CX.length - 1 - i}`} cx={cx} index={KEY_CX.length - 1 - i} />
+      {layout.keys.centres.map((point, i) => (
+        <KeyOverlay
+          key={`key-${layout.keys.centres.length - 1 - i}`}
+          point={point}
+          index={layout.keys.centres.length - 1 - i}
+          layout={layout}
+        />
       ))}
     </g>
   </svg>

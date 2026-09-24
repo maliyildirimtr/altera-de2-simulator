@@ -6,14 +6,16 @@ import { ACTIVE_BOARD_25D_PRESENTATION } from '../../board/board25dPresentation'
 import type { BoardViewMode } from '../../board/boardViewMode';
 import type { BoardDetail } from '../../board/de2Layout';
 import { BOARD_RENDER_HEIGHT, BOARD_RENDER_WIDTH } from '../../board/de2Layout';
-import { DE2_ARTWORK_ASPECT } from '../../board/de2ArtworkLayout';
-import { SCENE_ASPECT } from '../../board/de2Scene25D';
+import {
+  DE2_REFERENCE_2D_ASPECT,
+  DE2_REFERENCE_25D_ASPECT,
+} from '../../board/de2ReferenceAssets';
 import { ISO_RENDER_HEIGHT, ISO_RENDER_WIDTH } from './boardGeometry';
 import { DE2Board2D } from './DE2Board2D';
 import { DE2Board25D } from './DE2Board25D';
 import { DE2Board3DPlaceholder } from './DE2Board3DPlaceholder';
 import { DE2HybridBoard2D } from './DE2HybridBoard2D';
-import { DE2HybridBoard25D } from './DE2HybridBoard25D';
+import { DE2CssBoard25D } from './DE2CssBoard25D';
 
 export interface BoardRenderSize {
   width: number;
@@ -31,7 +33,8 @@ export interface BoardRenderSize {
  * keeps each board undistorted: the 2D render is not a mechanical drawing, so
  * its board is fractionally taller in proportion than 203 x 153 mm, and the
  * 2.5D scene is wider still because it reserves room for the hardware that
- * overhangs the substrate and for the board's shadow.
+ * overhangs the substrate, for the perspective camera's near-edge expansion,
+ * and for the board's shadow.
  */
 export function boardRenderSize(
   mode: BoardViewMode,
@@ -42,7 +45,7 @@ export function boardRenderSize(
     if (presentation25d === 'artwork') {
       return {
         width: BOARD_RENDER_WIDTH,
-        height: Math.round(BOARD_RENDER_WIDTH / SCENE_ASPECT),
+        height: Math.round(BOARD_RENDER_WIDTH / DE2_REFERENCE_25D_ASPECT),
       };
     }
     return { width: ISO_RENDER_WIDTH, height: ISO_RENDER_HEIGHT };
@@ -50,7 +53,7 @@ export function boardRenderSize(
   if (mode === '2d' && presentation === 'artwork') {
     return {
       width: BOARD_RENDER_WIDTH,
-      height: Math.round(BOARD_RENDER_WIDTH / DE2_ARTWORK_ASPECT),
+      height: Math.round(BOARD_RENDER_WIDTH / DE2_REFERENCE_2D_ASPECT),
     };
   }
   return { width: BOARD_RENDER_WIDTH, height: BOARD_RENDER_HEIGHT };
@@ -86,7 +89,7 @@ export const DE2BoardRenderer: React.FC<DE2BoardRendererProps> = React.memo(
     presentation25d = ACTIVE_BOARD_25D_PRESENTATION,
   }) => {
     if (mode === '2.5d') {
-      if (presentation25d === 'artwork') return <DE2HybridBoard25D />;
+      if (presentation25d === 'artwork') return <DE2CssBoard25D />;
       return <DE2Board25D detail={detail} />;
     }
     if (mode === '3d') return <DE2Board3DPlaceholder />;
