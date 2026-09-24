@@ -1,17 +1,14 @@
 import React, { useCallback, useMemo } from 'react';
 import {
-  HEX_ART,
-  KEY_ART,
-  LCD_ART,
-  LED_GREEN_8,
-  LED_GREEN_8_ART,
-  LED_GREEN_ART,
-  LED_RED_ART,
-  SWITCH_ART,
-  SWITCH_TRAVEL,
-  ax,
-  ay,
-} from '../../../board/de2ArtworkLayout';
+  DE2_REFERENCE_2D,
+  type ArtworkPoint,
+  type InputOverlayCalibration,
+  type OverlayLayout,
+} from '../../../board/de2ReferenceAssets';
+import {
+  polygonPoints,
+  resolveInputOverlay,
+} from '../../../board/de2InputCalibration';
 import { LCD_COLS, LCD_ROWS } from '../../../core/peripherals/lcdController';
 import {
   isSegmentLit,
@@ -26,6 +23,14 @@ import {
   useToggleSwitch,
 } from '../../../board/useBoardSelectors';
 import { sevenSegmentShapes, SEGMENT_SLANT_DEG } from '../boardGeometry';
+import {
+  PerspectiveKeyVisual,
+  PerspectiveSwitchVisual,
+} from './PerspectiveInputVisuals';
+import {
+  PerspectiveHexVisual,
+  PerspectiveLcdVisual,
+} from './PerspectiveDisplayVisuals';
 
 /**
  * Live overlays for the artwork-based DE2 renderer.
@@ -97,7 +102,9 @@ const ART = {
  * 2D renderers can never fight over an id, and so this layer can be dropped
  * without touching the vector board.
  */
-export const ArtworkOverlayDefs: React.FC = () => (
+export const ArtworkOverlayDefs: React.FC<{ layout?: OverlayLayout }> = ({
+  layout = DE2_REFERENCE_2D.layout,
+}) => (
   <defs>
     <linearGradient id="de2a-lever" x1="0" y1="0" x2="0.35" y2="1">
       <stop offset="0%" stopColor={ART.leverLight} />
@@ -121,8 +128,8 @@ export const ArtworkOverlayDefs: React.FC = () => (
 
     {/* Module face, used to erase the artwork's baked-in digits. */}
     <linearGradient id="de2a-hex-face" x1="0" y1="0" x2="0.1" y2="1">
-      <stop offset="0%" stopColor={ART.hexFaceTop} />
-      <stop offset="100%" stopColor={ART.hexFaceBottom} />
+      <stop offset="0%" stopColor={layout.hex.faceTop} />
+      <stop offset="100%" stopColor={layout.hex.faceBottom} />
     </linearGradient>
 
     {/* Unlit lenses. */}
@@ -169,19 +176,26 @@ export const ArtworkOverlayDefs: React.FC = () => (
  * ──────────────────────────────────────────────────────────────────────── */
 
 interface BankProps {
-  /** Normalised centre x of this member, from the calibration module. */
-  cx: number;
+  /** Native-image pixel centre of this member. */
+  point?: ArtworkPoint;
+  /** Legacy normalised X, retained only for the unshipped CSS scene. */
+  cx?: number;
   index: number;
+  layout?: OverlayLayout;
+  /** Per-element geometry is supplied only by the 2.5D artwork renderer. */
+  calibration?: InputOverlayCalibration;
 }
 
 /**
- * SW17..SW0. The artwork's housing stays; the overlay repaints the channel
- * (which in the artwork contains a lever frozen in the OFF position) and then
- * draws the live lever at whichever end of the travel the value calls for.
+ * SW17..SW0. The 2D path keeps the artwork housing and repaints its channel.
+ * The 2.5D path receives per-element calibration and replaces the complete
+ * baked switch with a projectively warped live housing, channel and lever.
  *
  * `switches[index]` is active-high: 1 = lever up.
  */
-export const SwitchOverlay: React.FC<BankProps> = React.memo(({ cx, index }) => {
+export const SwitchOverlay: React.FC<BankProps> = React.memo(({ point, index, layout, calibration }) => {
+  layout ??= DE2_REFERENCE_2D.layout;
+  point ??= layout.switches.centres[17 - index];
   const value = useSwitchValue(index);
   const toggleSwitch = useToggleSwitch();
   const isOn = value === 1;
@@ -197,26 +211,33 @@ export const SwitchOverlay: React.FC<BankProps> = React.memo(({ cx, index }) => 
     [toggleSwitch, index],
   );
 
-  const bodyW = ax(SWITCH_ART.bodyWidth);
-  const bodyH = ay(SWITCH_ART.bodyHeight);
-  const bodyX = ax(cx) - bodyW / 2;
-  const bodyY = ay(SWITCH_ART.bodyTop);
+  const art = layout.switches;
+  const resolved = calibration
+    ? resolveInputOverlay(calibration, layout.width, layout.height)
+    : undefined;
+  const centre = resolved?.centre ?? point;
+  const bodyW = resolved?.width ?? art.bodyWidth;
+  const bodyH = resolved?.height ?? art.bodyHeight;
+  const bodyX = resolved?.x ?? point.x - bodyW / 2;
+  const bodyY = resolved?.y ?? point.y - bodyH / 2;
 
-  const slotW = ax(SWITCH_ART.slotWidth);
-  const slotX = ax(cx) - slotW / 2;
-  const slotY = ay(SWITCH_ART.slotTop);
-  const slotH = ay(SWITCH_ART.slotHeight);
+  const slotW = bodyW * (art.slotWidth / art.bodyWidth);
+  const slotX = centre.x - slotW / 2;
+  const slotH = bodyH * (art.slotHeight / art.bodyHeight);
+  const slotY = centre.y - slotH / 2;
 
-  const leverW = ax(SWITCH_ART.leverWidth);
-  const leverH = ay(SWITCH_ART.leverHeight);
-  const leverX = ax(cx) - leverW / 2;
-  const leverY = slotY + (isOn ? 0 : ay(SWITCH_TRAVEL));
+  const leverW = bodyW * (art.leverWidth / art.bodyWidth);
+  const leverH = bodyH * (art.leverHeight / art.bodyHeight);
+  const leverX = centre.x - leverW / 2;
+  const leverY = slotY + (isOn ? 0 : bodyH * (art.travel / art.bodyHeight));
+  const hitPoints = resolved ? polygonPoints(resolved.corners) : undefined;
 
   return (
     <g
       data-testid={`de2-switch-${index}`}
       data-active={isOn ? 'true' : 'false'}
       data-board-interactive="true"
+      data-overlay-shape={calibration?.shape}
       className="de2-hit"
       role="switch"
       aria-checked={isOn}
@@ -226,57 +247,69 @@ export const SwitchOverlay: React.FC<BankProps> = React.memo(({ cx, index }) => 
       onKeyDown={handleKeyDown}
       style={{ cursor: 'pointer' }}
     >
-      {/* Transparent hit area covering the whole housing, so the click target
-          is the switch the user sees rather than just the lever. */}
-      <rect x={bodyX} y={bodyY} width={bodyW} height={bodyH} rx={4} fill="transparent" />
+      {resolved && <PerspectiveSwitchVisual corners={resolved.corners} index={index} active={isOn} />}
 
-      {/* Channel: this is the mask that removes the artwork's fixed lever. */}
-      <rect x={slotX} y={slotY} width={slotW} height={slotH} rx={3} fill="url(#de2a-channel)" />
+      {/* The painted transparent SVG shape is the hit target. For quads the
+          browser therefore rejects the empty corners of its bounding box. */}
+      {resolved ? (
+        <polygon data-hit-shape={calibration?.shape} points={hitPoints} fill="transparent" pointerEvents="all" />
+      ) : (
+        <rect x={bodyX} y={bodyY} width={bodyW} height={bodyH} rx={4} fill="transparent" />
+      )}
 
-      {/* Live lever */}
-      <g className="de2-switch-lever">
-        <rect
-          x={leverX}
-          y={leverY}
-          width={leverW}
-          height={leverH}
-          rx={4}
-          fill="url(#de2a-lever)"
-        />
-        {/* Top bevel — the artwork's own levers carry this highlight, so the
-            overlay needs it to disappear into the render. */}
-        <rect
-          x={leverX + leverW * 0.1}
-          y={leverY + leverH * 0.08}
-          width={leverW * 0.8}
-          height={leverH * 0.11}
-          rx={2}
-          fill="#FFFFFF"
-          opacity={0.22}
-        />
-        <rect
-          x={leverX + leverW * 0.14}
-          y={leverY + leverH * 0.56}
-          width={leverW * 0.72}
-          height={leverH * 0.07}
-          rx={1.5}
-          fill="#000000"
-          opacity={0.4}
-        />
-      </g>
+      {!resolved && (
+        <g>
+          {/* Channel: this is the mask that removes the artwork's fixed lever. */}
+          <rect x={slotX} y={slotY} width={slotW} height={slotH} rx={3} fill="url(#de2a-channel)" />
+
+          {/* Live lever */}
+          <g className="de2-switch-lever">
+            <rect
+              x={leverX}
+              y={leverY}
+              width={leverW}
+              height={leverH}
+              rx={4}
+              fill="url(#de2a-lever)"
+            />
+            <rect
+              x={leverX + leverW * 0.1}
+              y={leverY + leverH * 0.08}
+              width={leverW * 0.8}
+              height={leverH * 0.11}
+              rx={2}
+              fill="#FFFFFF"
+              opacity={0.22}
+            />
+            <rect
+              x={leverX + leverW * 0.14}
+              y={leverY + leverH * 0.56}
+              width={leverW * 0.72}
+              height={leverH * 0.07}
+              rx={1.5}
+              fill="#000000"
+              opacity={0.4}
+            />
+          </g>
+        </g>
+      )}
 
       <title>{`SW${index} ${isOn ? 'up (1)' : 'down (0)'}`}</title>
 
-      <rect
-        className="de2-focus-ring"
-        x={bodyX - 5}
-        y={bodyY - 5}
-        width={bodyW + 10}
-        height={bodyH + 10}
-        rx={8}
-        fill="none"
-        pointerEvents="none"
-      />
+      {resolved ? (
+        <polygon className="de2-focus-ring" points={hitPoints} fill="none" pointerEvents="none" />
+      ) : (
+        <rect
+          className="de2-focus-ring"
+          x={bodyX - 5}
+          y={bodyY - 5}
+          width={bodyW + 10}
+          height={bodyH + 10}
+          rx={8}
+          fill="none"
+          pointerEvents="none"
+        />
+      )}
     </g>
   );
 });
@@ -287,13 +320,16 @@ SwitchOverlay.displayName = 'SwitchOverlay';
  * ──────────────────────────────────────────────────────────────────────── */
 
 /**
- * KEY3..KEY0. The artwork supplies the stainless body; the overlay moves only
- * the plunger, which sinks a little and loses its highlight when held.
+ * KEY3..KEY0. The 2D path moves only the artwork plunger. The calibrated 2.5D
+ * path replaces the complete baked control with a homography-warped shell,
+ * fasteners, well and live plunger.
  *
  * ACTIVE-LOW: `keys[i] === 0` is pressed. `useKeyPressed` / `useSetKey` own
  * that conversion — this component must never invert the value itself.
  */
-export const KeyOverlay: React.FC<BankProps> = React.memo(({ cx, index }) => {
+export const KeyOverlay: React.FC<BankProps> = React.memo(({ point, index, layout, calibration }) => {
+  layout ??= DE2_REFERENCE_2D.layout;
+  point ??= layout.keys.centres[3 - index];
   const isPressed = useKeyPressed(index);
   const setKey = useSetKey();
 
@@ -319,19 +355,25 @@ export const KeyOverlay: React.FC<BankProps> = React.memo(({ cx, index }) => {
     [setKey, index],
   );
 
-  const bodyW = ax(KEY_ART.bodyWidth);
-  const bodyH = ay(KEY_ART.bodyHeight);
-  const centreX = ax(cx);
-  const centreY = ay(KEY_ART.centreY);
-  const r = ax(KEY_ART.plungerRadius);
-  const drop = ay(KEY_ART.plungerTravel);
+  const art = layout.keys;
+  const resolved = calibration
+    ? resolveInputOverlay(calibration, layout.width, layout.height)
+    : undefined;
+  const bodyW = resolved?.width ?? art.bodyWidth;
+  const bodyH = resolved?.height ?? art.bodyHeight;
+  const centreX = resolved?.centre.x ?? point.x;
+  const centreY = resolved?.centre.y ?? point.y;
+  const r = Math.min(bodyW, bodyH) * (art.plungerRadius / Math.min(art.bodyWidth, art.bodyHeight));
+  const drop = bodyH * (art.plungerTravel / art.bodyHeight);
   const py = centreY + (isPressed ? drop : 0);
+  const hitPoints = resolved ? polygonPoints(resolved.corners) : undefined;
 
   return (
     <g
       data-testid={`de2-key-${index}`}
       data-active={isPressed ? 'true' : 'false'}
       data-board-interactive="true"
+      data-overlay-shape={calibration?.shape}
       className="de2-hit"
       role="button"
       aria-pressed={isPressed}
@@ -345,14 +387,22 @@ export const KeyOverlay: React.FC<BankProps> = React.memo(({ cx, index }) => {
       onKeyUp={handleKeyUp}
       style={{ cursor: 'pointer', touchAction: 'none' }}
     >
-      <rect
-        x={centreX - bodyW / 2}
-        y={centreY - bodyH / 2}
-        width={bodyW}
-        height={bodyH}
-        rx={8}
-        fill="transparent"
-      />
+      {resolved && <PerspectiveKeyVisual corners={resolved.corners} index={index} active={isPressed} />}
+      {resolved ? (
+        <polygon data-hit-shape={calibration?.shape} points={hitPoints} fill="transparent" pointerEvents="all" />
+      ) : (
+        <rect
+          x={centreX - bodyW / 2}
+          y={centreY - bodyH / 2}
+          width={bodyW}
+          height={bodyH}
+          rx={8}
+          fill="transparent"
+        />
+      )}
+
+      {!resolved && (
+        <g>
 
       {/*
         The well the plunger sits in. Deliberately just a rim and a shadow, not
@@ -394,19 +444,25 @@ export const KeyOverlay: React.FC<BankProps> = React.memo(({ cx, index }) => {
           opacity={0.16}
         />
       )}
+        </g>
+      )}
 
       <title>{`KEY${index} ${isPressed ? 'pressed (0)' : 'released (1)'}`}</title>
 
-      <rect
-        className="de2-focus-ring"
-        x={centreX - bodyW / 2 - 5}
-        y={centreY - bodyH / 2 - 5}
-        width={bodyW + 10}
-        height={bodyH + 10}
-        rx={10}
-        fill="none"
-        pointerEvents="none"
-      />
+      {resolved ? (
+        <polygon className="de2-focus-ring" points={hitPoints} fill="none" pointerEvents="none" />
+      ) : (
+        <rect
+          className="de2-focus-ring"
+          x={centreX - bodyW / 2 - 5}
+          y={centreY - bodyH / 2 - 5}
+          width={bodyW + 10}
+          height={bodyH + 10}
+          rx={10}
+          fill="none"
+          pointerEvents="none"
+        />
+      )}
     </g>
   );
 });
@@ -428,7 +484,13 @@ KeyOverlay.displayName = 'KeyOverlay';
  * controls, and they never cover the silkscreen designator above the row.
  */
 export const LedOverlay: React.FC<BankProps & { kind: 'red' | 'green' }> = React.memo(
-  ({ cx, index, kind }) => {
+  ({ point, index, kind, layout }) => {
+    layout ??= DE2_REFERENCE_2D.layout;
+    point ??= kind === 'red'
+      ? layout.leds.red[17 - index]
+      : index === 8
+        ? layout.leds.green8
+        : layout.leds.green[7 - index];
     const isRed = kind === 'red';
     // Both hooks always run so hook order is stable; only one tracks a value
     // that can change for this component.
@@ -436,16 +498,12 @@ export const LedOverlay: React.FC<BankProps & { kind: 'red' | 'green' }> = React
     const greenValue = useLedGreenValue(isRed ? -1 : index);
     const isOn = (isRed ? redValue : greenValue) === 1;
 
-    // LEDG8 is not part of the green bank: on the real DE2 it sits on its own
-    // between the HEX row and the bank, and the artwork draws it there, a
-    // little smaller. Its row position therefore comes from its own entry.
     const isLedG8 = !isRed && index === 8;
-    const art = isRed ? LED_RED_ART : LED_GREEN_ART;
-    const size = isLedG8 ? LED_GREEN_8_ART : art;
-    const w = ax(size.width);
-    const h = ay(size.height);
-    const centreX = ax(cx);
-    const centreY = ay(isLedG8 ? LED_GREEN_8.cy : art.centreY);
+    const led = layout.leds;
+    const w = isLedG8 ? led.green8Width : isRed ? led.redWidth : led.greenWidth;
+    const h = isLedG8 ? led.green8Height : isRed ? led.redHeight : led.greenHeight;
+    const centreX = point.x;
+    const centreY = point.y;
     const x = centreX - w / 2;
     const y = centreY - h / 2;
     const label = `${isRed ? 'LEDR' : 'LEDG'}${index}`;
@@ -458,6 +516,17 @@ export const LedOverlay: React.FC<BankProps & { kind: 'red' | 'green' }> = React
         aria-label={`${label} ${isOn ? 'on' : 'off'}`}
         pointerEvents="none"
       >
+        {/* Opaque local neutralisation hides the baked lens and its immediate
+            glow before the authoritative runtime state is painted. */}
+        <rect
+          data-baked-state-mask="led"
+          x={x - w * 0.18}
+          y={y - h * 0.12}
+          width={w * 1.36}
+          height={h * 1.24}
+          rx={Math.min(w, h) * 0.4}
+          fill={led.neutralFill}
+        />
         {isOn && (
           <ellipse
             cx={centreX}
@@ -535,18 +604,24 @@ LedOverlay.displayName = 'LedOverlay';
  * published unmodified on `data-segments`, which the DE2 HEX regressions read
  * in whichever 2D presentation is active.
  */
-export const HexOverlay: React.FC<BankProps> = React.memo(({ cx, index }) => {
+export const HexOverlay: React.FC<BankProps> = React.memo(({ point, index, layout, calibration }) => {
+  layout ??= DE2_REFERENCE_2D.layout;
+  point ??= layout.hex.centres[7 - index];
   const segments = useHexSegments(index);
 
-  const winW = ax(HEX_ART.windowWidth);
-  const winH = ay(HEX_ART.windowHeight);
-  const centreX = ax(cx);
-  const centreY = ay(HEX_ART.centreY);
-  const digitW = ax(HEX_ART.digitWidth);
-  const digitH = ay(HEX_ART.digitHeight);
+  const art = layout.hex;
+  const winW = art.windowWidth;
+  const winH = art.windowHeight;
+  const centreX = point.x;
+  const centreY = point.y;
+  const digitW = art.digitWidth;
+  const digitH = art.digitHeight;
 
   const shapes = useMemo(() => sevenSegmentShapes(digitW, digitH), [digitW, digitH]);
   const anyLit = segments.some((v) => isSegmentLit(v));
+  const resolved = calibration
+    ? resolveInputOverlay(calibration, layout.width, layout.height)
+    : undefined;
 
   return (
     <g
@@ -556,9 +631,18 @@ export const HexOverlay: React.FC<BankProps> = React.memo(({ cx, index }) => {
       aria-label={`HEX${index} seven-segment display`}
       pointerEvents="none"
     >
+      {resolved ? (
+        <PerspectiveHexVisual
+          corners={resolved.corners}
+          index={index}
+          segments={segments}
+        />
+      ) : (
+        <>
       {/* Digit window, repainted in the module's face colour. This is the mask
           that erases the artwork's fixed "8". */}
       <rect
+        data-baked-state-mask="hex"
         x={centreX - winW / 2}
         y={centreY - winH / 2}
         width={winW}
@@ -605,6 +689,8 @@ export const HexOverlay: React.FC<BankProps> = React.memo(({ cx, index }) => {
           );
         })}
       </g>
+        </>
+      )}
     </g>
   );
 });
@@ -631,18 +717,25 @@ HexOverlay.displayName = 'HexOverlay';
  * `LCD_ON` low blanks the panel and dims the glass; `LCD_BLON` low dims the
  * backlight without clearing the characters, as on the real module.
  */
-export const LcdOverlay: React.FC = React.memo(() => {
+export const LcdOverlay: React.FC<{
+  layout?: OverlayLayout;
+  calibration?: InputOverlayCalibration;
+}> = React.memo(({
+  layout = DE2_REFERENCE_2D.layout,
+  calibration,
+}) => {
   const { line1, line2, visible, backlight, cursor, initialised } = useLcdView();
   const dbg = useLcdDebug();
 
-  const gx = ax(LCD_ART.glassX);
-  const gy = ay(LCD_ART.glassY);
-  const gw = ax(LCD_ART.glassWidth);
-  const gh = ay(LCD_ART.glassHeight);
+  const art = layout.lcd;
+  const gx = art.glassX;
+  const gy = art.glassY;
+  const gw = art.glassWidth;
+  const gh = art.glassHeight;
 
   // Character area, inset inside the glass so text never reaches the bezel.
-  const padX = gw * LCD_ART.insetX;
-  const padY = gh * LCD_ART.insetY;
+  const padX = gw * art.insetX;
+  const padY = gh * art.insetY;
   const areaX = gx + padX;
   const areaY = gy + padY;
   const areaW = gw - padX * 2;
@@ -656,6 +749,9 @@ export const LcdOverlay: React.FC = React.memo(() => {
   const fontSize = cellH * 0.78;
 
   const rows = [line1, line2];
+  const resolved = calibration
+    ? resolveInputOverlay(calibration, layout.width, layout.height)
+    : undefined;
 
   return (
     <g
@@ -694,6 +790,16 @@ export const LcdOverlay: React.FC = React.memo(() => {
       }
       pointerEvents="none"
     >
+      {resolved ? (
+        <PerspectiveLcdVisual
+          corners={resolved.corners}
+          rows={[line1, line2]}
+          visible={visible}
+          backlight={backlight}
+          cursor={cursor}
+        />
+      ) : (
+        <>
       {/* Backlight and power, applied to the glass the artwork already drew.
           Dimming rather than repainting keeps the artwork's own reflection. */}
       {!backlight && (
@@ -735,6 +841,8 @@ export const LcdOverlay: React.FC = React.memo(() => {
           fill="#1C2A1E"
           opacity={0.75}
         />
+      )}
+        </>
       )}
 
       {/*
