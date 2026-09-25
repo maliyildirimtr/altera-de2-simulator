@@ -11,7 +11,7 @@ async function main() {
       try {
         const res = await fetch(`http://127.0.0.1:${port}`);
         const text = await res.text();
-        if (text.includes('Engineering Lab')) {
+        if (text.includes('Logic Lab')) {
           baseUrl = `http://127.0.0.1:${port}`;
           break;
         }
