@@ -700,9 +700,8 @@
 .lx-cta {
   position: relative;
   padding: clamp(64px, 8vw, 96px) 0;
-  background:
-    radial-gradient(ellipse 60% 120% at 85% 50%, rgba(35, 120, 220, 0.18), transparent 60%),
-    var(--lx-navy-950);
+  /* Flat navy, same family as the hero — no glow. */
+  background: #081424;
   color: var(--lx-dark-text);
   --lx-fg: var(--lx-dark-text);
   --lx-fg-2: var(--lx-dark-text-2);
@@ -723,14 +722,36 @@
 .lx-cta__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 10px;
+}
+
+/* Quieter buttons than the hero: muted blue, no shine. */
+.lx-cta .landing-hero-product__primary {
+  border-color: #245fa8;
+  background: #1f569b;
+  color: #eef4fb;
+}
+
+.lx-cta .landing-hero-product__primary:hover {
+  border-color: #2a69b6;
+  background: #235fab;
+}
+
+.lx-cta .landing-hero-product__secondary {
+  border-color: rgba(148, 163, 184, 0.24);
+  color: #c3cfdd;
+}
+
+.lx-cta .landing-hero-product__secondary:hover {
+  border-color: rgba(148, 163, 184, 0.4);
+  background: rgba(148, 163, 184, 0.06);
 }
 
 /* ═══ 9 · Footer ═════════════════════════════════════════════════ */
 .lx-footer {
-  background: var(--lx-navy-950);
-  border-top: 1px solid var(--lx-dark-line);
-  color: var(--lx-dark-text-2);
+  background: var(--lx-light-bg-alt);
+  border-top: 1px solid var(--lx-light-line);
+  color: var(--lx-ink-2);
   padding: 48px 0 28px;
 }
 
@@ -742,7 +763,7 @@
 
 .lx-footer__name {
   margin: 0;
-  color: var(--lx-dark-text);
+  color: var(--lx-ink);
   font-size: 15px;
   font-weight: 750;
   letter-spacing: -0.01em;
@@ -751,14 +772,14 @@
 .lx-footer__tagline {
   max-width: 300px;
   margin: 10px 0 0;
-  color: var(--lx-dark-text-3);
+  color: var(--lx-ink-3);
   font-size: 13px;
   line-height: 1.6;
 }
 
 .lx-footer__label {
   margin: 0 0 14px;
-  color: var(--lx-dark-text-3);
+  color: var(--lx-ink-3);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.16em;
@@ -774,25 +795,25 @@
 }
 
 .lx-footer a {
-  color: var(--lx-dark-text-2);
+  color: var(--lx-ink-2);
   font-size: 14px;
   text-decoration: none;
   transition: color 150ms ease;
 }
 
 .lx-footer a:hover {
-  color: var(--lx-dark-text);
+  color: var(--lx-accent-ink);
 }
 
 .lx-footer__bottom {
   margin-top: 40px;
   padding-top: 20px;
-  border-top: 1px solid var(--lx-dark-line);
+  border-top: 1px solid var(--lx-light-line);
   display: flex;
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-  color: var(--lx-dark-text-3);
+  color: var(--lx-ink-3);
   font-size: 11px;
 }
 
