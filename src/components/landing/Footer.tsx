@@ -1,94 +1,67 @@
-
 import { Link } from 'react-router-dom';
 import { PLATFORM_NAME } from '../../lib/platform';
 
-const PRODUCT_LINKS = [
+const TOOL_LINKS = [
   { label: 'DE2 Simulator', to: '/de2-simulator' },
-  { label: 'Waveform',      to: '/waveform' },
-  { label: 'Schematic',     to: '/schematic' },
-  { label: 'Examples',      to: '/examples' },
+  { label: 'Waveform', to: '/waveform' },
+  { label: 'Schematic', to: '/schematic' },
+];
+
+const RESOURCE_LINKS = [
+  { label: 'Examples', to: '/examples' },
+  { label: 'Digital Logic', to: '/digital-logic' },
+  { label: 'FPGA', to: '/fpga' },
 ];
 
 export function Footer() {
   return (
-    <footer
-      className="landing-footer w-full"
-      style={{ background: 'var(--landing-navy-deep)', borderTop: '1px solid rgba(255,255,255,0.06)' }}
-    >
-      <div className="max-w-6xl mx-auto px-6 py-12">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-10">
-
-          {/* Brand */}
-          <div>
-            <p
-              className="text-sm font-semibold mb-2"
-              style={{ color: '#f1f5f9' }}
-            >
-              {PLATFORM_NAME}
-            </p>
-            <p className="text-xs leading-relaxed" style={{ color: '#475569' }}>
-              Browser-based engineering tools for learning,
-              teaching, and simulation.
+    <footer className="lx-footer">
+      <div className="lx-container">
+        <div className="lx-footer__grid">
+          <div className="lx-footer__brand">
+            <p className="lx-footer__name">{PLATFORM_NAME}</p>
+            <p className="lx-footer__tagline">
+              Browser-based tools for learning, teaching and simulating digital hardware.
             </p>
           </div>
 
-          {/* Product links */}
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: '#334155' }}>
-              Product
-            </p>
-            <ul className="space-y-2">
-              {PRODUCT_LINKS.map(({ label, to }) => (
-                <li key={to}>
-                  <Link
-                    to={to}
-                    className="text-sm transition-colors"
-                    style={{ color: '#475569' }}
-                    onMouseEnter={e => (e.currentTarget.style.color = '#94a3b8')}
-                    onMouseLeave={e => (e.currentTarget.style.color = '#475569')}
-                  >
-                    {label}
-                  </Link>
-                </li>
+          <nav aria-label="Tools">
+            <p className="lx-mono lx-footer__label">Tools</p>
+            <ul>
+              {TOOL_LINKS.map(link => (
+                <li key={link.to}><Link to={link.to}>{link.label}</Link></li>
               ))}
             </ul>
-          </div>
+          </nav>
 
-          {/* Project */}
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: '#334155' }}>
-              Project
-            </p>
-            <ul className="space-y-2">
+          <nav aria-label="Resources">
+            <p className="lx-mono lx-footer__label">Resources</p>
+            <ul>
+              {RESOURCE_LINKS.map(link => (
+                <li key={link.to}><Link to={link.to}>{link.label}</Link></li>
+              ))}
+            </ul>
+          </nav>
+
+          <nav aria-label="Project">
+            <p className="lx-mono lx-footer__label">Project</p>
+            <ul>
               <li>
                 <a
                   href="https://github.com/maliyildirimtr/altera-de2-simulator"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm transition-colors"
-                  style={{ color: '#475569' }}
-                  onMouseEnter={e => (e.currentTarget.style.color = '#94a3b8')}
-                  onMouseLeave={e => (e.currentTarget.style.color = '#475569')}
                 >
                   GitHub
                 </a>
               </li>
             </ul>
-          </div>
-
+          </nav>
         </div>
 
-        {/* Bottom bar */}
-        <div
-          className="mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3"
-          style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}
-        >
-          <p className="text-xs font-mono" style={{ color: '#64748b' }}>
-            {PLATFORM_NAME} &middot; Browser-Based Digital Engineering
-          </p>
-          <p className="text-xs font-mono" style={{ color: '#64748b' }}>
-            Laboratory &amp; Simulation Platform
-          </p>
+        <div className="lx-footer__bottom lx-mono">
+          <span>{PLATFORM_NAME} — Browser-Based Digital Engineering</span>
+          <span>Altera DE2 · Cyclone II EP2C35</span>
         </div>
       </div>
     </footer>

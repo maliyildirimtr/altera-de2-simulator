@@ -71,8 +71,9 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
           </span>
         </Link>
 
-        {/* Desktop nav */}
-        <div className="hidden lg:flex items-center gap-4 xl:gap-5 flex-1">
+        {/* Desktop nav — centred in the bar from xl up, where there is room
+            on both sides; below that it follows the brand. */}
+        <div className="hidden lg:flex items-center gap-4 xl:gap-5 flex-1 xl:flex-none xl:absolute xl:left-1/2 xl:-translate-x-1/2">
           <div className="flex items-center gap-1">
             <span
               className="text-[10px] font-bold uppercase tracking-wider mr-2 select-none"
@@ -103,7 +104,7 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
         </div>
 
         {/* Right actions */}
-        <div className="flex items-center gap-1.5 ml-auto lg:ml-0 shrink-0">
+        <div className="flex items-center gap-1.5 ml-auto lg:ml-0 xl:ml-auto shrink-0">
           {/* Theme toggle */}
           <button
             data-testid="theme-toggle"

@@ -1,10 +1,12 @@
-
-import { Hero }            from '../components/landing/Hero';
-import { ToolShowcase }    from '../components/landing/ToolShowcase';
+import '../components/landing/landing.css';
+import { Hero } from '../components/landing/Hero';
+import { ProductShowcase } from '../components/landing/ProductShowcase';
+import { ToolShowcase } from '../components/landing/ToolShowcase';
 import { WorkflowSection } from '../components/landing/WorkflowSection';
-import { LearningSection } from '../components/landing/LearningSection';
 import { TeachingSection } from '../components/landing/TeachingSection';
-import { Footer }          from '../components/landing/Footer';
+import { LearningSection } from '../components/landing/LearningSection';
+import { FinalCta } from '../components/landing/FinalCta';
+import { Footer } from '../components/landing/Footer';
 
 /**
  * Home / Landing page.
@@ -13,19 +15,19 @@ import { Footer }          from '../components/landing/Footer';
  * scroll context within the App shell's `relative overflow-hidden` container.
  *
  * Section order:
- *   Hero → Tool Showcase → Workflow → Learning → Teaching → Footer
+ *   Hero → Product showcase → Tools → Workflow →
+ *   Teaching → Examples → Final CTA → Footer
  */
 export default function Home() {
   return (
-    <div
-      className="landing-page absolute inset-0 overflow-y-auto"
-      style={{ background: 'var(--landing-bg)', color: 'var(--landing-text)' }}
-    >
+    <div className="landing-page lx absolute inset-0 overflow-y-auto">
       <Hero />
+      <ProductShowcase />
       <ToolShowcase />
       <WorkflowSection />
-      <LearningSection />
       <TeachingSection />
+      <LearningSection />
+      <FinalCta />
       <Footer />
     </div>
   );
