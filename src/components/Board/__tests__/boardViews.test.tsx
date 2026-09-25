@@ -1868,12 +1868,53 @@ const realClearInterval = globalThis.clearInterval;
 
 try {
   store().resetBoard();
-  useBoardStore.setState({ engine: lcdEngine, pinMappings: [], simState: {} });
+  useBoardStore.setState({ pinMappings: [] });
+  store().setEngine(lcdEngine);
+
+  assert.strictEqual(store().compileState, 'ready', 'compile success enters Ready');
+  assert.strictEqual(store().isSimRunning, false, 'compile success does not auto-run');
+  assert.strictEqual(liveTimers.size, 0, 'compile success creates no timer');
+  assert.strictEqual(store().clockState, 0, 'compile success does not advance the clock');
+
+  store().tickClock();
+  assert.strictEqual(store().clockState, 1, 'Step Clock advances once while Ready');
+  assert.strictEqual(store().isSimRunning, false, 'Step Clock does not start continuous Run');
+  assert.strictEqual(liveTimers.size, 0, 'Step Clock creates no timer');
+
+  store().resetBoard();
+  assert.strictEqual(store().compileState, 'ready', 'Board Reset preserves the compiled design');
 
   store().startAutoSimulation();
   assert.strictEqual(liveTimers.size, 1, 'Run creates exactly one timer');
+  assert.strictEqual(store().isSimRunning, true, 'Run enters running state');
+
+  const firstRunTimer = [...liveTimers.values()][0];
+  firstRunTimer.fn();
+  assert.strictEqual(store().clockState, 1, 'the Run timer advances the clock');
+
+  store().stopAutoSimulation();
+  assert.strictEqual(liveTimers.size, 0, 'Pause leaves zero active timers');
+  assert.strictEqual(store().isSimRunning, false, 'Pause clears the running flag');
+
+  store().startAutoSimulation();
+  assert.strictEqual(liveTimers.size, 1, 'Run can resume after Pause');
+  store().setEngine(lcdEngine);
+  assert.strictEqual(store().compileState, 'ready', 'recompile returns to Ready');
+  assert.strictEqual(store().isSimRunning, false, 'recompile stops a running design');
+  assert.strictEqual(liveTimers.size, 0, 'recompile removes the previous Run timer');
+
+  store().markCompileFailed();
+  assert.strictEqual(store().compileState, 'error', 'compile failure is recorded');
+  assert.strictEqual(store().engine, null, 'compile failure invalidates the prior engine');
+  store().startAutoSimulation();
+  assert.strictEqual(store().isSimRunning, false, 'compile failure cannot enter Run');
+  assert.strictEqual(liveTimers.size, 0, 'compile failure cannot create a timer');
+
+  store().setEngine(lcdEngine);
+  store().resetBoard();
 
   // Starting again must REPLACE, not accumulate — this is what a recompile does.
+  store().startAutoSimulation();
   store().startAutoSimulation();
   assert.strictEqual(liveTimers.size, 1, 'restarting replaces the timer instead of adding one');
 
@@ -1911,7 +1952,7 @@ try {
   (globalThis as unknown as Record<string, unknown>).setInterval = realSetInterval;
   (globalThis as unknown as Record<string, unknown>).clearInterval = realClearInterval;
 }
-pass('the real run loop owns one timer and never skips or repeats a transition');
+pass('compile, Ready, Run, Pause, Step, recompile and failure own the timer explicitly');
 
 // The diagnostics the panel publishes must actually track the chain.
 store().resetBoard();
@@ -1980,6 +2021,44 @@ store().resetBoard();
 useBoardStore.setState({ engine: null, pinMappings: [], simState: {} });
 
 const scene = render25d('artwork');
+
+assert.strictEqual(
+  occurrences(scene, 'data-baked-state-mask="presentation-status"'),
+  4,
+  'all four baked presentation lamps are neutralised before compile',
+);
+assert.strictEqual(
+  occurrences(scene, 'data-presentation-status='),
+  4,
+  'the 2.5D view exposes exactly four presentation-only status lamps',
+);
+assert.ok(scene.includes('data-compiled-ready="false"'), 'presentation lamps start compiled-off');
+assert.strictEqual(
+  occurrences(scene, 'data-status-emitter="on"'),
+  0,
+  'no presentation lamp emitter is lit before compile',
+);
+
+const hdlLedStateBeforeCompile = {
+  red: [...store().ledR],
+  green: [...store().ledG],
+};
+store().setEngine(compileVerilog('module status_probe (input CLOCK_50, output LEDR0); assign LEDR0 = CLOCK_50; endmodule'));
+const readyScene = render25d('artwork');
+assert.ok(readyScene.includes('data-compiled-ready="true"'), 'successful compile lights presentation status');
+assert.strictEqual(
+  occurrences(readyScene, 'data-status-emitter="on"'),
+  4,
+  'LINK, ACT and both cyan presentation lamps light in Ready',
+);
+assert.deepStrictEqual(store().ledR, hdlLedStateBeforeCompile.red, 'compile status does not write LEDR');
+assert.deepStrictEqual(store().ledG, hdlLedStateBeforeCompile.green, 'compile status does not write LEDG');
+assert.ok(
+  !render2d('artwork').includes('data-overlay="presentation-status"'),
+  'the 2D renderer is not changed by the 2.5D presentation lamps',
+);
+store().setEngine(null);
+pass('2.5D presentation lamps follow compile Ready without touching HDL LED banks');
 
 // Historical CSS-perspective assertions are kept with the uncommitted legacy
 // implementation for review, but the shipped 2.5D view now uses the supplied

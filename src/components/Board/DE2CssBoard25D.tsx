@@ -27,6 +27,7 @@ import {
   KeyOverlay,
   LcdOverlay,
   LedOverlay,
+  PresentationStatusOverlay,
   SwitchOverlay,
 } from './primitives/ArtworkOverlays';
 import { useKeyPressed } from '../../board/useBoardSelectors';
@@ -83,6 +84,8 @@ export const DE2CssBoard25D: React.FC = React.memo(() => {
       pointerEvents="none"
       style={{ userSelect: 'none', WebkitUserDrag: 'none' } as React.CSSProperties}
     />
+
+    <PresentationStatusOverlay />
 
     <g data-overlay="hex">
       {reference25dLayout.hex.centres.map((point, i) => (

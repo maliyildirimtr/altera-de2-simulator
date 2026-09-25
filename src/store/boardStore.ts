@@ -48,6 +48,8 @@ export interface LcdDebug {
   step: number | null;
 }
 
+export type BoardCompileState = 'idle' | 'ready' | 'error';
+
 const INITIAL_LCD_DEBUG: LcdDebug = {
   cycle: 0,
   fallingEdges: 0,
@@ -100,6 +102,8 @@ interface BoardState {
   // Simulation Engine State
   engine: VerilogModule | null;
   setEngine: (engine: VerilogModule | null) => void;
+  compileState: BoardCompileState;
+  markCompileFailed: () => void;
   simState: Record<string, number>;
   clockState: number; // 0 or 1
   waveformHistory: Array<{ time: number, state: Record<string, number> }>;
@@ -139,6 +143,13 @@ const INITIAL_HEX = Array(8).fill(Array(7).fill(1)); // Active-low: 1 is off
 
 let simIntervalTimer: ReturnType<typeof setInterval> | null = null;
 
+const clearSimulationTimer = (): void => {
+  if (simIntervalTimer) {
+    clearInterval(simIntervalTimer);
+    simIntervalTimer = null;
+  }
+};
+
 export const useBoardStore = create<BoardState>((set, get) => ({
   lcd: createLcdState(),
   lcdDebug: { ...INITIAL_LCD_DEBUG },
@@ -155,10 +166,44 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   setPinMappings: (mappings) => set({ pinMappings: mappings }),
   
   hdlCode: '',
-  setHdlCode: (code) => set({ hdlCode: code }),
+  setHdlCode: (code) => {
+    if (code === get().hdlCode) return;
+    clearSimulationTimer();
+    set({
+      hdlCode: code,
+      engine: null,
+      compileState: 'idle',
+      isSimRunning: false,
+      simState: {},
+      clockState: 0,
+      waveformHistory: [],
+    });
+  },
   
   engine: null,
-  setEngine: (engine) => set({ engine, simState: {}, clockState: 0, waveformHistory: [] }),
+  compileState: 'idle',
+  setEngine: (engine) => {
+    clearSimulationTimer();
+    set({
+      engine,
+      compileState: engine ? 'ready' : 'idle',
+      isSimRunning: false,
+      simState: {},
+      clockState: 0,
+      waveformHistory: [],
+    });
+  },
+  markCompileFailed: () => {
+    clearSimulationTimer();
+    set({
+      engine: null,
+      compileState: 'error',
+      isSimRunning: false,
+      simState: {},
+      clockState: 0,
+      waveformHistory: [],
+    });
+  },
   simState: {},
   clockState: 0,
   waveformHistory: [],
@@ -168,7 +213,13 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   simFrequency: 5, // 5 Hz default
 
   startAutoSimulation: () => {
-    if (simIntervalTimer) clearInterval(simIntervalTimer);
+    const state = get();
+    if (!state.engine || state.compileState !== 'ready') {
+      clearSimulationTimer();
+      set({ isSimRunning: false });
+      return;
+    }
+    clearSimulationTimer();
     const freq = get().simFrequency || 5;
     const intervalMs = Math.max(20, Math.floor(1000 / (freq * 2)));
 
@@ -180,10 +231,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   },
 
   stopAutoSimulation: () => {
-    if (simIntervalTimer) {
-      clearInterval(simIntervalTimer);
-      simIntervalTimer = null;
-    }
+    clearSimulationTimer();
     set({ isSimRunning: false });
   },
 
@@ -462,10 +510,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   }),
 
   resetBoard: () => {
-    if (simIntervalTimer) {
-      clearInterval(simIntervalTimer);
-      simIntervalTimer = null;
-    }
+    clearSimulationTimer();
     set({
       switches: [...INITIAL_SWITCHES],
       keys: [...INITIAL_KEYS],
