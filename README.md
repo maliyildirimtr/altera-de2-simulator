@@ -1,4 +1,4 @@
-# Engineering Lab
+# Logic Lab
 
 Production URL: [https://lab.maliyildirimtr.com](https://lab.maliyildirimtr.com)
 
@@ -134,7 +134,7 @@ altera-de2-simulator/
 - Phase 9: example handoff dirty-state behavior — locked
 - Phase 10: local dependency migration and zero external runtime requests — locked
 - Phase 11: public-release cleanup, reproducibility, and repository hardening — locked
-- Phase 12: Engineering Lab platform foundation — locked
+- Phase 12: Logic Lab platform foundation — locked
 - Phase 12.1: custom domain production deployment (`lab.maliyildirimtr.com`) — current release gate
 
 ## License

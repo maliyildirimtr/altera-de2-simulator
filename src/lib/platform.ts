@@ -4,10 +4,10 @@
  * Change PLATFORM_NAME here and it propagates to every component that imports it.
  * The final product name has not been decided — keep this as the single source.
  */
-export const PLATFORM_NAME = 'Engineering Lab';
+export const PLATFORM_NAME = 'Logic Lab';
 
 /** Short form for compact contexts (mobile nav, meta tags, etc.) */
-export const PLATFORM_SHORT = 'EngLab';
+export const PLATFORM_SHORT = 'LogicLab';
 
 /** Hero tagline shown on the landing page */
 export const PLATFORM_TAGLINE = 'Design. Simulate. Understand.';
