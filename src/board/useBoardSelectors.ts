@@ -39,6 +39,11 @@ export function useLedGreenValue(index: number): number {
   return useBoardStore((s) => s.ledG[index] ?? 0);
 }
 
+/** Presentation-only power/status lamps shown once a design is compiled. */
+export function useBoardCompiledReady(): boolean {
+  return useBoardStore((s) => s.compileState === 'ready' && s.engine !== null);
+}
+
 /**
  * Raw 7-segment values for HEX`index`, exactly as the simulator produced them.
  *

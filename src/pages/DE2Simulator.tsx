@@ -66,10 +66,13 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
     hdlCode,
     setHdlCode,
     setEngine,
+    compileState,
+    markCompileFailed,
     pinMappings,
     setPinMappings,
     resetBoard,
     runSimulationCycle,
+    stopAutoSimulation,
     isUploaderOpen,
     setUploaderOpen,
   } = useBoardStore();
@@ -123,7 +126,6 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
 
   // Compiler / Console state
   const [isCompiling, setIsCompiling] = useState(false);
-  const [compileStatus, setCompileStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [compileError, setCompileError] = useState<string | null>(null);
   const [consoleMessages, setConsoleMessages] = useState<ConsoleMessage[]>([
     {
@@ -156,7 +158,6 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
         setPinMappings([]);
         // Re-use existing boardStore state setters (engine invalidation + board reset)
         setEngine(null);
-        setCompileStatus('idle');
         setCompileError(null);
         resetBoard();
         addLog('info', `Loaded example into DE2: ${ex.title} (${ex.de2.filename})`);
@@ -175,12 +176,12 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
       return;
     }
 
+    stopAutoSimulation();
     setIsCompiling(true);
     try {
       const module = compileVerilog(hdlCode);
       setEngine(module);
       setCompileError(null);
-      setCompileStatus('success');
 
       // Auto-assign ports to virtual board components if not already mapped
       if (pinMappings.length === 0 && (module.inputs.length > 0 || module.outputs.length > 0)) {
@@ -200,10 +201,9 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
         }
       }
 
-      // Trigger initial simulation tick to settle output states
-      setTimeout(() => {
-        runSimulationCycle();
-      }, 0);
+      // Settle combinational outputs once without starting the clock timer.
+      // The design remains compiled-ready until the user presses Run or Step.
+      runSimulationCycle();
 
       const modName = module.topModule || 'top';
       addLog(
@@ -212,19 +212,19 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
       );
     } catch (err: any) {
       const rawError = err.message || 'Unknown compilation syntax error.';
+      markCompileFailed();
       setCompileError(rawError);
-      setCompileStatus('error');
       addLog('error', `Compilation failed: ${rawError}`);
       setIsConsoleOpen(true);
     } finally {
       setIsCompiling(false);
     }
-  }, [hdlCode, pinMappings, setEngine, setPinMappings, runSimulationCycle, addLog]);
+  }, [hdlCode, pinMappings, setEngine, setPinMappings, runSimulationCycle, stopAutoSimulation, markCompileFailed, addLog]);
 
   return (
     <div
       data-testid="de2-workspace"
-      data-compile-status={compileStatus}
+      data-compile-status={isCompiling ? 'compiling' : compileState}
       className="flex-1 flex flex-col h-full w-full overflow-hidden font-sans"
       style={{
         backgroundColor: 'var(--bg-app)',

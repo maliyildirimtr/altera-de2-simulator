@@ -69,6 +69,8 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
     pinMappings,
     setPinMappings,
     clockState,
+    engine,
+    compileState,
     tickClock,
     isSimRunning,
     simFrequency,
@@ -81,6 +83,8 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
     ledR,
     ledG,
   } = useBoardStore();
+
+  const canSimulate = compileState === 'ready' && !!engine;
 
   const [copiedQsf, setCopiedQsf] = useState(false);
   const [copiedQsfText, setCopiedQsfText] = useState('');
@@ -409,6 +413,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                 </div>
                 <button
                   onClick={() => tickClock()}
+                  disabled={!canSimulate || isSimRunning}
                   className="px-2.5 py-1 rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] text-xs font-medium transition-colors flex items-center gap-1.5 shadow-xs"
                   title="Pulse Clock Signal"
                 >
@@ -426,6 +431,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                       if (isSimRunning) stopAutoSimulation();
                       else startAutoSimulation();
                     }}
+                    disabled={!canSimulate}
                     className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-xs font-medium border transition-colors shadow-xs ${
                       isSimRunning
                         ? 'bg-rose-500/10 text-rose-500 border-rose-500/25 hover:bg-rose-500/20'

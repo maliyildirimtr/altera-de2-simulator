@@ -48,6 +48,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
 }) => {
   const {
     engine,
+    compileState,
     isSimRunning,
     startAutoSimulation,
     stopAutoSimulation,
@@ -59,7 +60,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
   const [overflowOpen, setOverflowOpen] = useState(false);
   const overflowRef = useRef<HTMLDivElement>(null);
 
-  const hasEngine = !!engine;
+  const isReady = compileState === 'ready' && !!engine;
   const hasHdl = !!hdlCode && hdlCode.trim().length > 0;
 
   // Close overflow menu on outside click
@@ -127,12 +128,37 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
 
           <div
             data-testid="engine-status"
-            data-status={hasEngine ? 'ready' : 'uncompiled'}
+            data-status={isSimRunning ? 'running' : compileState}
             className={`w-2 h-2 rounded-full shrink-0 ${
-              hasEngine ? 'bg-emerald-500' : 'bg-slate-500'
+              compileState === 'error'
+                ? 'bg-rose-500'
+                : isReady
+                  ? 'bg-emerald-500'
+                  : 'bg-slate-500'
             }`}
-            title={hasEngine ? 'Simulation Engine Ready' : 'Engine not compiled'}
+            title={
+              compileState === 'error'
+                ? 'Compilation failed'
+                : isSimRunning
+                  ? 'Simulation running'
+                  : isReady
+                    ? 'Simulation Engine Ready'
+                    : 'Engine not compiled'
+            }
           />
+          <span
+            data-testid="engine-status-label"
+            className="hidden xl:inline text-[11px] font-semibold"
+            style={{
+              color: compileState === 'error'
+                ? 'var(--state-error)'
+                : isReady
+                  ? 'var(--state-success)'
+                  : 'var(--text-muted)',
+            }}
+          >
+            {compileState === 'error' ? 'Compile error' : isSimRunning ? 'Running' : isReady ? 'Ready' : 'Not compiled'}
+          </span>
         </div>
       </div>
 
@@ -247,7 +273,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
               if (isSimRunning) stopAutoSimulation();
               else startAutoSimulation();
             }}
-            disabled={!hasEngine}
+            disabled={!isReady}
             className={`flex items-center gap-1.5 px-2.5 h-[30px] rounded-[4px] font-semibold transition-colors disabled:opacity-40 disabled:pointer-events-none text-white text-xs ${
               isSimRunning
                 ? 'bg-amber-600 hover:bg-amber-500'
@@ -264,7 +290,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
           <button
             data-testid="de2-clock-step"
             onClick={() => tickClock()}
-            disabled={!hasEngine}
+            disabled={!isReady || isSimRunning}
             className="flex items-center gap-1.5 px-2.5 h-[30px] rounded-[4px] border font-medium transition-colors disabled:opacity-40 disabled:pointer-events-none text-xs"
             style={{
               backgroundColor: 'var(--bg-surface)',
@@ -368,7 +394,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
               if (isSimRunning) stopAutoSimulation();
               else startAutoSimulation();
             }}
-            disabled={!hasEngine}
+            disabled={!isReady}
             className={`flex items-center gap-1 px-2 py-1 rounded font-semibold text-xs transition-colors disabled:opacity-40 disabled:pointer-events-none text-white ${
               isSimRunning
                 ? 'bg-amber-600 hover:bg-amber-500'
@@ -430,7 +456,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
                   onClick={() => {
                     tickClock();
                   }}
-                  disabled={!hasEngine}
+                  disabled={!isReady || isSimRunning}
                   className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded text-left transition-colors hover:bg-[var(--accent-subtle)] disabled:opacity-40 disabled:pointer-events-none"
                   style={{ color: 'var(--text-primary)' }}
                 >

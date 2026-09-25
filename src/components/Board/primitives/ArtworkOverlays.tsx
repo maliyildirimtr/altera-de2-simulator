@@ -12,6 +12,7 @@ import {
 import { LCD_COLS, LCD_ROWS } from '../../../core/peripherals/lcdController';
 import {
   isSegmentLit,
+  useBoardCompiledReady,
   useHexSegments,
   useLcdDebug,
   useKeyPressed,
@@ -168,8 +169,151 @@ export const ArtworkOverlayDefs: React.FC<{ layout?: OverlayLayout }> = ({
       <stop offset="0%" stopColor="#FF6A3A" stopOpacity="0.22" />
       <stop offset="100%" stopColor="#FF6A3A" stopOpacity="0" />
     </radialGradient>
+
+    {/* Local masks for the four presentation-only status lamps baked into
+        the 2.5D reference. Their transparent edges preserve nearby traces,
+        component outlines and silkscreen. */}
+    <radialGradient id="de2a-status-mask-blue" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stopColor="#0348B4" stopOpacity="1" />
+      <stop offset="84%" stopColor="#0348B4" stopOpacity="1" />
+      <stop offset="100%" stopColor="#0348B4" stopOpacity="0" />
+    </radialGradient>
+    <radialGradient id="de2a-status-mask-dark" cx="0.5" cy="0.58" r="0.5">
+      <stop offset="0%" stopColor="#063650" stopOpacity="1" />
+      <stop offset="82%" stopColor="#063650" stopOpacity="1" />
+      <stop offset="100%" stopColor="#063650" stopOpacity="0" />
+    </radialGradient>
+    <radialGradient id="de2a-status-blue-off" cx="0.36" cy="0.3" r="0.8">
+      <stop offset="0%" stopColor="#447B8E" />
+      <stop offset="44%" stopColor="#17465B" />
+      <stop offset="100%" stopColor="#082A3B" />
+    </radialGradient>
+    <radialGradient id="de2a-status-blue-on" cx="0.36" cy="0.3" r="0.8">
+      <stop offset="0%" stopColor="#F4FFFF" />
+      <stop offset="30%" stopColor="#77F7FF" />
+      <stop offset="100%" stopColor="#00A6E8" />
+    </radialGradient>
+    <radialGradient id="de2a-status-blue-halo" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stopColor="#37E8FF" stopOpacity="0.72" />
+      <stop offset="42%" stopColor="#159BFF" stopOpacity="0.32" />
+      <stop offset="100%" stopColor="#0879FF" stopOpacity="0" />
+    </radialGradient>
   </defs>
 );
+
+type PresentationStatusKind = 'blue' | 'green' | 'red';
+
+interface PresentationStatusLamp {
+  id: 'blue-left' | 'blue-right' | 'link' | 'act';
+  label: string;
+  kind: PresentationStatusKind;
+  x: number;
+  y: number;
+  lensRx: number;
+  lensRy: number;
+  maskRx: number;
+  maskRy: number;
+}
+
+/**
+ * Four board/presentation indicators which are not HDL LEDR/LEDG outputs.
+ *
+ * The source PNG shows these lamps illuminated. This layer first neutralises
+ * only their measured glow/lens footprints, then lights them from the compile
+ * state. They intentionally subscribe to no simulated output signal.
+ */
+const PRESENTATION_STATUS_LAMPS: readonly PresentationStatusLamp[] = [
+  { id: 'blue-left', label: 'Left cyan status', kind: 'blue', x: 488, y: 446, lensRx: 15, lensRy: 15, maskRx: 56, maskRy: 49 },
+  { id: 'blue-right', label: 'Right cyan status', kind: 'blue', x: 641, y: 446, lensRx: 15, lensRy: 15, maskRx: 56, maskRy: 49 },
+  { id: 'link', label: 'LINK', kind: 'green', x: 1639, y: 284, lensRx: 12, lensRy: 17, maskRx: 36, maskRy: 29 },
+  { id: 'act', label: 'ACT', kind: 'red', x: 1684, y: 284, lensRx: 12, lensRy: 16, maskRx: 36, maskRy: 29 },
+] as const;
+
+export const PresentationStatusOverlay: React.FC = React.memo(() => {
+  const isReady = useBoardCompiledReady();
+
+  return (
+    <g
+      data-overlay="presentation-status"
+      data-compiled-ready={isReady ? 'true' : 'false'}
+      pointerEvents="none"
+    >
+      {PRESENTATION_STATUS_LAMPS.map((lamp) => {
+        const isBlue = lamp.kind === 'blue';
+        const offFill = isBlue
+          ? 'url(#de2a-status-blue-off)'
+          : lamp.kind === 'green'
+            ? 'url(#de2a-ledg-off)'
+            : 'url(#de2a-ledr-off)';
+        const onFill = isBlue
+          ? 'url(#de2a-status-blue-on)'
+          : lamp.kind === 'green'
+            ? 'url(#de2a-ledg-on)'
+            : 'url(#de2a-ledr-on)';
+        const haloFill = isBlue
+          ? 'url(#de2a-status-blue-halo)'
+          : lamp.kind === 'green'
+            ? 'url(#de2a-ledg-halo)'
+            : 'url(#de2a-ledr-halo)';
+
+        return (
+          <g
+            key={lamp.id}
+            data-testid={`de2-status-led-${lamp.id}`}
+            data-presentation-status={lamp.id}
+            data-active={isReady ? 'true' : 'false'}
+            role="img"
+            aria-label={`${lamp.label} compile status ${isReady ? 'on' : 'off'}`}
+          >
+            <ellipse
+              data-baked-state-mask="presentation-status"
+              cx={lamp.x}
+              cy={lamp.y + (isBlue ? 0 : 7)}
+              rx={lamp.maskRx}
+              ry={lamp.maskRy}
+              fill={isBlue ? 'url(#de2a-status-mask-blue)' : 'url(#de2a-status-mask-dark)'}
+            />
+            {isReady && (
+              <ellipse
+                data-status-emitter="halo"
+                cx={lamp.x}
+                cy={lamp.y}
+                rx={lamp.maskRx * 0.92}
+                ry={lamp.maskRy * 0.92}
+                fill={haloFill}
+              />
+            )}
+            <ellipse
+              cx={lamp.x}
+              cy={lamp.y}
+              rx={lamp.lensRx + (isBlue ? 3 : 2)}
+              ry={lamp.lensRy + (isBlue ? 3 : 2)}
+              fill={isBlue ? '#AAB8BE' : '#403F3A'}
+              opacity={0.9}
+            />
+            <ellipse
+              data-status-emitter={isReady ? 'on' : 'off'}
+              cx={lamp.x}
+              cy={lamp.y}
+              rx={lamp.lensRx}
+              ry={lamp.lensRy}
+              fill={isReady ? onFill : offFill}
+            />
+            <ellipse
+              cx={lamp.x - lamp.lensRx * 0.25}
+              cy={lamp.y - lamp.lensRy * 0.35}
+              rx={lamp.lensRx * 0.24}
+              ry={lamp.lensRy * 0.16}
+              fill="#FFFFFF"
+              opacity={isReady ? 0.68 : 0.16}
+            />
+          </g>
+        );
+      })}
+    </g>
+  );
+});
+PresentationStatusOverlay.displayName = 'PresentationStatusOverlay';
 
 /* ────────────────────────────────────────────────────────────────────────
  * Slide switches

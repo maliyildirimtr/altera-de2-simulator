@@ -1,8 +1,7 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
 import { useBoardStore } from '../../store/boardStore';
-import { compileVerilog } from '../../core/simulator/verilogEngine';
 import { markWorkspaceDirty } from '../../services/exampleHandoff';
 import { FileCode, Upload, BookOpen } from 'lucide-react';
 
@@ -14,23 +13,14 @@ interface CodeEditorProps {
 
 export const CodeEditor: React.FC<CodeEditorProps> = ({ isOpen, onOpenImport, isDarkMode = true }) => {
   const navigate = useNavigate();
-  const { hdlCode, setHdlCode, setEngine } = useBoardStore();
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { hdlCode, setHdlCode } = useBoardStore();
 
   const handleEditorChange = useCallback((value: string | undefined) => {
     if (value === undefined) return;
-    if (useBoardStore.getState().hdlCode !== value) {
-      markWorkspaceDirty('de2');
-    }
+    if (useBoardStore.getState().hdlCode === value) return;
+    markWorkspaceDirty('de2');
     setHdlCode(value);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      try {
-        const newEngine = compileVerilog(value);
-        setEngine(newEngine);
-      } catch (_) {}
-    }, 600);
-  }, [setHdlCode, setEngine]);
+  }, [setHdlCode]);
 
   if (!isOpen) return null;
 
@@ -113,4 +103,3 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ isOpen, onOpenImport, is
     </div>
   );
 };
-
