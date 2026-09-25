@@ -9,7 +9,7 @@ export function FinalCta() {
         <div>
           <h2 id="lx-cta-title" className="lx-heading">Ready to simulate?</h2>
           <p className="lx-lead">
-            Open Engineering Lab and start with a working example or your own HDL.
+            Open Logic Lab and start with a working example or your own HDL.
           </p>
         </div>
         <div className="lx-cta__actions">

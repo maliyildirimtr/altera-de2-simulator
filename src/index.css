@@ -876,11 +876,11 @@ circle[stroke="#a855f7"],
 
 .landing-hero-product__eyebrow {
   margin: 0 0 18px;
-  color: #7fa9dc;
-  font-family: var(--font-mono);
+  color: #8193aa;
+  font-family: var(--font-sans);
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   line-height: 1.4;
   text-transform: uppercase;
 }
@@ -900,7 +900,7 @@ circle[stroke="#a855f7"],
 }
 
 .landing-hero-product__title span:nth-child(2) {
-  color: #9cc2f0;
+  color: #8ea3bd;
 }
 
 .landing-hero-product__description {
@@ -936,25 +936,25 @@ circle[stroke="#a855f7"],
 }
 
 .landing-hero-product__primary {
-  border: 1px solid #2f7fe4;
-  background: #2371d6;
-  color: #fff;
+  border: 1px solid #245fa8;
+  background: #1f569b;
+  color: #eef4fb;
 }
 
 .landing-hero-product__primary:hover {
-  border-color: #3f8cec;
-  background: #2b7ee6;
+  border-color: #2a69b6;
+  background: #235fab;
 }
 
 .landing-hero-product__secondary {
-  border: 1px solid rgba(148, 163, 184, 0.3);
+  border: 1px solid rgba(148, 163, 184, 0.24);
   background: transparent;
-  color: #d5e0ee;
+  color: #c3cfdd;
 }
 
 .landing-hero-product__secondary:hover {
-  border-color: rgba(148, 163, 184, 0.5);
-  background: rgba(148, 163, 184, 0.08);
+  border-color: rgba(148, 163, 184, 0.4);
+  background: rgba(148, 163, 184, 0.06);
 }
 
 .landing-hero-product__primary:focus-visible,

@@ -1,15 +1,15 @@
 /* ═══════════════════════════════════════════════════════════════════
- * Engineering Lab landing page — sections below the hero.
+ * Logic Lab landing page — sections below the hero.
  * Scoped under `.lx` (set on the Home page root).
  * Palette: deep navy (primary) · warm off-white / blue-gray (secondary)
- * · restrained Engineering Lab blue (accent).
+ * · restrained Logic Lab blue (accent).
  * ═══════════════════════════════════════════════════════════════════ */
 
 .lx {
   --lx-navy-950: #030914;
-  --lx-navy-900: #050d1b;
-  --lx-navy-850: #081427;
-  --lx-navy-800: #0b1a31;
+  --lx-navy-900: #081424;
+  --lx-navy-850: #0b1a2e;
+  --lx-navy-800: #0e1f36;
   --lx-dark-line: rgba(148, 163, 184, 0.14);
   --lx-dark-line-strong: rgba(148, 163, 184, 0.24);
   --lx-dark-text: #f4f7fb;
@@ -46,7 +46,7 @@
   --lx-ink-3: #71849e;
   --lx-light-line: rgba(148, 163, 184, 0.14);
   --lx-light-line-strong: rgba(148, 163, 184, 0.24);
-  --lx-accent-ink: #75aff5;
+  --lx-accent-ink: #9db3cc;
 }
 
 /* Mirrors the hero grid (1480px max, 24px gutter + copy inset) so every
@@ -88,7 +88,7 @@
   --lx-fg-3: var(--lx-dark-text-3);
   --lx-line: var(--lx-dark-line);
   --lx-line-strong: var(--lx-dark-line-strong);
-  --lx-eyebrow: var(--lx-accent-soft);
+  --lx-eyebrow: #8193aa;
 }
 
 .lx-light {
@@ -99,7 +99,7 @@
   --lx-fg-3: var(--lx-ink-3);
   --lx-line: var(--lx-light-line);
   --lx-line-strong: var(--lx-light-line-strong);
-  --lx-eyebrow: var(--lx-accent-ink);
+  --lx-eyebrow: var(--lx-ink-3);
 }
 
 .lx-light--alt {
@@ -108,34 +108,23 @@
 
 /* ── Typography ───────────────────────────────────────────────── */
 .lx-eyebrow {
-  margin: 0 0 20px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  margin: 0 0 16px;
   color: var(--lx-eyebrow);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.17em;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   line-height: 1.4;
   text-transform: uppercase;
-}
-
-.lx-eyebrow::before {
-  content: '';
-  width: 26px;
-  height: 1px;
-  flex: 0 0 auto;
-  background: currentColor;
 }
 
 .lx-heading {
   margin: 0;
   color: var(--lx-fg);
-  font-size: clamp(2.1rem, 4.1vw, 3.5rem);
-  font-weight: 780;
-  letter-spacing: -0.045em;
-  line-height: 1.02;
+  font-size: clamp(2rem, 3.4vw, 3.1rem);
+  font-weight: 720;
+  letter-spacing: -0.035em;
+  line-height: 1.06;
   text-wrap: balance;
 }
 
@@ -148,11 +137,11 @@
 }
 
 .lx-accent-text {
-  color: var(--lx-accent-soft);
+  color: #8ea3bd;
 }
 
 .lx-light .lx-accent-text {
-  color: var(--lx-accent-ink);
+  color: var(--lx-ink-3);
 }
 
 .lx-lead {
@@ -168,9 +157,9 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: var(--lx-eyebrow);
+  color: var(--lx-accent-ink);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   text-decoration: none;
 }
 
@@ -208,20 +197,14 @@
 /* ── Reveal animation ─────────────────────────────────────────── */
 .lx [data-reveal] {
   opacity: 0;
-  transform: translate3d(0, 18px, 0);
-  transition: opacity 700ms var(--lx-ease), transform 700ms var(--lx-ease);
+  transition: opacity 450ms ease;
 }
 
 .lx [data-reveal='in'] {
   opacity: 1;
-  transform: none;
 }
 
 /* ═══ 3 · Product showcase ═══════════════════════════════════════ */
-.lx-showcase .lx-heading {
-  font-size: clamp(2rem, 3.4vw, 3rem);
-}
-
 .lx-showcase__grid {
   display: grid;
   grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr);
@@ -281,29 +264,16 @@
 
 .lx-showcase__frame {
   overflow: hidden;
+  border: 1px solid var(--lx-light-line);
   border-radius: 10px;
   background: #0a0f1a;
-  box-shadow:
-    0 0 0 1px rgba(11, 19, 38, 0.18),
-    0 30px 60px -24px rgba(6, 16, 33, 0.45),
-    0 12px 24px -12px rgba(6, 16, 33, 0.3);
-}
-
-[data-theme='dark'] .lx-showcase__frame {
-  box-shadow:
-    0 0 0 1px rgba(148, 163, 184, 0.16),
-    0 30px 60px -24px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 18px 36px -24px rgba(6, 16, 33, 0.45);
 }
 
 .lx-showcase__frame img {
   display: block;
   width: 100%;
   height: auto;
-  transition: transform 900ms var(--lx-ease);
-}
-
-.lx-showcase__visual:hover .lx-showcase__frame img {
-  transform: scale(1.012);
 }
 
 .lx-showcase__caption,
@@ -315,7 +285,7 @@
   color: var(--lx-fg-3);
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.06em;
 }
 
 /* ═══ 4 · Tools grid ═════════════════════════════════════════════ */
@@ -392,9 +362,9 @@
   align-items: center;
   gap: 6px;
   padding-top: 4px;
-  color: var(--lx-accent-soft);
+  color: var(--lx-dark-text-2);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -421,17 +391,12 @@
   height: 100%;
   max-width: none;
   object-fit: cover;
-  transition: transform 700ms var(--lx-ease);
 }
 
-.lx-tool--de2 .lx-tool__shot img { object-position: 38% 60%; }
-.lx-tool--waveform .lx-tool__shot img { object-position: 86% 50%; }
-.lx-tool--schematic .lx-tool__shot img { object-position: 0% 50%; }
-.lx-tool--examples .lx-tool__shot img { object-position: 0% 0%; }
-
-.lx-tool__link:hover .lx-tool__shot img {
-  transform: translate3d(0, -4px, 0) scale(1.015);
-}
+.lx-tool--de2 .lx-tool__shot img { object-position: 50% 50%; }
+.lx-tool--waveform .lx-tool__shot img { object-position: 0% 50%; }
+.lx-tool--schematic .lx-tool__shot img { object-position: 50% 50%; }
+.lx-tool--examples .lx-tool__shot img { object-position: 50% 50%; }
 
 /* ═══ 5 · Workflow ═══════════════════════════════════════════════ */
 .lx-flow {
@@ -468,9 +433,9 @@
 }
 
 .lx-flow__step:first-child .lx-flow__node {
-  border-color: var(--lx-accent);
-  background: var(--lx-accent);
-  color: #fff;
+  border-color: #245fa8;
+  background: #1f569b;
+  color: #eef4fb;
 }
 
 .lx-flow__connector {
@@ -527,22 +492,7 @@
 
 /* ═══ 6 · Teaching ═══════════════════════════════════════════════ */
 .lx-teaching {
-  overflow: hidden;
-  background:
-    radial-gradient(circle at 78% 50%, rgba(21, 93, 173, 0.2), transparent 42%),
-    linear-gradient(112deg, #071326 0%, #061021 50%, #030914 100%);
-}
-
-.lx-teaching::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image:
-    linear-gradient(rgba(148, 163, 184, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.035) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: linear-gradient(to right, rgba(0, 0, 0, 0.7), transparent 70%);
+  background: var(--lx-navy-900);
 }
 
 .lx-teaching__grid {
@@ -551,11 +501,6 @@
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
   align-items: center;
   gap: clamp(40px, 6vw, 96px);
-}
-
-.lx-teaching .lx-heading {
-  font-size: clamp(2.4rem, 4.6vw, 4rem);
-  line-height: 0.98;
 }
 
 .lx-uses {
@@ -590,13 +535,10 @@
 }
 
 .lx-teaching__frame {
-  position: relative;
   overflow: hidden;
+  border: 1px solid var(--lx-dark-line);
   border-radius: 10px;
-  box-shadow:
-    0 0 0 1px rgba(148, 163, 184, 0.16),
-    0 40px 80px -30px rgba(0, 0, 0, 0.8),
-    0 0 90px -20px rgba(21, 93, 173, 0.35);
+  box-shadow: 0 18px 36px -24px rgba(0, 0, 0, 0.6);
 }
 
 .lx-teaching__frame img {
@@ -692,8 +634,8 @@
 }
 
 .lx-tag--de2 {
-  border-color: color-mix(in srgb, var(--lx-accent) 45%, transparent);
-  color: var(--lx-eyebrow);
+  border-color: var(--lx-line-strong);
+  color: var(--lx-fg);
 }
 
 /* ═══ 8 · Final CTA ══════════════════════════════════════════════ */
@@ -701,7 +643,7 @@
   position: relative;
   padding: clamp(64px, 8vw, 96px) 0;
   /* Flat navy, same family as the hero — no glow. */
-  background: #081424;
+  background: var(--lx-navy-900);
   color: var(--lx-dark-text);
   --lx-fg: var(--lx-dark-text);
   --lx-fg-2: var(--lx-dark-text-2);
@@ -723,28 +665,6 @@
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-}
-
-/* Quieter buttons than the hero: muted blue, no shine. */
-.lx-cta .landing-hero-product__primary {
-  border-color: #245fa8;
-  background: #1f569b;
-  color: #eef4fb;
-}
-
-.lx-cta .landing-hero-product__primary:hover {
-  border-color: #2a69b6;
-  background: #235fab;
-}
-
-.lx-cta .landing-hero-product__secondary {
-  border-color: rgba(148, 163, 184, 0.24);
-  color: #c3cfdd;
-}
-
-.lx-cta .landing-hero-product__secondary:hover {
-  border-color: rgba(148, 163, 184, 0.4);
-  background: rgba(148, 163, 184, 0.06);
 }
 
 /* ═══ 9 · Footer ═════════════════════════════════════════════════ */
@@ -924,10 +844,6 @@
     font-size: clamp(2rem, 9vw, 2.5rem);
   }
 
-  .lx-teaching .lx-heading {
-    font-size: clamp(2.2rem, 11vw, 2.9rem);
-  }
-
   .lx-spec__row {
     grid-template-columns: 104px minmax(0, 1fr);
     gap: 12px;
@@ -1000,8 +916,6 @@
     transition: none;
   }
 
-  .lx-showcase__frame img,
-  .lx-tool__shot img,
   .lx-link svg,
   .lx-tool__cta svg {
     transition: none;

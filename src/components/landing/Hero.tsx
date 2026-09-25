@@ -51,7 +51,7 @@ export function Hero() {
             />
           </div>
           <figcaption className="sr-only">
-            The Altera DE2 board as rendered in the Engineering Lab DE2 Simulator.
+            The Altera DE2 board as rendered in the Logic Lab DE2 Simulator.
           </figcaption>
         </figure>
       </div>
