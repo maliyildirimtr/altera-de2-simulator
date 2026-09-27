@@ -219,6 +219,11 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
       const module = compileVerilog(hdlCode);
       setEngine(module);
       setCompileError(null);
+      if (module.transpileError) {
+        // The ports were read but part of the logic uses a construct the
+        // built-in simulator cannot run; outputs will not change.
+        addLog('warn', `Some logic could not be simulated and is ignored: ${module.transpileError}`);
+      }
 
       // Auto-assign ports to virtual board components if not already mapped
       if (pinMappings.length === 0 && (module.inputs.length > 0 || module.outputs.length > 0)) {

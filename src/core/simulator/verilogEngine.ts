@@ -10,6 +10,12 @@ export interface VerilogModule {
   outputs: string[];
   portWidths?: Record<string, number>;
   evaluate: (inputs: Record<string, number>, state: Record<string, number>) => Record<string, number>;
+  /**
+   * Set when the design parsed but its logic could not be translated (an
+   * unsupported construct). `evaluate` is then a no-op; callers may surface
+   * this message instead of failing silently.
+   */
+  transpileError?: string;
 }
 
 
@@ -367,7 +373,8 @@ export function elaborateEngine(modules: Record<string, any>, topModule: string)
   } catch (err) {
     console.error("Transpilation Error:", err);
     const fallbackEvaluate = (_inputs: Record<string, number>, state: Record<string, number>) => state;
-    return { inputs: topInputs, outputs: topOutputs, evaluate: fallbackEvaluate, modules, topModule };
+    const transpileError = err instanceof Error ? err.message : String(err);
+    return { inputs: topInputs, outputs: topOutputs, evaluate: fallbackEvaluate, modules, topModule, transpileError };
   }
 }
 

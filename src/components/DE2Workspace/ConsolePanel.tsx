@@ -6,7 +6,9 @@ import {
   ChevronUp,
   Trash2,
   CheckCircle2,
+  Activity,
 } from 'lucide-react';
+import { LogicAnalyzer } from './LogicAnalyzer';
 
 export interface ConsoleMessage {
   id: string;
@@ -32,7 +34,7 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
   compileError,
   onClear,
 }) => {
-  const [activeTab, setActiveTab] = useState<'console' | 'problems'>('console');
+  const [activeTab, setActiveTab] = useState<'console' | 'problems' | 'analyzer'>('console');
 
   if (!isOpen) {
     return (
@@ -89,6 +91,18 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
                 1
               </span>
             )}
+          </button>
+          <button
+            data-testid="console-tab-analyzer"
+            onClick={() => {
+              setActiveTab('analyzer');
+              onToggle();
+            }}
+            className="flex items-center gap-1.5 transition-colors hover:text-[var(--text-primary)]"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            <Activity size={13} />
+            <span className="font-medium">Logic Analyzer</span>
           </button>
         </div>
         <button
@@ -166,6 +180,19 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
               </span>
             )}
           </button>
+
+          <button
+            data-testid="console-tab-analyzer"
+            onClick={() => setActiveTab('analyzer')}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-[4px] transition-colors ${
+              activeTab === 'analyzer'
+                ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+            }`}
+          >
+            <Activity size={13} />
+            <span>Logic Analyzer</span>
+          </button>
         </div>
 
         <div className="flex items-center gap-1">
@@ -220,6 +247,8 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
             )}
           </div>
         )}
+
+        {activeTab === 'analyzer' && <LogicAnalyzer />}
 
         {activeTab === 'problems' && (
           <div>
