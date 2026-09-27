@@ -21,6 +21,8 @@ export type ViewMode = 'schematic' | 'split' | 'code';
 
 interface SchematicToolbarProps {
   status: SynthesisStatus;
+  /** Live synthesis progress while status is 'synthesizing'. */
+  progress?: { percent: number; stage: string } | null;
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
   onSynthesize: () => void;
@@ -44,6 +46,7 @@ interface SchematicToolbarProps {
 
 export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
   status,
+  progress = null,
   viewMode,
   onViewModeChange,
   onSynthesize,
@@ -84,7 +87,7 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
         };
       case 'synthesizing':
         return {
-          text: 'Synthesizing...',
+          text: progress ? `Synthesizing ${progress.percent}%` : 'Synthesizing...',
           bg: 'rgba(37, 99, 235, 0.12)',
           color: 'var(--accent-primary)',
           border: 'rgba(37, 99, 235, 0.25)',
@@ -262,7 +265,7 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
           ) : (
             <Cpu size={13} />
           )}
-          <span className="hidden sm:inline">{status === 'synthesizing' ? 'Synthesizing...' : 'Synthesize'}</span>
+          <span className="hidden sm:inline">{status === 'synthesizing' ? `Synthesizing${progress ? ` ${progress.percent}%` : '...'}` : 'Synthesize'}</span>
         </button>
 
         <div className="w-px h-4 bg-[var(--border-subtle)] mx-0.5 hidden md:block" />

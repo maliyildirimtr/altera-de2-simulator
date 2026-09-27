@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { AlertCircle, FileCode } from 'lucide-react';
 import { synthesizeVerilog, HdlSynthesisError, InternalSchematicError } from '../services/synthesizer';
+import type { SynthesisProgress } from '../services/synthesizer';
 import { ResizableDivider } from '../components/DE2Workspace/ResizableDivider';
 import { SchematicToolbar } from '../components/SchematicWorkspace/SchematicToolbar';
 import type { SynthesisStatus, ViewMode } from '../components/SchematicWorkspace/SchematicToolbar';
@@ -103,6 +104,7 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
   );
   const [topModule, setTopModule] = useState<string>(() => initialExample ? initialExample.topModule : '');
   const [lastSynthesizedContent, setLastSynthesizedContent] = useState<string>('');
+  const [synthesisProgress, setSynthesisProgress] = useState<SynthesisProgress | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [errorKind, setErrorKind] = useState<'hdl' | 'internal' | null>(null);
   const [stdoutLog, setStdoutLog] = useState<string>('');
@@ -133,6 +135,7 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
     }
 
     setSynthesisStatus('synthesizing');
+    setSynthesisProgress({ percent: 0, stage: 'Preparing' });
     setErrorMessage(null);
     setErrorKind(null);
 
@@ -140,6 +143,7 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
       const result = await synthesizeVerilog(currentFiles, {
         optimize: optimizeInYosys,
         simplify: simplifyDiagram,
+        onProgress: setSynthesisProgress,
       });
 
       setCircuitData(result);
@@ -411,6 +415,7 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
       {/* Main Workspace Toolbar */}
       <SchematicToolbar
         status={synthesisStatus}
+        progress={synthesisStatus === 'synthesizing' ? synthesisProgress : null}
         viewMode={layout.viewMode}
         onViewModeChange={(mode) => saveLayout({ viewMode: mode })}
         onSynthesize={handleSynthesize}
@@ -570,6 +575,7 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
                   circuitData={circuitData}
                   simplify={simplifyDiagram}
                   status={synthesisStatus}
+                  progress={synthesisStatus === 'synthesizing' ? synthesisProgress : null}
                   errorMessage={errorMessage}
                   errorKind={errorKind}
                   onRenderError={(renderErr: any) => {

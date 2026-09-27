@@ -23,6 +23,8 @@ interface SchematicViewportProps {
   circuitData: any;
   simplify?: boolean;
   status: string;
+  /** Live synthesis progress while status is 'synthesizing'. */
+  progress?: { percent: number; stage: string } | null;
   errorMessage?: string | null;
   onSelectItem: (item: SelectedItemInfo | null) => void;
   onOpenProblems?: () => void;
@@ -47,6 +49,7 @@ export const SchematicViewport = forwardRef<SchematicViewportHandle, SchematicVi
       circuitData,
       simplify = true,
       status,
+      progress = null,
       errorMessage,
       errorKind = 'hdl',
       onRenderError,
@@ -731,6 +734,53 @@ export const SchematicViewport = forwardRef<SchematicViewportHandle, SchematicVi
             overflow: 'hidden',
           }}
         >
+          {/* Synthesis progress */}
+          {status === 'synthesizing' && (
+            <div
+              data-testid="schematic-synthesis-progress"
+              role="progressbar"
+              aria-label="Synthesis progress"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={progress?.percent ?? 0}
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: 'min(320px, calc(100% - 32px))',
+                padding: '16px 18px',
+                borderRadius: 6,
+                border: '1px solid var(--border-subtle)',
+                backgroundColor: 'var(--bg-surface)',
+                color: 'var(--text-primary)',
+                zIndex: 5,
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+                <span style={{ fontSize: 13, fontWeight: 600 }}>{progress?.stage ?? 'Synthesizing'}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                  {progress?.percent ?? 0}%
+                </span>
+              </div>
+              <div style={{ height: 6, borderRadius: 3, backgroundColor: 'var(--bg-hover)', overflow: 'hidden' }}>
+                <div
+                  style={{
+                    height: '100%',
+                    width: `${progress?.percent ?? 0}%`,
+                    backgroundColor: 'var(--accent-primary)',
+                    transition: 'width 200ms ease',
+                  }}
+                />
+              </div>
+              {progress?.stage === 'Loading Yosys' && (
+                <p style={{ margin: '10px 0 0', fontSize: 11.5, color: 'var(--text-muted)' }}>
+                  First run downloads the synthesis engine; later runs are faster.
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Error State Card (Point 11 & 25) */}
           {status === 'error' && (
             <div

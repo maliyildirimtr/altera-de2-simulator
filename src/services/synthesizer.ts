@@ -31,10 +31,61 @@ export class InternalSchematicError extends Error {
   }
 }
 
+/** Progress of one synthesis run, reported to the UI. */
+export interface SynthesisProgress {
+  /** 0–100, never decreases within a run. */
+  percent: number;
+  /** Short human-readable stage label. */
+  stage: string;
+}
+
+/**
+ * Yield to the browser so a progress update can paint before the next
+ * blocking step (Yosys itself runs synchronously on the main thread).
+ */
+function nextPaint(): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => setTimeout(resolve, 0));
+    } else {
+      setTimeout(resolve, 0);
+    }
+  });
+}
+
+/**
+ * Adapt a text sink to the byte-stream callback Yosys writes stdout/stderr to.
+ * (The runtime ignores `print`/`printErr`; without this the logs stay empty.)
+ */
+function textStream(write: (text: string) => void): (bytes: Uint8Array | null) => void {
+  const decoder = new TextDecoder();
+  return (bytes) => {
+    if (bytes === null) {
+      const rest = decoder.decode();
+      if (rest) write(rest);
+      return;
+    }
+    write(decoder.decode(bytes, { stream: true }));
+  };
+}
+
+// Share of the bar used by the one-time Yosys download (~54 MB, cached afterwards).
+const LOAD_END = 70;
+
 export async function synthesizeVerilog(
   filesData: { name: string, content: string }[], 
-  options: { optimize?: boolean, simplify?: boolean } = { optimize: false, simplify: true }
+  options: {
+    optimize?: boolean,
+    simplify?: boolean,
+    onProgress?: (progress: SynthesisProgress) => void,
+  } = { optimize: false, simplify: true }
 ): Promise<any> {
+  let lastPercent = 0;
+  const report = (percent: number, stage: string) => {
+    lastPercent = Math.max(lastPercent, Math.min(100, Math.round(percent)));
+    options.onProgress?.({ percent: lastPercent, stage });
+  };
+
   if (!filesData || filesData.length === 0) {
     throw new HdlSynthesisError('Sentezlenecek dosya bulunamadı.');
   }
@@ -83,12 +134,29 @@ export async function synthesizeVerilog(
   let stdoutLog = '';
   let stderrLog = '';
 
+  report(1, 'Preparing');
+
+  // Load the Yosys WebAssembly resources first. This is the only step with a
+  // real byte count; on later runs it is already cached and returns at once.
+  try {
+    await runYosys(undefined, undefined, {
+      fetchProgress: ({ totalLength, doneLength }) => {
+        if (totalLength > 0) report(1 + (LOAD_END - 1) * (doneLength / totalLength), 'Loading Yosys');
+      },
+    });
+  } catch (loadErr: any) {
+    throw new InternalSchematicError(loadErr?.message || 'Failed to load Yosys.', loadErr);
+  }
+
+  report(LOAD_END + 5, 'Synthesizing');
+  await nextPaint();
+
   let resultFiles: any;
   try {
     resultFiles = await runYosys(args, files, {
-      print: (text: string) => { stdoutLog += text + '\n'; },
-      printErr: (text: string) => { stderrLog += text + '\n'; }
-    } as any);
+      stdout: textStream((text) => { stdoutLog += text; }),
+      stderr: textStream((text) => { stderrLog += text; }),
+    });
   } catch (yosysErr: any) {
     const errorDetails = (stderrLog.trim() || stdoutLog.trim() || yosysErr?.message || 'Yosys synthesis failed.');
     throw new HdlSynthesisError(errorDetails, stdoutLog, stderrLog);
@@ -119,6 +187,9 @@ export async function synthesizeVerilog(
       if (!topModule) {
         throw new HdlSynthesisError('Sentezleme sonucunda hiçbir modül bulunamadı.', stdoutLog, stderrLog);
       }
+
+      report(90, 'Building schematic');
+      await nextPaint();
 
       // yosys2digitaljs ile çevir
       const digitalJsData = yosys2digitaljs(rawYosysJson);
@@ -188,6 +259,7 @@ export async function synthesizeVerilog(
       (digitalJsData as any)._stderr = stderrLog;
       (digitalJsData as any)._rawYosysJson = rawYosysJson;
 
+      report(100, 'Done');
       return digitalJsData;
     } catch (innerErr: any) {
       if (innerErr instanceof HdlSynthesisError) {
