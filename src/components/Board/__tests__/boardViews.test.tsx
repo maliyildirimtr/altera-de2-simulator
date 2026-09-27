@@ -598,13 +598,13 @@ assert.strictEqual(
   DEFAULT_BOARD_2D_PRESENTATION,
   'missing preference falls back to the shipped default',
 );
-presentationStore.set('engineering-lab-de2-2d-presentation', 'nonsense');
+presentationStore.set('logiclab-de2-2d-presentation', 'nonsense');
 assert.strictEqual(
   loadBoard2DPresentation(),
   DEFAULT_BOARD_2D_PRESENTATION,
   'malformed preference falls back to the shipped default',
 );
-presentationStore.set('engineering-lab-de2-2d-presentation', 'vector');
+presentationStore.set('logiclab-de2-2d-presentation', 'vector');
 assert.strictEqual(loadBoard2DPresentation(), 'vector', 'the vector fallback is reachable');
 presentationStore.clear();
 pass('2D offers an artwork presentation and a vector fallback');

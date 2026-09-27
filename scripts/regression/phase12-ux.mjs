@@ -951,7 +951,7 @@ endmodule`;
     // =========================================================================
     console.log('[Test 19] Verifying Fresh Schematic Workspace Defaults...');
     await evaluate(`
-      sessionStorage.removeItem('eda_workspace_state_schematic_origin');
+      sessionStorage.removeItem('eda_workspace_state_schematic_origin'); localStorage.removeItem('logiclab_schematic_workspace_v1');
       sessionStorage.removeItem('eda_workspace_state_schematic_dirty');
       localStorage.removeItem('schematic_workspace_layout_v1');
       window.location.hash = '#/schematic';

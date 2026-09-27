@@ -27,12 +27,13 @@ export const DEFAULT_BOARD_25D_PRESENTATION: Board25DPresentation = 'artwork';
 /**
  * Development override, so the fallback is reachable without a rebuild:
  *
- *   localStorage.setItem('engineering-lab-de2-25d-presentation', 'vector')
+ *   localStorage.setItem('logiclab-de2-25d-presentation', 'vector')
  *
  * Presentation only. Nothing about simulation state is read from or written to
  * storage — the board's values always come from the engine through boardStore.
  */
-export const BOARD_25D_PRESENTATION_STORAGE_KEY = 'engineering-lab-de2-25d-presentation';
+export { BOARD_25D_PRESENTATION_STORAGE_KEY } from '../lib/storageKeys';
+import { BOARD_25D_PRESENTATION_STORAGE_KEY } from '../lib/storageKeys';
 
 export function isBoard25DPresentation(value: unknown): value is Board25DPresentation {
   return (

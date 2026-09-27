@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useBoardStore } from '../store/boardStore';
 import { compileVerilog } from '../core/simulator/verilogEngine';
 import { autoMapPort, type ParsedPort } from '../utils/parser/pinParser';
@@ -11,7 +11,8 @@ import { ConsolePanel, type ConsoleMessage } from '../components/DE2Workspace/Co
 import { ImportDialog } from '../components/DE2Workspace/ImportDialog';
 import { CodeEditor } from '../components/Editor/CodeEditor';
 import { ResizableDivider } from '../components/DE2Workspace/ResizableDivider';
-import { consumePendingHandoff, markWorkspaceOrigin } from '../services/exampleHandoff';
+import { consumePendingHandoff, markWorkspaceOrigin, peekPendingHandoff } from '../services/exampleHandoff';
+import { loadWorkspace, restoreWorkspaceFlags, useWorkspaceAutosave } from '../services/workspaceStorage';
 import { getExampleById } from '../examples/registry';
 
 const STORAGE_KEY = 'de2_workspace_layout_v1';
@@ -131,7 +132,7 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
     {
       id: 'init',
       type: 'info',
-      text: 'DE2 Engineering Simulator initialized. Ready for simulation.',
+      text: 'DE2 Simulator ready. Load or write HDL, then Compile.',
       timestamp: new Date().toLocaleTimeString(),
     },
   ]);
@@ -147,6 +148,23 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
       },
     ]);
   }, []);
+
+  // Restore the autosaved project after a refresh. The board store outlives
+  // route changes, so this only applies when it is empty and no example is
+  // being opened.
+  useEffect(() => {
+    if (peekPendingHandoff()?.targetTool === 'de2') return;
+    if (useBoardStore.getState().hdlCode.trim()) return;
+    const saved = loadWorkspace<{ hdlCode: string; pinMappings: ParsedPort[] }>('de2');
+    if (!saved || !saved.data.hdlCode?.trim()) return;
+    restoreWorkspaceFlags('de2', saved.origin, saved.dirty);
+    setHdlCode(saved.data.hdlCode);
+    setPinMappings(Array.isArray(saved.data.pinMappings) ? saved.data.pinMappings : []);
+    addLog('info', 'Restored your last DE2 project. Compile to run it.');
+  }, [setHdlCode, setPinMappings, addLog]);
+
+  const de2Save = useMemo(() => ({ hdlCode, pinMappings }), [hdlCode, pinMappings]);
+  useWorkspaceAutosave('de2', de2Save, !hdlCode.trim());
 
   // Consume incoming example handoff (Phase 6)
   useEffect(() => {

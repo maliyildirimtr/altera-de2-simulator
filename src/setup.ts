@@ -1,4 +1,5 @@
-// setup.ts
+// setup.ts — jQuery globals, jQuery UI and DigitalJS styles for the Schematic
+// viewport. Imported by SchematicViewport, not at app start.
 import $ from 'jquery';
 import 'jquery-ui-dist/jquery-ui.css';
 import '../node_modules/digitaljs/src/style.css';
@@ -7,7 +8,6 @@ declare global {
   interface Window {
     $: typeof $;
     jQuery: typeof $;
-    monaco: typeof monaco;
   }
 }
 
@@ -18,16 +18,5 @@ window.jQuery = $;
 // jquery-ui-dist is a browser-global bundle, so load it only after jQuery is exposed.
 export const setupReady = import('jquery-ui-dist/jquery-ui.min.js');
 
-// Monaco Editor Configuration
-import { loader } from '@monaco-editor/react';
-import * as monaco from 'monaco-editor';
-import EditorWorker from 'monaco-editor/editor/editor.worker.js?worker';
-
-self.MonacoEnvironment = {
-  getWorker(_moduleId: string, _label: string) {
-    return new EditorWorker();
-  }
-};
-
-loader.config({ monaco });
-window.monaco = monaco;
+// Monaco is configured in src/lib/monacoSetup.ts and loaded only by the pages
+// that show an editor, so the home page does not download it.

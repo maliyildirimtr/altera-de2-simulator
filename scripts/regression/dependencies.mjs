@@ -125,6 +125,12 @@ async function main() {
   assert.strictEqual(hasJsDelivr, false, 'monacoUsesPinnedLocalAssets: NO external CDN used (jsdelivr, unpkg, cdnjs)');
   console.log('monacoUsesPinnedLocalAssets: PASS');
 
+  // jQuery, jQuery UI and Monaco are loaded on demand by the Schematic page,
+  // not at app start, so open it before checking their local versions.
+  await evaluate(`window.location.hash = '#/schematic';`);
+  await waitFor('[data-testid="schematic-workspace"]');
+  await wait(1500);
+
   const localVersions = await evaluate(`({
     jquery: window.jQuery?.fn?.jquery,
     jqueryUi: window.jQuery?.ui?.version,
@@ -137,7 +143,7 @@ async function main() {
 
   // Test DE2 Editor Loads
   console.log('Testing DE2 Editor...');
-  await evaluate(`sessionStorage.clear();`);
+  await evaluate(`sessionStorage.clear(); ['de2','waveform','schematic'].forEach(t => localStorage.removeItem('logiclab_' + t + '_workspace_v1'));`);
   await waitFor('[data-testid="open-de2-btn-basic_gates"]');
   await wait(1000);
   await evaluate(`document.querySelector('[data-testid="open-de2-btn-basic_gates"]').click();`);

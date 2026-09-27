@@ -12,6 +12,7 @@
 
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import MonacoEditor from '@monaco-editor/react';
+import '../lib/monacoSetup';
 import { Plus, X } from 'lucide-react';
 
 import { parseRawVCD } from '../services/vcdParser';
@@ -26,7 +27,14 @@ import { SignalNamePanel, type RenderableRow } from '../components/Waveform/Sign
 import { WaveformCanvas, type WaveformMarker } from '../components/Waveform/WaveformCanvas';
 import { ResizableDivider } from '../components/DE2Workspace/ResizableDivider';
 import { BASE_PIXELS_PER_UNIT } from '../services/waveformRenderer';
-import { consumePendingHandoff, markWorkspaceOrigin, markWorkspaceDirty, markWorkspaceUser } from '../services/exampleHandoff';
+import { consumePendingHandoff, markWorkspaceOrigin, markWorkspaceDirty, markWorkspaceUser, peekPendingHandoff } from '../services/exampleHandoff';
+import { loadWorkspace, restoreWorkspaceFlags, useWorkspaceAutosave } from '../services/workspaceStorage';
+
+interface WaveformWorkspaceSave {
+  sourceFiles: ProjectSlotFile[];
+  activeSourceId: string | null;
+  testbenchFile: ProjectSlotFile | null;
+}
 import { getExampleById } from '../examples/registry';
 
 // ── Layout Persistence Schema ────────────────────────────────
@@ -127,9 +135,27 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
   }, [mainView, layout.editorRatio]);
 
   // ── Multi-File Project State ──────────────────────────────
-  const [sourceFiles, setSourceFiles] = useState<ProjectSlotFile[]>([]);
-  const [activeSourceId, setActiveSourceId] = useState<string | null>(null);
-  const [testbenchFile, setTestbenchFile] = useState<ProjectSlotFile | null>(null);
+  // Autosaved project from a previous visit (skipped when an example is being opened)
+  const [restored] = useState(() => {
+    if (peekPendingHandoff()?.targetTool === 'waveform') return null;
+    const saved = loadWorkspace<WaveformWorkspaceSave>('waveform');
+    if (!saved || !Array.isArray(saved.data.sourceFiles)) return null;
+    restoreWorkspaceFlags('waveform', saved.origin, saved.dirty);
+    return saved.data;
+  });
+  const [sourceFiles, setSourceFiles] = useState<ProjectSlotFile[]>(() => restored?.sourceFiles ?? []);
+  const [activeSourceId, setActiveSourceId] = useState<string | null>(() => restored?.activeSourceId ?? null);
+  const [testbenchFile, setTestbenchFile] = useState<ProjectSlotFile | null>(() => restored?.testbenchFile ?? null);
+
+  const waveformSave = useMemo<WaveformWorkspaceSave>(
+    () => ({ sourceFiles, activeSourceId, testbenchFile }),
+    [sourceFiles, activeSourceId, testbenchFile]
+  );
+  useWorkspaceAutosave<WaveformWorkspaceSave>(
+    'waveform',
+    waveformSave,
+    sourceFiles.length === 0 && !testbenchFile
+  );
   const [vcdFile, setVcdFile] = useState<ProjectSlotFile | null>(null);
   const [activeEditorRole, setActiveEditorRole] = useState<'source' | 'testbench'>('source');
 

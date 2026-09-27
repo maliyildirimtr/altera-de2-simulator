@@ -1,6 +1,7 @@
 import React, { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
+import '../../lib/monacoSetup';
 import { useBoardStore } from '../../store/boardStore';
 import { markWorkspaceDirty } from '../../services/exampleHandoff';
 import { FileCode, Upload, BookOpen } from 'lucide-react';

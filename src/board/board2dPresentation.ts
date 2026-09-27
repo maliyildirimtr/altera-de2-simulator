@@ -31,12 +31,13 @@ export const DEFAULT_BOARD_2D_PRESENTATION: Board2DPresentation = 'artwork';
 /**
  * Development override, so the fallback is reachable without a rebuild:
  *
- *   localStorage.setItem('engineering-lab-de2-2d-presentation', 'vector')
+ *   localStorage.setItem('logiclab-de2-2d-presentation', 'vector')
  *
  * Presentation only. Nothing about simulation state is read from or written to
  * storage — the board's values always come from the engine through boardStore.
  */
-export const BOARD_2D_PRESENTATION_STORAGE_KEY = 'engineering-lab-de2-2d-presentation';
+export { BOARD_2D_PRESENTATION_STORAGE_KEY } from '../lib/storageKeys';
+import { BOARD_2D_PRESENTATION_STORAGE_KEY } from '../lib/storageKeys';
 
 export function isBoard2DPresentation(value: unknown): value is Board2DPresentation {
   return typeof value === 'string' && BOARD_2D_PRESENTATIONS.includes(value as Board2DPresentation);

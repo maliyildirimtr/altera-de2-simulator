@@ -87,7 +87,7 @@ but disabled** — the architecture is ready, the renderer is not, and no fake 3
 is offered.
 
 The user's choice persists to `localStorage` under
-`engineering-lab-de2-view-mode`. That key holds a *view preference only*; it is
+`logiclab-de2-view-mode`. That key holds a *view preference only*; it is
 never a source of simulation state. A missing, malformed or currently-disabled
 stored value falls back to `2d`, so a stale `3d` preference cannot strand the
 workspace on an unavailable renderer.

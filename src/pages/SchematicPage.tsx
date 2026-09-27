@@ -1,7 +1,8 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { AlertCircle, FileCode } from 'lucide-react';
 import { synthesizeVerilog, HdlSynthesisError, InternalSchematicError } from '../services/synthesizer';
 import type { SynthesisProgress } from '../services/synthesizer';
+import { loadWorkspace, restoreWorkspaceFlags, useWorkspaceAutosave } from '../services/workspaceStorage';
 import { ResizableDivider } from '../components/DE2Workspace/ResizableDivider';
 import { SchematicToolbar } from '../components/SchematicWorkspace/SchematicToolbar';
 import type { SynthesisStatus, ViewMode } from '../components/SchematicWorkspace/SchematicToolbar';
@@ -78,6 +79,11 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
   const initialHandoff = typeof window !== 'undefined' ? peekPendingHandoff() : null;
   const initialExample = initialHandoff && initialHandoff.targetTool === 'schematic' ? getExampleById(initialHandoff.exampleId) : null;
 
+  // Autosaved project from a previous visit (ignored when an example is being opened)
+  const [restored] = useState(() =>
+    initialExample ? null : loadWorkspace<{ files: ProjectFile[]; activeFileIndex: number }>('schematic')
+  );
+
   // Project files state - Fresh workspace starts clean with 0 files (Phase 12.2E)
   const [projectFiles, setProjectFiles] = useState<ProjectFile[]>(() => {
     if (initialExample) {
@@ -85,9 +91,23 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
       markWorkspaceOrigin('schematic', 'example');
       return [{ name: initialExample.source.filename, content: initialExample.source.code }];
     }
+    if (restored && Array.isArray(restored.data.files) && restored.data.files.length > 0) {
+      restoreWorkspaceFlags('schematic', restored.origin, restored.dirty);
+      return restored.data.files;
+    }
     return [];
   });
-  const [activeFileIndex, setActiveFileIndex] = useState(0);
+  const [activeFileIndex, setActiveFileIndex] = useState(() => {
+    const i = restored?.data.activeFileIndex ?? 0;
+    return i >= 0 && i < projectFiles.length ? i : 0;
+  });
+
+  const schematicSave = useMemo(() => ({ files: projectFiles, activeFileIndex }), [projectFiles, activeFileIndex]);
+  useWorkspaceAutosave(
+    'schematic',
+    schematicSave,
+    projectFiles.length === 0
+  );
 
   // Keep a ref to projectFiles for immediate access
   const projectFilesRef = useRef<ProjectFile[]>(projectFiles);

@@ -87,7 +87,7 @@ export async function synthesizeVerilog(
   };
 
   if (!filesData || filesData.length === 0) {
-    throw new HdlSynthesisError('Sentezlenecek dosya bulunamadı.');
+    throw new HdlSynthesisError('No HDL files to synthesize.');
   }
 
   // Yosys sanal dosya sistemini (VFS) oluştur
@@ -185,7 +185,7 @@ export async function synthesizeVerilog(
       }
 
       if (!topModule) {
-        throw new HdlSynthesisError('Sentezleme sonucunda hiçbir modül bulunamadı.', stdoutLog, stderrLog);
+        throw new HdlSynthesisError('Synthesis produced no modules.', stdoutLog, stderrLog);
       }
 
       report(90, 'Building schematic');

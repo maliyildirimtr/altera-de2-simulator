@@ -1,3 +1,4 @@
+import { setupReady } from '../../setup';
 import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import { Vector3vl } from '3vl';
 import { AlertTriangle, Cpu, Upload, Play, FileCode } from 'lucide-react';
@@ -269,7 +270,8 @@ export const SchematicViewport = forwardRef<SchematicViewportHandle, SchematicVi
       let circuitInstance: any = null;
       let isMounted = true;
 
-      import('digitaljs')
+      setupReady
+        .then(() => import('digitaljs'))
         .then((digitaljsModule) => {
           if (!isMounted || !containerRef.current) return;
           containerRef.current.innerHTML = '';

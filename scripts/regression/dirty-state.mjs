@@ -102,7 +102,7 @@ async function main() {
 
   console.log('--- Phase 9 Dirty State Regression Matrix ---');
 
-  await evaluate(`sessionStorage.clear();`);
+  await evaluate(`sessionStorage.clear(); ['de2','waveform','schematic'].forEach(t => localStorage.removeItem('logiclab_' + t + '_workspace_v1'));`);
 
   // 1. DE2 Fresh Session -> Load Example -> NO Modal
   console.log('[DE2] Fresh Session Defaults Clean...');
@@ -191,7 +191,7 @@ async function main() {
   console.log('[Waveform] Fresh Session Defaults Clean...');
   // Force a fresh Waveform context by clearing storage for waveform
   await evaluate(`
-    sessionStorage.removeItem('eda_workspace_state_waveform_origin');
+    sessionStorage.removeItem('eda_workspace_state_waveform_origin'); localStorage.removeItem('logiclab_waveform_workspace_v1');
     sessionStorage.removeItem('eda_workspace_state_waveform_dirty');
     window.location.hash = '#/waveform';
   `);
@@ -206,7 +206,7 @@ async function main() {
   // 5. Schematic Fresh Session -> Example -> NO Modal
   console.log('[Schematic] Fresh Session Defaults Clean...');
   await evaluate(`
-    sessionStorage.removeItem('eda_workspace_state_schematic_origin');
+    sessionStorage.removeItem('eda_workspace_state_schematic_origin'); localStorage.removeItem('logiclab_schematic_workspace_v1');
     sessionStorage.removeItem('eda_workspace_state_schematic_dirty');
     window.location.hash = '#/schematic';
   `);

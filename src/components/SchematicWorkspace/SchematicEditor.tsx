@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Editor from '@monaco-editor/react';
+import '../../lib/monacoSetup';
 import { FileCode, X, Upload } from 'lucide-react';
 import type { ProjectFile } from './SchematicProjectPanel';
 

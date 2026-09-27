@@ -11,7 +11,8 @@
 
 export type BoardViewMode = '2d' | '2.5d' | '3d';
 
-export const BOARD_VIEW_STORAGE_KEY = 'engineering-lab-de2-view-mode';
+export { BOARD_VIEW_STORAGE_KEY } from '../lib/storageKeys';
+import { BOARD_VIEW_STORAGE_KEY } from '../lib/storageKeys';
 
 export const DEFAULT_BOARD_VIEW_MODE: BoardViewMode = '2d';
 
