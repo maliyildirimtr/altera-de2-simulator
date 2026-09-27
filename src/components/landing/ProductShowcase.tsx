@@ -51,7 +51,7 @@ export function ProductShowcase() {
         <Reveal as="figure" className="lx-showcase__visual" delay={90}>
           <div className="lx-showcase__frame">
             <img
-              src="/landing/screens/de2-simulator-showcase.png"
+              src="/landing/screens/de2-simulator-showcase.webp"
               alt="DE2 Simulator workspace: project sidebar, virtual DE2 board, and inspector with pin mapping and clock controls"
               width={1775}
               height={1044}

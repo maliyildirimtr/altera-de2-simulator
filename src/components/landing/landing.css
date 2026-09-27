@@ -393,10 +393,10 @@
   object-fit: cover;
 }
 
-.lx-tool--de2 .lx-tool__shot img { object-position: 50% 50%; }
+.lx-tool--de2 .lx-tool__shot img { object-position: 0% 60%; }
 .lx-tool--waveform .lx-tool__shot img { object-position: 0% 50%; }
 .lx-tool--schematic .lx-tool__shot img { object-position: 50% 50%; }
-.lx-tool--examples .lx-tool__shot img { object-position: 50% 50%; }
+.lx-tool--examples .lx-tool__shot img { object-position: 0% 0%; }
 
 /* ═══ 5 · Workflow ═══════════════════════════════════════════════ */
 .lx-flow {

@@ -65,7 +65,7 @@ function getOrCreateWorker(): Worker {
       resolve({
         status: 'error',
         vcdOutput: '',
-        logs: ['[WORKER] Worker çöktü, yeniden başlatılıyor.', `[HATA] ${err.message}`],
+        logs: ['[WORKER] Compiler worker crashed; restarting.', `[ERROR] ${err.message}`],
       });
     }
     _pending.clear();

@@ -8,13 +8,18 @@ Browser-based learning tools for digital logic and Electrical & Electronics Engi
 
 | Route | Tool | Current behavior |
 |---|---|---|
-| `#/de2-simulator` | DE2 Simulator | Runs a supported Verilog/SystemVerilog subset in a safe TypeScript evaluator. Switches and buttons drive HDL inputs; LEDs and seven-segment displays show mapped outputs. The board is drawn as an SVG illustration of the original Terasic DE2 in a 2D or 2.5D view. The LCD is currently visual-only. |
+| `#/de2-simulator` | DE2 Simulator | Runs a supported Verilog/SystemVerilog subset in a safe TypeScript evaluator. Switches and buttons drive HDL inputs; LEDs, seven-segment displays and the 16×2 character LCD (HD44780 interface) show mapped outputs. The board is drawn from the original Terasic DE2 in a 2D or 2.5D view. |
 | `#/waveform` | Waveform | Compiles source and a testbench with local Icarus Verilog WebAssembly in a worker, parses VCD output, and renders interactive timing diagrams. |
 | `#/schematic` | Schematic | Synthesizes HDL with local Yosys WebAssembly and renders an interactive DigitalJS circuit in `SchematicViewport`. |
-| `#/examples` | Examples | Provides 14 curated examples. All open in Schematic and Waveform; 7 also include DE2 mappings. |
+| `#/examples` | Examples | Provides 16 curated examples, from single gates to board-level I/O and the LCD. |
 | `#/` | Home | Platform overview and tool entry points. |
 
-The application is a hash-routed SPA. `#/projects` remains as a compatibility alias for `#/examples`.
+The application is a hash-routed SPA. `#/projects` remains as a compatibility alias for `#/examples`; unknown routes show a 404 page.
+
+### Workspace persistence and sharing
+
+- Each tool autosaves its HDL project to `localStorage` (`logiclab_<tool>_workspace_v1`), so a refresh or closed tab does not lose work. Only source text is stored, never simulation or synthesis output.
+- Tool pages are lazy-loaded route chunks. Monaco is loaded only by pages with an editor and is limited to the Verilog/SystemVerilog grammar (`src/lib/monacoSetup.ts`); jQuery and DigitalJS are loaded only by the Schematic viewport.
 
 ## Simulation architecture
 
@@ -37,12 +42,11 @@ Monaco, jQuery, jQuery UI, DigitalJS, Yosys, and the Icarus assets are bundled o
 ### Current limitations
 
 - The DE2 evaluator supports educational combinational and sequential examples, not the full IEEE 1364/1800 language. Unsupported constructs fail closed.
-- The DE2 LCD is a board mock-up and is not connected to HDL output state; it is drawn unlit.
+- The DE2 LCD is simulated functionally (commands and characters), not with real HD44780 timing.
 - The 3D board view is not implemented. It appears in the view selector as disabled.
 - VHDL is not supported.
 - Icarus WebAssembly has a cold-start cost on the first waveform compile and does not provide every SystemVerilog feature.
 - Yosys is used for synthesis, not testbench simulation. Large schematics may be slow in the browser.
-- Route-level lazy splitting and additional strict-mode cleanup are future improvements, not release blockers.
 
 ## Getting started
 

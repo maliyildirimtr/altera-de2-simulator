@@ -1,0 +1,14 @@
+{
+  "name": "Logic Lab",
+  "short_name": "Logic Lab",
+  "description": "Browser-based FPGA lab: Verilog/SystemVerilog, a virtual Altera DE2 board, waveforms and RTL schematics.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#081424",
+  "theme_color": "#081424",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

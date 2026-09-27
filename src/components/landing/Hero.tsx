@@ -42,7 +42,7 @@ export function Hero() {
         <figure className="landing-hero-product__visual">
           <div className="landing-hero-product__board">
             <img
-              src="/landing/screens/de2-simulator-hero.png"
+              src="/landing/screens/de2-simulator-hero.webp"
               alt="Virtual Altera DE2 board with LCD, HEX displays, LEDs, slide switches, push buttons and I/O connectors"
               width={2048}
               height={925}

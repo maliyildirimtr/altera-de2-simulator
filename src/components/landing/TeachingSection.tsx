@@ -39,7 +39,7 @@ export function TeachingSection() {
             <img
               src="/landing/screens/de2-demonstration-v2.webp"
               alt="DE2 board with HEX7 to HEX0 showing 7 6 5 4 3 2 1 0 above the red LEDs and slide switches"
-              width={1774}
+              width={1640}
               height={887}
               loading="lazy"
               decoding="async"

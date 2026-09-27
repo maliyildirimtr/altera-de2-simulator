@@ -28,5 +28,8 @@ jobs:
     - name: Security Tests
       run: npm run test:security
 
+    - name: DE2 board renderer tests
+      run: npm run test:de2-views
+
     - name: Build
       run: npm run build
