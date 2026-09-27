@@ -243,14 +243,12 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
         }
       }
 
-      // Settle combinational outputs once without starting the clock timer.
-      // The design remains compiled-ready until the user presses Run or Step.
-      runSimulationCycle();
-
+      // Compile only prepares the design. The board stays idle — no outputs,
+      // no reaction to switches — until the user presses Run (or Step Clk).
       const modName = module.topModule || 'top';
       addLog(
         'success',
-        `Compiled "${modName}" successfully (${module.inputs.length} inputs, ${module.outputs.length} outputs). Engine ready.`
+        `Compiled "${modName}" successfully (${module.inputs.length} inputs, ${module.outputs.length} outputs). Press Run to start.`
       );
     } catch (err: any) {
       const rawError = err.message || 'Unknown compilation syntax error.';

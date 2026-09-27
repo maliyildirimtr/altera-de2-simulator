@@ -183,6 +183,11 @@ endmodule\`);
 
   console.log('--- 2. Compile HDL ---');
   await evaluate(`document.querySelector('[data-testid="de2-compile"]').click()`);
+  // Compile leaves the board idle. Run (clicked, then immediately Pause) makes it
+  // live and settles the outputs without letting the clock tick.
+  await wait(300);
+  await evaluate(`(() => { const r = document.querySelector('[data-testid="de2-run"]'); if (r) { r.click(); setTimeout(() => r.click(), 30); } })()`);
+  await wait(600);
   await wait(2000); // wait for compile
   
   const status = await evaluate(`document.querySelector('[data-testid="engine-status"]').getAttribute('data-status')`);

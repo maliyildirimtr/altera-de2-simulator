@@ -110,6 +110,12 @@ interface BoardState {
   
   // Continuous Auto-Simulation (Run/Pause)
   isSimRunning: boolean;
+  /**
+   * False after Compile until the user presses Run (or Step): the design is
+   * compiled and ready but the board does not react yet. Once live, switch and
+   * key changes are evaluated immediately; Pause only stops the clock.
+   */
+  boardLive: boolean;
   simFrequency: number; // in Hz
   startAutoSimulation: () => void;
   stopAutoSimulation: () => void;
@@ -150,6 +156,15 @@ const clearSimulationTimer = (): void => {
   }
 };
 
+/**
+ * Board inputs changed: re-evaluate only once the user has started the design
+ * with Run/Step. Before that, Compile leaves the board idle.
+ */
+function evaluateIfLive(): void {
+  const s = useBoardStore.getState();
+  if (s.boardLive) s.runSimulationCycle();
+}
+
 export const useBoardStore = create<BoardState>((set, get) => ({
   lcd: createLcdState(),
   lcdDebug: { ...INITIAL_LCD_DEBUG },
@@ -174,6 +189,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       engine: null,
       compileState: 'idle',
       isSimRunning: false,
+      boardLive: false,
       simState: {},
       clockState: 0,
       waveformHistory: [],
@@ -188,6 +204,13 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       engine,
       compileState: engine ? 'ready' : 'idle',
       isSimRunning: false,
+      boardLive: false,
+      // A fresh compile starts dark: outputs from the previous run are cleared
+      // so the board visibly waits for Run. Switch/key positions are kept.
+      ledR: [...INITIAL_LEDR],
+      ledG: [...INITIAL_LEDG],
+      hex: [...INITIAL_HEX],
+      lcd: resetLcdState(),
       simState: {},
       clockState: 0,
       waveformHistory: [],
@@ -199,6 +222,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       engine: null,
       compileState: 'error',
       isSimRunning: false,
+      boardLive: false,
       simState: {},
       clockState: 0,
       waveformHistory: [],
@@ -210,6 +234,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
 
   // Simulation Controls
   isSimRunning: false,
+  boardLive: false,
   simFrequency: 5, // 5 Hz default
 
   startAutoSimulation: () => {
@@ -223,11 +248,15 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     const freq = get().simFrequency || 5;
     const intervalMs = Math.max(20, Math.floor(1000 / (freq * 2)));
 
+    // First Run after Compile: settle the outputs for the current inputs at
+    // once. From then on switch and key changes are evaluated immediately.
+    const wasLive = get().boardLive;
+    set({ isSimRunning: true, boardLive: true });
+    if (!wasLive) get().runSimulationCycle();
+
     simIntervalTimer = setInterval(() => {
       get().tickClock();
     }, intervalMs);
-
-    set({ isSimRunning: true });
   },
 
   stopAutoSimulation: () => {
@@ -448,7 +477,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     newSwitches[index] = newSwitches[index] === 0 ? 1 : 0;
     
     // Auto-run simulation tick
-    setTimeout(() => useBoardStore.getState().runSimulationCycle(), 0);
+    setTimeout(evaluateIfLive, 0);
     return { switches: newSwitches };
   }),
 
@@ -457,7 +486,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     newKeys[index] = pressed ? 0 : 1; // Active-low: 0 is pressed
     
     // Auto-run simulation tick
-    setTimeout(() => useBoardStore.getState().runSimulationCycle(), 0);
+    setTimeout(evaluateIfLive, 0);
     return { keys: newKeys };
   }),
 
@@ -483,8 +512,10 @@ export const useBoardStore = create<BoardState>((set, get) => ({
    */
   tickClock: () => {
     const state = get();
+    if (!state.engine) return;
     const newClock = state.clockState === 0 ? 1 : 0;
     set({
+      boardLive: true,
       clockState: newClock,
       simState: { ...state.simState, 'CLOCK_50': newClock, 'clk': newClock, 'CLK': newClock },
     });
@@ -525,7 +556,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       isSimRunning: false,
       waveformHistory: [],
     });
-    setTimeout(() => useBoardStore.getState().runSimulationCycle(), 0);
+    setTimeout(evaluateIfLive, 0);
   },
 
   toggleInputByName: (portName) => set((state) => {
@@ -538,7 +569,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       const current = state.simState[portName] ?? 0;
       const newVal = current >= maxVal ? 0 : current + 1;
       const newSimState = { ...state.simState, [portName]: newVal, ['__prev_' + portName]: newVal };
-      setTimeout(() => useBoardStore.getState().runSimulationCycle(), 0);
+      setTimeout(evaluateIfLive, 0);
       return { simState: newSimState };
     }
 
@@ -554,7 +585,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       const newSwitches = [...state.switches];
       newSwitches[idx] = newVal & 1;
       const newSimState = { ...state.simState, [portName]: newVal, ['__prev_' + portName]: newVal };
-      setTimeout(() => useBoardStore.getState().runSimulationCycle(), 0);
+      setTimeout(evaluateIfLive, 0);
       return { switches: newSwitches, simState: newSimState };
     }
     if (type === 'KEY') {
@@ -562,13 +593,13 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       newKeys[idx] = newKeys[idx] === 1 ? 0 : 1;
       const logicalVal = newKeys[idx] === 0 ? 1 : 0; // active-low → logical high when pressed
       const newSimState = { ...state.simState, [portName]: logicalVal, ['__prev_' + portName]: logicalVal };
-      setTimeout(() => useBoardStore.getState().runSimulationCycle(), 0);
+      setTimeout(evaluateIfLive, 0);
       return { keys: newKeys, simState: newSimState };
     }
     if (type === 'CLOCK_50') {
       const newClock = state.clockState === 0 ? 1 : 0;
       const newSimState = { ...state.simState, [portName]: newClock, ['__prev_' + portName]: newClock };
-      setTimeout(() => useBoardStore.getState().runSimulationCycle(), 0);
+      setTimeout(evaluateIfLive, 0);
       return { clockState: newClock, simState: newSimState };
     }
     return state;
@@ -582,14 +613,14 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     const mapping = state.pinMappings.find(m => m.portName === portName);
     if (!mapping || !mapping.virtualComponent || mapping.virtualComponent === 'Unmapped') {
       const newSimState = { ...state.simState, [portName]: clampedVal, ['__prev_' + portName]: clampedVal };
-      setTimeout(() => useBoardStore.getState().runSimulationCycle(), 0);
+      setTimeout(evaluateIfLive, 0);
       return { simState: newSimState };
     }
 
     const match = mapping.virtualComponent.match(/(SW|KEY|CLOCK_50)(\d+)?(?:\[(\d+)\])?/);
     if (!match) {
       const newSimState = { ...state.simState, [portName]: clampedVal, ['__prev_' + portName]: clampedVal };
-      setTimeout(() => useBoardStore.getState().runSimulationCycle(), 0);
+      setTimeout(evaluateIfLive, 0);
       return { simState: newSimState };
     }
 
@@ -606,7 +637,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       newKeys[idx] = clampedVal === 0 ? 1 : 0;
     }
 
-    setTimeout(() => useBoardStore.getState().runSimulationCycle(), 0);
+    setTimeout(evaluateIfLive, 0);
     return { switches: newSwitches, keys: newKeys, simState: newSimState };
   }),
 
@@ -692,7 +723,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       // Recompile to get fresh evaluate function
       try {
         const freshEngine = recompileEngine(newEngineData);
-        setTimeout(() => useBoardStore.getState().runSimulationCycle(), 0);
+        setTimeout(evaluateIfLive, 0);
         return { engine: freshEngine };
       } catch {
         return { engine: newEngineData as any };
@@ -707,7 +738,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     if (!state.engine) return state;
     try {
       const newEngine = disconnectNet(state.engine, targetType, targetName, targetPort);
-      setTimeout(() => useBoardStore.getState().runSimulationCycle(), 0);
+      setTimeout(evaluateIfLive, 0);
       return { engine: newEngine };
     } catch (err) {
       console.warn('[boardStore] disconnectEdge error (engine unchanged):', err);
@@ -719,7 +750,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     if (!state.engine) return state;
     try {
       const newEngine = connectNet(state.engine, targetType, targetName, targetPort, sourceNet);
-      setTimeout(() => useBoardStore.getState().runSimulationCycle(), 0);
+      setTimeout(evaluateIfLive, 0);
       return { engine: newEngine };
     } catch (err) {
       console.warn('[boardStore] connectEdge error (engine unchanged):', err);

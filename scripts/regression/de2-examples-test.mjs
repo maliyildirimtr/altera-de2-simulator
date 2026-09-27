@@ -109,6 +109,11 @@ async function main() {
     
     // Switch to code view to wait for compilation? Actually, let's just compile.
     await evaluate(`document.querySelector('[data-testid="de2-compile"]').click()`);
+  // Compile leaves the board idle. Run (clicked, then immediately Pause) makes it
+  // live and settles the outputs without letting the clock tick.
+  await wait(300);
+  await evaluate(`(() => { const r = document.querySelector('[data-testid="de2-run"]'); if (r) { r.click(); setTimeout(() => r.click(), 30); } })()`);
+  await wait(600);
     await wait(2000); // compilation might take longer for examples
     
     // Switch to split to render board

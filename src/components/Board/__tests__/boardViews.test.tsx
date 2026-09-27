@@ -1928,9 +1928,10 @@ try {
   for (let i = 1; i < levels.length; i += 1) {
     assert.notStrictEqual(levels[i], levels[i - 1], `firing ${i} changed the clock level`);
   }
+  // One settle when Run first makes the board live, then exactly one per firing.
   assert.strictEqual(
     store().lcdDebug.cycle,
-    200,
+    201,
     'each timer firing produced exactly one evaluation — no duplicates, none skipped',
   );
   assert.ok(store().lcdDebug.fallingEdges > 25, 'the peripheral saw the enable edges');

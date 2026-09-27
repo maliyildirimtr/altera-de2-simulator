@@ -122,6 +122,11 @@ endmodule\`);
   `);
 
   await evaluate(`document.querySelector('[data-testid="de2-compile"]').click()`);
+  // Compile leaves the board idle. Run (clicked, then immediately Pause) makes it
+  // live and settles the outputs without letting the clock tick.
+  await wait(300);
+  await evaluate(`(() => { const r = document.querySelector('[data-testid="de2-run"]'); if (r) { r.click(); setTimeout(() => r.click(), 30); } })()`);
+  await wait(600);
   await wait(1500);
 
   const ledR = await evaluate(`window.useBoardStore.getState().ledR`);
@@ -156,6 +161,11 @@ endmodule\`);
   `);
 
   await evaluate(`document.querySelector('[data-testid="de2-compile"]').click()`);
+  // Compile leaves the board idle. Run (clicked, then immediately Pause) makes it
+  // live and settles the outputs without letting the clock tick.
+  await wait(300);
+  await evaluate(`(() => { const r = document.querySelector('[data-testid="de2-run"]'); if (r) { r.click(); setTimeout(() => r.click(), 30); } })()`);
+  await wait(600);
   await wait(1500);
 
   await evaluate(`
@@ -205,6 +215,11 @@ endmodule\`);
   `);
 
   await evaluate(`document.querySelector('[data-testid="de2-compile"]').click()`);
+  // Compile leaves the board idle. Run (clicked, then immediately Pause) makes it
+  // live and settles the outputs without letting the clock tick.
+  await wait(300);
+  await evaluate(`(() => { const r = document.querySelector('[data-testid="de2-run"]'); if (r) { r.click(); setTimeout(() => r.click(), 30); } })()`);
+  await wait(600);
   await wait(1500);
 
   await evaluate(`
@@ -268,6 +283,11 @@ endmodule\`);
   `);
 
   await evaluate(`document.querySelector('[data-testid="de2-compile"]').click()`);
+  // Compile leaves the board idle. Run (clicked, then immediately Pause) makes it
+  // live and settles the outputs without letting the clock tick.
+  await wait(300);
+  await evaluate(`(() => { const r = document.querySelector('[data-testid="de2-run"]'); if (r) { r.click(); setTimeout(() => r.click(), 30); } })()`);
+  await wait(600);
   await wait(1500);
 
   // Switch to split view so HEX elements are rendered
