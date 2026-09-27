@@ -6,11 +6,12 @@ interface OpenInSchematicButtonProps {
   getFiles: () => SharedFile[];
   className?: string;
   labelClassName?: string;
+  label?: string;
   onError?: (message: string) => void;
 }
 
 /** Sends the current HDL to the Schematic tool (through the share-link path). */
-export function OpenInSchematicButton({ getFiles, className, labelClassName = 'hidden xl:inline', onError }: OpenInSchematicButtonProps) {
+export function OpenInSchematicButton({ getFiles, className, labelClassName = 'hidden xl:inline', label = 'Schematic', onError }: OpenInSchematicButtonProps) {
   const navigate = useNavigate();
   const handleClick = async () => {
     const files = getFiles().filter((f) => f.content.trim() !== '');
@@ -32,7 +33,7 @@ export function OpenInSchematicButton({ getFiles, className, labelClassName = 'h
       style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
     >
       <GitGraph size={13} />
-      <span className={labelClassName}>Schematic</span>
+      <span className={labelClassName}>{label}</span>
     </button>
   );
 }
