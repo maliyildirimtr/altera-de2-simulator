@@ -1,5 +1,8 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { AlertCircle, FileCode } from 'lucide-react';
+import { AlertCircle, FileCode, ImageDown } from 'lucide-react';
+import { ShareButton } from '../components/Share/ShareButton';
+import { useSharedProject } from '../services/useSharedProject';
+import { downloadBlob, downloadText, svgToPngBlob } from '../utils/svgExport';
 import { synthesizeVerilog, HdlSynthesisError, InternalSchematicError } from '../services/synthesizer';
 import type { SynthesisProgress } from '../services/synthesizer';
 import { loadWorkspace, restoreWorkspaceFlags, useWorkspaceAutosave } from '../services/workspaceStorage';
@@ -142,6 +145,36 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
   const [createPromptOpen, setCreatePromptOpen] = useState(false);
   const [createPromptValue, setCreatePromptValue] = useState('');
+
+  // Open a project from a share link (#/schematic?p=…)
+  useSharedProject(
+    'schematic',
+    () => projectFilesRef.current.some((f) => f.content.trim() !== ''),
+    (payload) => {
+      setProjectFiles(payload.files.map((f) => ({ name: f.name, content: f.content })));
+      setActiveFileIndex(0);
+      setCircuitData(null);
+      setTopModule('');
+      setLastSynthesizedContent('');
+      setSynthesisStatus(payload.files.length > 0 ? 'modified' : 'no_source');
+    },
+    setAlertMessage
+  );
+
+  const exportSchematic = async (format: 'svg' | 'png') => {
+    const svg = viewportRef.current?.exportSvg();
+    if (!svg) {
+      setAlertMessage('Synthesize the design first; there is no schematic to export yet.');
+      return;
+    }
+    const base = (topModule || 'schematic').replace(/[^\w.-]+/g, '_');
+    try {
+      if (format === 'svg') downloadText(svg, `${base}.svg`, 'image/svg+xml');
+      else downloadBlob(await svgToPngBlob(svg, 2), `${base}.png`);
+    } catch (err) {
+      setAlertMessage(`Export failed: ${(err as Error)?.message ?? 'unknown error'}`);
+    }
+  };
 
   // Synthesis handler
   const handleSynthesize = async () => {
@@ -440,6 +473,31 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
         onViewModeChange={(mode) => saveLayout({ viewMode: mode })}
         onSynthesize={handleSynthesize}
         onUploadClick={() => fileInputRef.current?.click()}
+        actionsSlot={
+          <>
+            <ShareButton
+              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-xs font-medium border transition-colors shadow-xs"
+              labelClassName="hidden 2xl:inline"
+              getPayload={() => ({ v: 1, tool: 'schematic', files: projectFilesRef.current })}
+              onMessage={(msg, kind) => { if (kind === 'error') setAlertMessage(msg); }}
+            />
+            {(['svg', 'png'] as const).map((fmt) => (
+              <button
+                key={fmt}
+                type="button"
+                data-testid={`schematic-export-${fmt}`}
+                onClick={() => exportSchematic(fmt)}
+                disabled={!circuitData || synthesisStatus === 'error'}
+                title={`Download the schematic as ${fmt.toUpperCase()}`}
+                className="hidden xl:flex items-center gap-1.5 px-2 py-1 rounded-[4px] text-xs font-medium border transition-colors shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
+              >
+                <ImageDown size={13} />
+                <span className="hidden 2xl:inline">{fmt.toUpperCase()}</span>
+              </button>
+            ))}
+          </>
+        }
         onZoomIn={() => viewportRef.current?.zoomIn()}
         onZoomOut={() => viewportRef.current?.zoomOut()}
         onFit={() => viewportRef.current?.fit()}

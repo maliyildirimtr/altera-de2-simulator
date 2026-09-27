@@ -78,7 +78,7 @@ async function loadEmscriptenModule(
 
       factory = mod.default as (opts?: object) => Promise<unknown>;
       if (typeof factory !== 'function') {
-        throw new Error(`${resolvedJsPath} geçerli bir Emscripten modülü değil (default export yok)`);
+        throw new Error(`${resolvedJsPath} is not a valid Emscripten module (no default export)`);
       }
       
       factoryCache[resolvedJsPath] = factory;
@@ -115,11 +115,11 @@ self.onmessage = async (event: MessageEvent<CompilerInput>) => {
   const logs: string[] = [];
 
   try {
-    logs.push('[WORKER] Derleme ortamı başlatılıyor...');
-    logs.push(`[WORKER] ${files.length} dosya alındı: ${files.map(f => f.name).join(', ')}`);
+    logs.push('[WORKER] Starting the compile environment...');
+    logs.push(`[WORKER] Received ${files.length} file(s): ${files.map(f => f.name).join(', ')}`);
 
     // ── 1. Wasm çekirdek JS dosyalarını doğrula ───────────────
-    logs.push('[WORKER] Wasm motorları kontrol ediliyor (ivlpp, ivl, vvp)...');
+    logs.push('[WORKER] Checking WebAssembly engines (ivlpp, ivl, vvp)...');
 
     const requiredJs   = ['/ivlpp.js', '/ivl.js', '/vvp.js'];
     const requiredWasm = ['/ivlpp.wasm', '/ivl.wasm', '/vvp.wasm'];
@@ -129,13 +129,13 @@ self.onmessage = async (event: MessageEvent<CompilerInput>) => {
     const missing = allRequired.filter((_, i) => checks[i] === null);
 
     if (missing.length > 0) {
-      logs.push(`[HATA] Eksik dosyalar: ${missing.join(', ')}`);
-      logs.push('[HATA] Verilog WebAssembly çekirdek dosyaları bulunamadı.');
-      logs.push('[HATA] Lütfen ivlpp.js/wasm, ivl.js/wasm, vvp.js/wasm dosyalarını public/ klasörüne ekleyin.');
+      logs.push(`[ERROR] Missing files: ${missing.join(', ')}`);
+      logs.push('[ERROR] Verilog WebAssembly engine files not found.');
+      logs.push('[ERROR] Add ivlpp.js/wasm, ivl.js/wasm and vvp.js/wasm to the public/ folder.');
       self.postMessage({ requestId, status: 'error', vcdOutput: '', logs } satisfies CompilerOutput);
       return;
     }
-    logs.push('[WORKER] Tüm Wasm çekirdek dosyaları doğrulandı. ✓');
+    logs.push('[WORKER] All WebAssembly engine files verified. ✓');
 
     // ── 2. Testbench Tespiti & Auto-Dump Injection ─────────────
     // ModelSim gibi: kullanıcı $dumpfile yazmasa da otomatik eklenir.
@@ -223,7 +223,7 @@ self.onmessage = async (event: MessageEvent<CompilerInput>) => {
       // lastIndexOf ile EN SON endmodule'ü bul (güvenli)
       const lastEM = content.lastIndexOf('endmodule');
       if (lastEM === -1) {
-        logs.push(`[AUTO-DUMP] UYARI: "${f.name}" içinde endmodule bulunamadı, enjeksiyon atlandı.`);
+        logs.push(`[AUTO-DUMP] WARNING: no endmodule in "${f.name}"; $dumpvars injection skipped.`);
         return f;
       }
 
@@ -237,11 +237,11 @@ self.onmessage = async (event: MessageEvent<CompilerInput>) => {
         '  end\n' +
         'endmodule' + after;
 
-      logs.push(`[AUTO-DUMP] "${f.name}" → son endmodule öncesine $dumpvars(0) enjekte edildi.`);
+      logs.push(`[AUTO-DUMP] "${f.name}": injected $dumpvars(0) before the last endmodule.`);
       return { ...f, content };
     });
 
-    logs.push('[ivlpp] Ön derleme başlatılıyor...');
+    logs.push('[ivlpp] Preprocessing...');
     const ppLines: string[] = [];
     const ppWarnLines: string[] = [];
 
@@ -258,20 +258,20 @@ self.onmessage = async (event: MessageEvent<CompilerInput>) => {
       ppArgs.push('/' + file.name);
       // Eğer inject yapıldıysa, FS'deki kopyayı da güncelle (double-write)
       if (!hasDump && file === workFiles.find(wf => wf.name === tbFile.name)) {
-        logs.push(`[FS] "${file.name}" (${src.length} byte) FS'e yazıldı. ✓`);
+        logs.push(`[FS] Wrote "${file.name}" (${src.length} bytes). ✓`);
       }
     }
     ivlpp.callMain(ppArgs);
 
     if (ppWarnLines.length > 0) {
-      logs.push('[ivlpp uyarı]\n' + ppWarnLines.join('\n'));
+      logs.push('[ivlpp warning]\n' + ppWarnLines.join('\n'));
     }
 
     const preprocessed = ppLines.join('\n') + '\n';
-    logs.push(`[ivlpp] Ön derleme tamamlandı (${preprocessed.length} byte). ✓`);
+    logs.push(`[ivlpp] Preprocessing done (${preprocessed.length} bytes). ✓`);
 
     // ── 3. ivl — Ana derleyici ────────────────────────────────
-    logs.push('[ivl] Ana derleme başlatılıyor...');
+    logs.push('[ivl] Compiling...');
     const ivlErrors: string[] = [];
 
     const ivl = await loadEmscriptenModule('/ivl.js', '/', {
@@ -297,17 +297,17 @@ self.onmessage = async (event: MessageEvent<CompilerInput>) => {
     );
 
     if (!vvpBytes) {
-      logs.push('[HATA] Derleme başarısız!');
+      logs.push('[ERROR] Compilation failed.');
       if (realErrors.length > 0) logs.push(realErrors.join('\n'));
       self.postMessage({ requestId, status: 'error', vcdOutput: '', logs } satisfies CompilerOutput);
       return;
     }
 
-    if (realErrors.length > 0) logs.push('[ivl uyarı]\n' + realErrors.join('\n'));
-    logs.push('[ivl] Derleme tamamlandı, out.vvp üretildi. ✓');
+    if (realErrors.length > 0) logs.push('[ivl warning]\n' + realErrors.join('\n'));
+    logs.push('[ivl] Compilation done; out.vvp produced. ✓');
 
     // ── 4. vvp — Simülatör ────────────────────────────────────
-    logs.push('[vvp] Simülasyon başlatılıyor...');
+    logs.push('[vvp] Simulating...');
     const simConsole: string[] = [];
 
     const vvpMod = await loadEmscriptenModule('/vvp.js', '/', {
@@ -324,7 +324,7 @@ self.onmessage = async (event: MessageEvent<CompilerInput>) => {
     if (simConsole.length > 0) {
       logs.push('[CONSOLE]\n' + simConsole.join('\n'));
     }
-    logs.push('[vvp] Simülasyon tamamlandı. ✓');
+    logs.push('[vvp] Simulation done. ✓');
 
     // ── 5. VCD çıktısını oku ve F2.5: Worker içinde parse et ──
     let vcdContent = '';
@@ -347,7 +347,7 @@ self.onmessage = async (event: MessageEvent<CompilerInput>) => {
         }
       }
       vcdContent   = new TextDecoder('utf-8').decode(vcdRaw);
-      logs.push(`[VCD] ${vcdContent.length} byte VCD çıktısı alındı. ✓`);
+      logs.push(`[VCD] Read ${vcdContent.length} bytes of VCD output. ✓`);
 
       // F2.5 — Parse işlemi UI thread yerine burada (Worker thread'de) yapılır.
       // Büyük VCD dosyalarında UI'ın donması önlenir.
@@ -355,28 +355,28 @@ self.onmessage = async (event: MessageEvent<CompilerInput>) => {
       simulationData.signals.forEach(s => {
         logs.push(`[VCD] Parsed: ${s.name} (${s.transitions.length} transitions)`);
       });
-      logs.push(`[VCD] Parse tamamlandı: ${simulationData.signals.length} sinyal, maxTime=${simulationData.maxTime} ps. ✓`);
+      logs.push(`[VCD] Parsed ${simulationData.signals.length} signals, maxTime=${simulationData.maxTime} ps. ✓`);
     } catch {
-      logs.push('[UYARI] dump.vcd bulunamadı veya parse edilemedi!');
-      logs.push('[UYARI] Testbench içinde şu satırlar gerekli:');
+      logs.push('[WARNING] dump.vcd was not produced or could not be parsed.');
+      logs.push('[WARNING] The testbench needs these lines:');
       logs.push('  initial begin');
       logs.push('    $dumpfile("dump.vcd");');
-      logs.push('    $dumpvars(0, <testbench_modül_adı>);');
+      logs.push('    $dumpvars(0, <testbench_module_name>);');
       logs.push('  end');
     }
 
-    // vcdOutput artık boş string — SimulationData direkt gönderildi (F2.5)
-    self.postMessage({ requestId, status: 'ok', vcdOutput: '', simulationData, logs } satisfies CompilerOutput);
+    // The raw VCD text is returned too so the user can download it.
+    self.postMessage({ requestId, status: 'ok', vcdOutput: vcdContent, simulationData, logs } satisfies CompilerOutput);
 
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
 
     if (msg.includes('FILE_NOT_FOUND')) {
-      logs.push('[HATA] Bir Wasm motor dosyası eksik veya okunamadı.');
+      logs.push('[ERROR] A WebAssembly engine file is missing or unreadable.');
       logs.push(msg);
     } else if (msg.includes('Unexpected token') || msg.includes('<')) {
-      logs.push('[HATA] Wasm motor dosyalarından biri geçersiz içerik döndürdü.');
-      logs.push('[HATA] Vite HTML fallback mı dönüyor? public/ klasörünü kontrol edin.');
+      logs.push('[ERROR] A WebAssembly engine file returned invalid content.');
+      logs.push('[ERROR] Is the server returning an HTML fallback? Check the public/ folder.');
     } else {
       for (const line of msg.split('\n').filter(Boolean)) {
         logs.push(line);

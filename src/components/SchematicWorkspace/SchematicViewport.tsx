@@ -7,6 +7,7 @@ import { LogicLegend } from './LogicLegend';
 import { TruthTableDrawer } from './TruthTableDrawer';
 import type { TruthTableRow } from './TruthTableDrawer';
 import { ResizableDivider } from '../DE2Workspace/ResizableDivider';
+import { serializeStyledSvg } from '../../utils/svgExport';
 
 export interface SchematicViewportHandle {
   zoomIn: () => void;
@@ -18,6 +19,8 @@ export interface SchematicViewportHandle {
   closeTruthTable: () => void;
   toggleTruthTable: () => void;
   isTruthTableOpen: boolean;
+  /** Self-contained SVG of the current schematic, or null when none is shown. */
+  exportSvg: () => string | null;
 }
 
 interface SchematicViewportProps {
@@ -261,6 +264,15 @@ export const SchematicViewport = forwardRef<SchematicViewportHandle, SchematicVi
         }
       },
       isTruthTableOpen,
+      exportSvg: () => {
+        const svg = containerRef.current?.querySelector('svg');
+        if (!svg || !circuitData) return null;
+        const paper = paperRef.current;
+        const bbox = paper?.getContentBBox ? paper.getContentBBox() : (svg as SVGSVGElement).getBBox();
+        if (!bbox || bbox.width < 1 || bbox.height < 1) return null;
+        const background = getComputedStyle(containerRef.current!).backgroundColor || '#ffffff';
+        return serializeStyledSvg(svg as SVGSVGElement, bbox, background === 'rgba(0, 0, 0, 0)' ? (isDarkMode ? '#0b1220' : '#ffffff') : background);
+      },
     }));
 
     // DigitalJS Circuit Initialization & Lifecycle

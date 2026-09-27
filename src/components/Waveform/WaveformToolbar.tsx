@@ -28,6 +28,8 @@ export interface WaveformToolbarProps {
   onToggleConsole: () => void;
   onResetLayout?: () => void;
   onUpload: () => void;
+  /** Rendered next to Upload (share link, export actions). */
+  actionsSlot?: React.ReactNode;
   onCompile: () => void;
   onRun: () => void;
   onRestart: () => void;
@@ -55,6 +57,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
   onToggleConsole,
   onResetLayout,
   onUpload,
+  actionsSlot,
   onCompile,
   onRun,
   onRestart,
@@ -192,6 +195,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
           <Upload size={13} />
           <span className="hidden md:inline">Upload</span>
         </button>
+        {actionsSlot}
 
         <div className="w-px h-4 bg-[var(--border-subtle)] mx-0.5 hidden sm:block" />
 

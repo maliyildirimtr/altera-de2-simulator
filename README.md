@@ -19,6 +19,8 @@ The application is a hash-routed SPA. `#/projects` remains as a compatibility al
 ### Workspace persistence and sharing
 
 - Each tool autosaves its HDL project to `localStorage` (`logiclab_<tool>_workspace_v1`), so a refresh or closed tab does not lose work. Only source text is stored, never simulation or synthesis output.
+- **Share links:** each tool's *Share* button copies a link that carries the project itself (deflate-compressed JSON in the `?p=` parameter; nothing is uploaded). *Schematic* buttons in DE2 and Waveform open the current HDL in the Schematic tool the same way.
+- **Exports:** Schematic → SVG/PNG, Waveform → VCD (opens in GTKWave), DE2 → `.qsf` pin assignments for Quartus.
 - Tool pages are lazy-loaded route chunks. Monaco is loaded only by pages with an editor and is limited to the Verilog/SystemVerilog grammar (`src/lib/monacoSetup.ts`); jQuery and DigitalJS are loaded only by the Schematic viewport.
 
 ## Simulation architecture

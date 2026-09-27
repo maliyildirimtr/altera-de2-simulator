@@ -42,11 +42,14 @@ interface SchematicToolbarProps {
   onResetLayout?: () => void;
   errorCount?: number;
   hasCircuit: boolean;
+  /** Rendered next to Upload (share link, export actions). */
+  actionsSlot?: React.ReactNode;
 }
 
 export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
   status,
   progress = null,
+  actionsSlot,
   viewMode,
   onViewModeChange,
   onSynthesize,
@@ -248,6 +251,7 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
           <Upload size={13} />
           <span className="hidden sm:inline">Upload</span>
         </button>
+        {actionsSlot}
 
         <button
           data-testid="schematic-synthesize-btn"

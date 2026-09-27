@@ -13,7 +13,11 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import MonacoEditor from '@monaco-editor/react';
 import '../lib/monacoSetup';
-import { Plus, X } from 'lucide-react';
+import { Download, Plus, X } from 'lucide-react';
+import { ShareButton } from '../components/Share/ShareButton';
+import { OpenInSchematicButton } from '../components/Share/OpenInToolButton';
+import { useSharedProject } from '../services/useSharedProject';
+import { downloadText } from '../utils/svgExport';
 
 import { parseRawVCD } from '../services/vcdParser';
 import type { SimulationData, VCDSignal, VCDScope } from '../services/vcdParser';
@@ -156,6 +160,38 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
     waveformSave,
     sourceFiles.length === 0 && !testbenchFile
   );
+
+  const sourceFilesRef = useRef(sourceFiles);
+  sourceFilesRef.current = sourceFiles;
+  const testbenchRef = useRef(testbenchFile);
+  testbenchRef.current = testbenchFile;
+
+  // Open a project from a share link (#/waveform?p=…)
+  useSharedProject(
+    'waveform',
+    () => sourceFilesRef.current.some((f) => f.content.trim() !== '') || !!testbenchRef.current?.content.trim(),
+    (payload) => {
+      const stamp = Date.now();
+      const sources: ProjectSlotFile[] = payload.files.map((f, i) => ({
+        id: `src_${stamp}_${i}`,
+        name: f.name,
+        type: f.name.split('.').pop() || 'sv',
+        content: f.content,
+      }));
+      setSourceFiles(sources);
+      setActiveSourceId(sources[0]?.id ?? null);
+      setTestbenchFile(
+        payload.testbench
+          ? { id: `tb_${stamp}`, name: payload.testbench.name, type: payload.testbench.name.split('.').pop() || 'sv', content: payload.testbench.content }
+          : null
+      );
+      setVcdFile(null);
+      setActiveEditorRole('source');
+      clearSimulationState();
+      setConsoleLogs((prev) => [...prev, '[Share] Opened a shared project. Compile to see its waveform.']);
+    },
+    (msg) => setConsoleLogs((prev) => [...prev, `[ERROR] ${msg}`])
+  );
   const [vcdFile, setVcdFile] = useState<ProjectSlotFile | null>(null);
   const [activeEditorRole, setActiveEditorRole] = useState<'source' | 'testbench'>('source');
 
@@ -191,6 +227,8 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
   ]);
 
   const simulationDataRef = useRef<SimulationData | null>(null);
+  /** Raw VCD behind the current waveform, for "Download VCD". */
+  const lastVcdRef = useRef<{ name: string; text: string } | null>(null);
   const isSimRunningRef   = useRef<boolean>(false);
   const isPlayingRef      = useRef<boolean>(false);
   const currentTimeRef    = useRef<number>(0);
@@ -201,6 +239,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
 
   // ── Explicit Intent Updaters ──────────────────────────────
   const clearSimulationState = useCallback(() => {
+    lastVcdRef.current = null;
     setSimulationData(null);
     simulationDataRef.current = null;
     setRootTree(null);
@@ -575,6 +614,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
     if (currentVcd) {
       try {
         const data = parseRawVCD(currentVcd.content);
+        lastVcdRef.current = { name: currentVcd.name, text: currentVcd.content };
         initSimulationData(data);
         handleMainViewChange('waveform');
         if (!userDismissedObjectsRef.current && data.signals.length > 0) {
@@ -594,7 +634,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
         setCursorB(null);
         setMarkers([]);
         setIsConsoleOpen(true);
-        setConsoleLogs(prev => [...prev, `[HATA] VCD parse error: ${String(err)}`]);
+        setConsoleLogs(prev => [...prev, `[ERROR] VCD parse error: ${String(err)}`]);
       }
       setIsCompiling(false);
       return;
@@ -615,7 +655,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
       setIsConsoleOpen(true);
       setConsoleLogs(prev => [
         ...prev,
-        '[HATA] No HDL files to compile. Please import a Source or Testbench file first.',
+        '[ERROR] No HDL files to compile. Please import a Source or Testbench file first.',
       ]);
       setIsCompiling(false);
       return;
@@ -634,6 +674,8 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
 
     if (result.status === 'ok' && result.simulationData) {
       const data = result.simulationData as SimulationData;
+      const top = activeName.replace(/\.[^.]+$/, '');
+      lastVcdRef.current = result.vcdOutput ? { name: `${top}.vcd`, text: result.vcdOutput } : null;
       data.logs = [...result.logs, ...(data.logs ?? [])];
       initSimulationData(data);
       handleMainViewChange('waveform');
@@ -654,7 +696,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
       setCursorB(null);
       setMarkers([]);
       setIsConsoleOpen(true);
-      setConsoleLogs(prev => [...prev, '[HATA] Simulation failed to produce valid VCD.']);
+      setConsoleLogs(prev => [...prev, '[ERROR] Simulation failed to produce valid VCD.']);
     }
 
     currentTimeRef.current = 0;
@@ -943,6 +985,42 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
         onToggleConsole={() => setIsConsoleOpen(prev => !prev)}
         onResetLayout={handleResetLayout}
         onUpload={() => generalInputRef.current?.click()}
+        actionsSlot={
+          <>
+            <OpenInSchematicButton
+              className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-xs font-medium border transition-colors shadow-xs"
+              labelClassName="inline"
+              getFiles={() => sourceFiles.map((f) => ({ name: f.name, content: f.content }))}
+              onError={(msg) => setConsoleLogs((prev) => [...prev, `[ERROR] ${msg}`])}
+            />
+            <ShareButton
+              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-xs font-medium border transition-colors shadow-xs"
+              labelClassName="hidden 2xl:inline"
+              getPayload={() => ({
+                v: 1,
+                tool: 'waveform',
+                files: sourceFiles.map((f) => ({ name: f.name, content: f.content })),
+                testbench: testbenchFile ? { name: testbenchFile.name, content: testbenchFile.content } : null,
+              })}
+              onMessage={(msg) => setConsoleLogs((prev) => [...prev, msg.startsWith('Share link') ? `[Share] ${msg}` : `[ERROR] ${msg}`])}
+            />
+            <button
+              type="button"
+              data-testid="wf-btn-download-vcd"
+              onClick={() => {
+                const vcd = lastVcdRef.current;
+                if (vcd) downloadText(vcd.text, vcd.name, 'text/plain');
+              }}
+              disabled={!simulationData}
+              title="Download the simulation as a VCD file (opens in GTKWave)"
+              className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-xs font-medium border transition-colors shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
+            >
+              <Download size={13} />
+              <span className="hidden 2xl:inline">VCD</span>
+            </button>
+          </>
+        }
         onCompile={compileSimulation}
         onRun={runSimulation}
         onRestart={restartSimulation}

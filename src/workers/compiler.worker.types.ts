@@ -61,6 +61,6 @@ export interface CompilerOutput {
   /** F2.5: pre-parsed simulation data (undefined on error). */
   simulationData?: ParsedSimulationData;
   /** Raw VCD string is no longer sent to the main thread. */
-  vcdOutput: string;   // kept for backward-compat; always '' after F2.5
+  vcdOutput: string;   // raw VCD text on success (for download); '' on error
   logs: string[];
 }

@@ -40,7 +40,7 @@ export const WaveformConsole: React.FC<WaveformConsoleProps> = ({
     if (lower.includes('warning') || lower.includes('uyari')) {
       return 'text-amber-400 bg-amber-950/20 px-1 py-0.5 rounded';
     }
-    if (log.includes('✓') || lower.includes('tamamlandı') || lower.includes('success')) {
+    if (log.includes('✓') || lower.includes('success')) {
       return 'text-emerald-400';
     }
     if (log.startsWith('# [VCD') || log.startsWith('[VCD]')) {

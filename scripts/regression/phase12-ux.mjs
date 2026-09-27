@@ -895,7 +895,7 @@ endmodule`;
     const consoleErrLogs = await evaluate(`
       document.querySelector('[data-testid="wf-console"]')?.textContent || ''
     `);
-    assert.ok(consoleErrLogs.includes('syntax_error_here') || consoleErrLogs.includes('HATA') || consoleErrLogs.includes('error'), 'Console must display compiler diagnostic');
+    assert.ok(consoleErrLogs.includes('syntax_error_here') || consoleErrLogs.includes('ERROR') || consoleErrLogs.includes('error'), 'Console must display compiler diagnostic');
     console.log('  PASS: Console auto-opens on error with compiler diagnostics.');
 
     // [Test 18] Resizable Panel Boundaries & Zero Page Overflow

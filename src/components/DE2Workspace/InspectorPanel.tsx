@@ -5,6 +5,7 @@ import {
   ChevronRight,
   ChevronDown,
   Copy,
+  Download,
   Plus,
   Trash2,
   Clock,
@@ -45,6 +46,7 @@ function getComponentLabel(vc: string | null): string {
 }
 
 import { ResizableDivider } from './ResizableDivider';
+import { downloadText } from '../../utils/svgExport';
 
 interface InspectorPanelProps {
   isOpen: boolean;
@@ -99,6 +101,21 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
 
   const toggleSection = (key: keyof typeof openSections) => {
     setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleDownloadQsf = () => {
+    const lines = pinMappings
+      .filter(p => p.portName && p.physicalPin)
+      .map(p => `set_location_assignment ${p.physicalPin} -to ${p.portName}`);
+    if (lines.length === 0) return;
+    const header = [
+      '# Pin assignments exported from Logic Lab',
+      '# Target: Terasic/Altera DE2, Cyclone II EP2C35F672C6',
+      'set_global_assignment -name FAMILY "Cyclone II"',
+      'set_global_assignment -name DEVICE EP2C35F672C6',
+      '',
+    ];
+    downloadText([...header, ...lines, ''].join('\n'), 'de2_pins.qsf');
   };
 
   const handleCopyQsf = () => {
@@ -233,6 +250,22 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                   >
                     <Copy size={11} />
                     {copiedQsf ? <span>Copied!</span> : 'Copy QSF'}
+                  </button>
+                  <button
+                    data-testid="download-qsf-btn"
+                    onClick={handleDownloadQsf}
+                    disabled={!pinMappings.some(p => p.portName && p.physicalPin)}
+                    className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-[4px] border transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{
+                      backgroundColor: 'var(--bg-surface)',
+                      borderColor: 'var(--border-subtle)',
+                      color: 'var(--text-secondary)',
+                    }}
+                    title="Download a .qsf file for Quartus"
+                    aria-label="Download QSF file"
+                  >
+                    <Download size={11} />
+                    .qsf
                   </button>
                   <button
                     data-testid="add-pin-btn"

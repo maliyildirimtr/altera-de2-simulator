@@ -76,6 +76,14 @@ export const SchematicInspector: React.FC<SchematicInspectorProps> = ({
   const gates = deviceList.filter(
     ([, dev]) => dev.type !== 'Input' && dev.type !== 'Output'
   );
+  // Cell counts by type, largest first (e.g. And ×2, Xor ×2, Dff ×4)
+  const cellBreakdown = Object.entries(
+    gates.reduce<Record<string, number>>((acc, [, dev]) => {
+      const t = String(dev.type || 'Other');
+      acc[t] = (acc[t] || 0) + 1;
+      return acc;
+    }, {})
+  ).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
 
   return (
     <aside
@@ -472,6 +480,49 @@ export const SchematicInspector: React.FC<SchematicInspectorProps> = ({
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Logic Gates</div>
               </div>
             </div>
+
+            {/* Cell breakdown */}
+            {cellBreakdown.length > 0 && (
+              <div
+                data-testid="inspector-cell-breakdown"
+                style={{
+                  padding: '10px',
+                  background: 'var(--bg-primary)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '6px',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: '0.7rem',
+                    color: 'var(--text-secondary)',
+                    textTransform: 'uppercase',
+                    fontWeight: 600,
+                    letterSpacing: '0.5px',
+                    marginBottom: '6px',
+                  }}
+                >
+                  Cells by type
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {cellBreakdown.map(([type, count]) => (
+                    <span
+                      key={type}
+                      style={{
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        border: '1px solid var(--border-color)',
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: '0.75rem',
+                        color: 'var(--text-primary)',
+                      }}
+                    >
+                      {type} ×{count}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Port Lists */}
             {inputs.length > 0 && (

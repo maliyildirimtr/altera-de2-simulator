@@ -30,12 +30,15 @@ interface DE2ToolbarProps {
   consoleOpen: boolean;
   onToggleConsole: () => void;
   onResetLayout?: () => void;
+  /** Rendered next to Import (share link, export actions). */
+  actionsSlot?: React.ReactNode;
 }
 
 export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
   activeView,
   onSelectView,
   onOpenImport,
+  actionsSlot,
   onCompile,
   isCompiling = false,
   projectPanelOpen,
@@ -237,6 +240,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
             <Upload size={13} />
             <span className="hidden xl:inline">Import</span>
           </button>
+          {actionsSlot}
 
           <div
             className="w-px h-4 mx-0.5"

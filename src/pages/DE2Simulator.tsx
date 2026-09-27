@@ -13,6 +13,9 @@ import { CodeEditor } from '../components/Editor/CodeEditor';
 import { ResizableDivider } from '../components/DE2Workspace/ResizableDivider';
 import { consumePendingHandoff, markWorkspaceOrigin, peekPendingHandoff } from '../services/exampleHandoff';
 import { loadWorkspace, restoreWorkspaceFlags, useWorkspaceAutosave } from '../services/workspaceStorage';
+import { ShareButton } from '../components/Share/ShareButton';
+import { OpenInSchematicButton } from '../components/Share/OpenInToolButton';
+import { useSharedProject } from '../services/useSharedProject';
 import { getExampleById } from '../examples/registry';
 
 const STORAGE_KEY = 'de2_workspace_layout_v1';
@@ -166,6 +169,22 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
   const de2Save = useMemo(() => ({ hdlCode, pinMappings }), [hdlCode, pinMappings]);
   useWorkspaceAutosave('de2', de2Save, !hdlCode.trim());
 
+  // Open a project from a share link (#/de2-simulator?p=…)
+  useSharedProject(
+    'de2',
+    () => !!useBoardStore.getState().hdlCode.trim(),
+    (payload) => {
+      const code = payload.files.map((f) => f.content).join('\n\n');
+      setHdlCode(code);
+      setPinMappings(Array.isArray(payload.pinMappings) ? (payload.pinMappings as ParsedPort[]) : []);
+      setEngine(null);
+      setCompileError(null);
+      resetBoard();
+      addLog('info', 'Opened a shared DE2 project. Compile to run it.');
+    },
+    (msg) => addLog('error', msg)
+  );
+
   // Consume incoming example handoff (Phase 6)
   useEffect(() => {
     const handoff = consumePendingHandoff('de2');
@@ -254,6 +273,24 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
         activeView={activeView}
         onSelectView={handleSelectView}
         onOpenImport={() => setUploaderOpen(true)}
+        actionsSlot={
+          <>
+          <OpenInSchematicButton
+            className="flex items-center gap-1.5 px-2.5 h-[30px] rounded-[4px] border font-medium transition-colors text-xs"
+            getFiles={() => [{ name: 'main.sv', content: useBoardStore.getState().hdlCode }]}
+            onError={(msg) => addLog('error', msg)}
+          />
+          <ShareButton
+            className="flex items-center gap-1.5 px-2.5 h-[30px] rounded-[4px] border font-medium transition-colors text-xs"
+            labelClassName="hidden xl:inline"
+            getPayload={() => {
+              const st = useBoardStore.getState();
+              return { v: 1, tool: 'de2', files: [{ name: 'main.sv', content: st.hdlCode }], pinMappings: st.pinMappings };
+            }}
+            onMessage={(msg, kind) => addLog(kind === 'error' ? 'error' : 'info', msg)}
+          />
+          </>
+        }
         onCompile={handleCompile}
         isCompiling={isCompiling}
         projectPanelOpen={isProjectOpen}
