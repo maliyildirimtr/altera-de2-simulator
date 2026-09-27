@@ -223,10 +223,10 @@ interface PresentationStatusLamp {
  * state. They intentionally subscribe to no simulated output signal.
  */
 const PRESENTATION_STATUS_LAMPS: readonly PresentationStatusLamp[] = [
-  { id: 'blue-left', label: 'Left cyan status', kind: 'blue', x: 488, y: 446, lensRx: 15, lensRy: 15, maskRx: 56, maskRy: 49 },
-  { id: 'blue-right', label: 'Right cyan status', kind: 'blue', x: 641, y: 446, lensRx: 15, lensRy: 15, maskRx: 56, maskRy: 49 },
-  { id: 'link', label: 'LINK', kind: 'green', x: 1639, y: 284, lensRx: 12, lensRy: 17, maskRx: 36, maskRy: 29 },
-  { id: 'act', label: 'ACT', kind: 'red', x: 1684, y: 284, lensRx: 12, lensRy: 16, maskRx: 36, maskRy: 29 },
+  { id: 'blue-left', label: 'Left cyan status', kind: 'blue', x: 614, y: 601, lensRx: 14, lensRy: 14, maskRx: 42, maskRy: 38 },
+  { id: 'blue-right', label: 'Right cyan status', kind: 'blue', x: 766, y: 602, lensRx: 14, lensRy: 14, maskRx: 42, maskRy: 38 },
+  { id: 'link', label: 'LINK', kind: 'green', x: 1765, y: 442, lensRx: 11, lensRy: 15, maskRx: 30, maskRy: 27 },
+  { id: 'act', label: 'ACT', kind: 'red', x: 1810, y: 442, lensRx: 11, lensRy: 15, maskRx: 30, maskRy: 27 },
 ] as const;
 
 export const PresentationStatusOverlay: React.FC = React.memo(() => {
