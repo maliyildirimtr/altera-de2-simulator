@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { DE2_REFERENCE_25D } from '../../board/de2ReferenceAssets';
+import { useArtworkReady } from '../../board/useArtworkReady';
+import { ArtworkLoadingPlaceholder, artworkRevealStyle } from './primitives/ArtworkLoading';
 import type { InputOverlayCalibrationSet } from '../../board/de2ReferenceAssets';
 import {
   HEX_CX,
@@ -56,6 +58,7 @@ export const DE2CssBoard25D: React.FC = React.memo(() => {
   const [inputCalibration, setInputCalibration] = useState<InputOverlayCalibrationSet>(
     reference25dInputs,
   );
+  const artworkReady = useArtworkReady(DE2_REFERENCE_25D.src);
 
   return (
     <svg
@@ -72,6 +75,9 @@ export const DE2CssBoard25D: React.FC = React.memo(() => {
     style={{ filter: 'drop-shadow(0 22px 24px rgba(0, 0, 0, 0.28))' }}
   >
     <ArtworkOverlayDefs layout={reference25dLayout} />
+
+    <ArtworkLoadingPlaceholder width={DE2_REFERENCE_25D.width} height={DE2_REFERENCE_25D.height} ready={artworkReady} />
+    <g data-artwork-ready={artworkReady ? 'true' : 'false'} style={artworkRevealStyle(artworkReady)}>
 
     <image
       data-runtime-board-asset="2.5d"
@@ -158,6 +164,7 @@ export const DE2CssBoard25D: React.FC = React.memo(() => {
       value={inputCalibration}
       onChange={setInputCalibration}
     />
+    </g>
     </svg>
   );
 });

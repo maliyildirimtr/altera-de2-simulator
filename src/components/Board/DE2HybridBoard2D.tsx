@@ -1,5 +1,7 @@
 import React from 'react';
 import { DE2_REFERENCE_2D } from '../../board/de2ReferenceAssets';
+import { useArtworkReady } from '../../board/useArtworkReady';
+import { ArtworkLoadingPlaceholder, artworkRevealStyle } from './primitives/ArtworkLoading';
 import {
   ArtworkOverlayDefs,
   HexOverlay,
@@ -53,7 +55,9 @@ const { layout } = DE2_REFERENCE_2D;
  * If something in the artwork looks wrong, the fix is a new artwork export or
  * a calibration change, not another shape painted over the top.
  */
-export const DE2HybridBoard2D: React.FC = React.memo(() => (
+export const DE2HybridBoard2D: React.FC = React.memo(() => {
+  const artworkReady = useArtworkReady(DE2_REFERENCE_2D.src);
+  return (
   <svg
     data-board-view="2d"
     data-board-presentation="artwork"
@@ -66,6 +70,9 @@ export const DE2HybridBoard2D: React.FC = React.memo(() => (
     aria-label="Altera DE2 development board, top view"
   >
     <ArtworkOverlayDefs layout={layout} />
+
+    <ArtworkLoadingPlaceholder width={DE2_REFERENCE_2D.width} height={DE2_REFERENCE_2D.height} ready={artworkReady} />
+    <g data-artwork-ready={artworkReady ? 'true' : 'false'} style={artworkRevealStyle(artworkReady)}>
 
     {/*
       Static board artwork.
@@ -162,6 +169,8 @@ export const DE2HybridBoard2D: React.FC = React.memo(() => (
         />
       ))}
     </g>
+    </g>
   </svg>
-));
+  );
+});
 DE2HybridBoard2D.displayName = 'DE2HybridBoard2D';

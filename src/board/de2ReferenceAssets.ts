@@ -261,7 +261,7 @@ export const DE2_25D_LCD_CALIBRATION = inputQuad(
 );
 
 export const DE2_REFERENCE_2D: BoardReferenceAsset = {
-  src: '/boards/de2/de2-reference-2d.png',
+  src: '/boards/de2/de2-reference-2d.webp',
   width: 2048,
   height: 1638,
   layout: {
@@ -323,7 +323,7 @@ export const DE2_REFERENCE_2D: BoardReferenceAsset = {
 };
 
 export const DE2_REFERENCE_25D: BoardReferenceAsset = {
-  src: '/boards/de2/de2-reference-25d.png',
+  src: '/boards/de2/de2-reference-25d.webp',
   width: 2168,
   height: 1477,
   inputCalibration: DE2_25D_INPUT_CALIBRATION,
