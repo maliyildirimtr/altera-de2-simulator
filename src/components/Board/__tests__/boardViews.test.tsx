@@ -1741,24 +1741,24 @@ assert.strictEqual(attr('data-line2'), 'HELLO FPGA      ', 'data-line2 reaches t
 assert.strictEqual(attr('data-display-on'), 'true', 'data-display-on reaches the DOM');
 assert.strictEqual(attr('data-lcd-visible'), 'true', 'the panel reports itself visible');
 
-// The characters must exist as real text nodes, not just as attributes.
-const row0 = /<g data-lcd-row="0">([\s\S]*?)<\/g>/.exec(lcdDom);
-const row1 = /<g data-lcd-row="1">([\s\S]*?)<\/g>/.exec(lcdDom);
-assert.ok(row0 && row1, 'both character rows are rendered when the display is on');
-const glyphs = (row: string): string =>
-  [...row.matchAll(/<text[^>]*>([^<])<\/text>/g)].map((m) => m[1]).join('');
-assert.strictEqual(glyphs(row0![1]), 'ENGINEERINGLAB', 'row 0 renders one text node per non-blank glyph');
-assert.strictEqual(glyphs(row1![1]), 'HELLOFPGA', 'row 1 renders one text node per non-blank glyph');
-// Nothing may hide them: no zero opacity, and the glyph fill is the dark ink.
-assert.ok(!/<text[^>]*opacity="0"/.test(lcdDom), 'no character is rendered fully transparent');
-assert.ok(/<text[^>]*fill="#1C2A1E"/.test(lcdDom), 'characters use the dark LCD ink');
+// The characters must exist as real dot-matrix cells, not just as attributes.
+const cellChars = (dom: string, row: number): string =>
+  [...dom.matchAll(new RegExp(`data-lcd-cell="${row}:\\d+" data-lcd-char="([^"])"`, 'g'))]
+    .map((m) => m[1])
+    .join('');
+assert.ok(/data-lcd-row="0"/.test(lcdDom) && /data-lcd-row="1"/.test(lcdDom), 'both character rows are rendered when the display is on');
+assert.strictEqual(cellChars(lcdDom, 0), 'ENGINEERING LAB ', 'row 0 renders one dot-matrix cell per column');
+assert.strictEqual(cellChars(lcdDom, 1), 'HELLO FPGA      ', 'row 1 renders one dot-matrix cell per column');
+const lcdGroup = /<g data-testid="de2-lcd"[\s\S]*$/.exec(lcdDom)![0];
+assert.ok(lcdGroup.includes('data-lcd-renderer="5x8-dot-matrix"'), '2D LCD uses the same dot-matrix renderer as 2.5D');
+assert.ok(/data-lcd-dot="on"[^>]*fill="#20321F"[^>]*opacity="0.92"/.test(lcdDom), 'lit dots use the dark LCD ink');
 
 // And with the panel off, the rows are gone rather than blank-but-present.
 store().resetBoard();
 const darkDom = render2d('artwork');
 assert.ok(!/data-lcd-row/.test(darkDom), 'a reset panel renders no character rows at all');
 assert.ok(/data-line1="                "/.test(darkDom), 'a reset panel reports blank lines in the DOM');
-pass('live LCD text reaches the rendered DOM as real text nodes');
+pass('live LCD text reaches the rendered DOM as dot-matrix cells');
 
 store().resetBoard();
 useBoardStore.setState({ engine: null, pinMappings: [], simState: {} });

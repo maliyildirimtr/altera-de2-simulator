@@ -9,7 +9,6 @@ import {
   polygonPoints,
   resolveInputOverlay,
 } from '../../../board/de2InputCalibration';
-import { LCD_COLS, LCD_ROWS } from '../../../core/peripherals/lcdController';
 import {
   isSegmentLit,
   useBoardCompiledReady,
@@ -29,9 +28,11 @@ import {
   PerspectiveSwitchVisual,
 } from './PerspectiveInputVisuals';
 import {
+  LcdDotRows,
   PerspectiveHexVisual,
   PerspectiveLcdVisual,
 } from './PerspectiveDisplayVisuals';
+import { LCD_DOT_CANVAS_HEIGHT, LCD_DOT_CANVAS_WIDTH } from './lcdDotMatrix';
 
 /**
  * Live overlays for the artwork-based DE2 renderer.
@@ -877,21 +878,6 @@ export const LcdOverlay: React.FC<{
   const gw = art.glassWidth;
   const gh = art.glassHeight;
 
-  // Character area, inset inside the glass so text never reaches the bezel.
-  const padX = gw * art.insetX;
-  const padY = gh * art.insetY;
-  const areaX = gx + padX;
-  const areaY = gy + padY;
-  const areaW = gw - padX * 2;
-  const areaH = gh - padY * 2;
-
-  const cellW = areaW / LCD_COLS;
-  const cellH = areaH / LCD_ROWS;
-  // HD44780 cells are 5 x 8 dots, so the glyph is much taller than it is wide.
-  // Sizing from the cell height rather than its width is what keeps the text
-  // looking like a character module instead of stretched label text.
-  const fontSize = cellH * 0.78;
-
   const rows = [line1, line2];
   const resolved = calibration
     ? resolveInputOverlay(calibration, layout.width, layout.height)
@@ -951,41 +937,23 @@ export const LcdOverlay: React.FC<{
       )}
       {!visible && <rect x={gx} y={gy} width={gw} height={gh} fill="#0A140C" opacity={0.3} />}
 
-      {visible &&
-        rows.map((text, row) => (
-          <g key={row} data-lcd-row={row}>
-            {Array.from(text).map((ch, col) =>
-              ch === ' ' ? null : (
-                <text
-                  key={col}
-                  x={areaX + cellW * (col + 0.5)}
-                  y={areaY + cellH * (row + 0.5) + fontSize * 0.36}
-                  fontSize={fontSize}
-                  fontFamily="'DejaVu Sans Mono', 'SFMono-Regular', Menlo, Consolas, monospace"
-                  fontWeight={600}
-                  textAnchor="middle"
-                  fill="#1C2A1E"
-                  opacity={0.9}
-                  style={{ userSelect: 'none' }}
-                >
-                  {ch}
-                </text>
-              ),
-            )}
-          </g>
-        ))}
-
-      {/* Block cursor, only when the design actually enabled it. */}
-      {visible && cursor && (
-        <rect
-          x={areaX + cellW * cursor.col + cellW * 0.12}
-          y={areaY + cellH * (cursor.row + 1) - cellH * 0.16}
-          width={cellW * 0.76}
-          height={cellH * 0.1}
-          fill="#1C2A1E"
-          opacity={0.75}
-        />
+      {visible && (
+        /* The same 5 x 8 dot-matrix glyphs as the 2.5D board, laid flat on
+           the artwork's glass. `meet` keeps the dots square. */
+        <svg
+          x={gx}
+          y={gy}
+          width={gw}
+          height={gh}
+          viewBox={`0 0 ${LCD_DOT_CANVAS_WIDTH} ${LCD_DOT_CANVAS_HEIGHT}`}
+          preserveAspectRatio="xMidYMid meet"
+          overflow="visible"
+          data-lcd-renderer="5x8-dot-matrix"
+        >
+          <LcdDotRows rows={rows} cursor={cursor} />
+        </svg>
       )}
+
         </>
       )}
 

@@ -134,13 +134,16 @@ export const PerspectiveHexVisual: React.FC<{
   );
 };
 
-export const PerspectiveLcdVisual: React.FC<{
-  corners: readonly [ArtworkPoint, ArtworkPoint, ArtworkPoint, ArtworkPoint];
-  rows: readonly [string, string];
-  visible: boolean;
-  backlight: boolean;
+/**
+ * The HD44780 5 x 8 dot-matrix character grid, drawn in the shared
+ * LCD_DOT_CANVAS coordinate space. Both the flat 2D board and the projective
+ * 2.5D board render text through this one component so the two views show
+ * identical glyphs.
+ */
+export const LcdDotRows: React.FC<{
+  rows: readonly string[];
   cursor: { row: number; col: number } | null;
-}> = ({ corners, rows, visible, backlight, cursor }) => {
+}> = ({ rows, cursor }) => {
   const displayRows = rows.map((row) => row.padEnd(LCD_DOT_COLUMNS).slice(0, LCD_DOT_COLUMNS));
   const dotPitchX = LCD_DOT_SIZE + LCD_DOT_GAP_X;
   const dotPitchY = LCD_DOT_SIZE + LCD_DOT_GAP_Y;
@@ -148,7 +151,58 @@ export const PerspectiveLcdVisual: React.FC<{
   const glyphHeight = LCD_DOT_SIZE * 8 + LCD_DOT_GAP_Y * 7;
   const glyphInsetX = (LCD_DOT_CELL_WIDTH - glyphWidth) / 2;
   const glyphInsetY = (LCD_DOT_CELL_HEIGHT - glyphHeight) / 2;
+  return (
+    <>
+      {displayRows.map((text, row) => (
+        <g key={row} data-lcd-row={row}>
+          {Array.from({ length: LCD_DOT_COLUMNS }, (_, col) => {
+            const character = text[col] ?? ' ';
+            const characterGlyph = lcdDotGlyph(character);
+            const cellX = LCD_DOT_GRID_X + col * LCD_DOT_CELL_WIDTH;
+            const cellY = LCD_DOT_GRID_Y + row * LCD_DOT_CELL_HEIGHT;
+            return (
+              <g
+                key={col}
+                data-lcd-cell={`${row}:${col}`}
+                data-lcd-char={character}
+                transform={`translate(${cellX + glyphInsetX} ${cellY + glyphInsetY})`}
+              >
+                {characterGlyph.flatMap((pixelRow, pixelY) =>
+                  Array.from({ length: 5 }, (_, pixelX) => {
+                    const cursorPixel = cursor?.row === row && cursor.col === col && pixelY === 7;
+                    const lit = pixelRow[pixelX] === '1' || cursorPixel;
+                    return (
+                      <rect
+                        key={`${pixelY}-${pixelX}`}
+                        data-lcd-dot={lit ? 'on' : 'off'}
+                        x={pixelX * dotPitchX}
+                        y={pixelY * dotPitchY}
+                        width={LCD_DOT_SIZE}
+                        height={LCD_DOT_SIZE}
+                        rx="1.4"
+                        ry="1.4"
+                        fill={lit ? '#20321F' : '#344B35'}
+                        opacity={lit ? 0.92 : 0.065}
+                      />
+                    );
+                  }),
+                )}
+              </g>
+            );
+          })}
+        </g>
+      ))}
+    </>
+  );
+};
 
+export const PerspectiveLcdVisual: React.FC<{
+  corners: readonly [ArtworkPoint, ArtworkPoint, ArtworkPoint, ArtworkPoint];
+  rows: readonly [string, string];
+  visible: boolean;
+  backlight: boolean;
+  cursor: { row: number; col: number } | null;
+}> = ({ corners, rows, visible, backlight, cursor }) => {
   return (
     <PerspectivePlane
       corners={corners}
@@ -221,45 +275,7 @@ export const PerspectiveLcdVisual: React.FC<{
             opacity="0.16"
           />
 
-          {visible && displayRows.map((text, row) => (
-            <g key={row} data-lcd-row={row}>
-              {Array.from({ length: LCD_DOT_COLUMNS }, (_, col) => {
-                const character = text[col] ?? ' ';
-                const characterGlyph = lcdDotGlyph(character);
-                const cellX = LCD_DOT_GRID_X + col * LCD_DOT_CELL_WIDTH;
-                const cellY = LCD_DOT_GRID_Y + row * LCD_DOT_CELL_HEIGHT;
-                return (
-                  <g
-                    key={col}
-                    data-lcd-cell={`${row}:${col}`}
-                    data-lcd-char={character}
-                    transform={`translate(${cellX + glyphInsetX} ${cellY + glyphInsetY})`}
-                  >
-                    {characterGlyph.flatMap((pixelRow, pixelY) =>
-                      Array.from({ length: 5 }, (_, pixelX) => {
-                        const cursorPixel = cursor?.row === row && cursor.col === col && pixelY === 7;
-                        const lit = pixelRow[pixelX] === '1' || cursorPixel;
-                        return (
-                          <rect
-                            key={`${pixelY}-${pixelX}`}
-                            data-lcd-dot={lit ? 'on' : 'off'}
-                            x={pixelX * dotPitchX}
-                            y={pixelY * dotPitchY}
-                            width={LCD_DOT_SIZE}
-                            height={LCD_DOT_SIZE}
-                            rx="1.4"
-                            ry="1.4"
-                            fill={lit ? '#20321F' : '#344B35'}
-                            opacity={lit ? 0.92 : 0.065}
-                          />
-                        );
-                      }),
-                    )}
-                  </g>
-                );
-              })}
-            </g>
-          ))}
+          {visible && <LcdDotRows rows={rows} cursor={cursor} />}
 
           {!backlight && (
             <rect
