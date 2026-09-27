@@ -1,50 +1,51 @@
 import { Link } from 'react-router-dom';
 import { PLATFORM_NAME } from '../../lib/platform';
-
-const TOOL_LINKS = [
-  { label: 'DE2 Simulator', to: '/de2-simulator' },
-  { label: 'Waveform', to: '/waveform' },
-  { label: 'Schematic', to: '/schematic' },
-];
-
-const RESOURCE_LINKS = [
-  { label: 'Examples', to: '/examples' },
-  { label: 'Digital Logic', to: '/digital-logic' },
-  { label: 'FPGA', to: '/fpga' },
-];
+import { useI18n } from '../../i18n/I18nProvider';
 
 export function Footer() {
+  const { d } = useI18n();
+  const t = d.footer;
+  const toolLinks = [
+    { label: d.nav.de2, to: '/de2-simulator' },
+    { label: d.nav.waveform, to: '/waveform' },
+    { label: d.nav.schematic, to: '/schematic' },
+  ];
+  const resourceLinks = [
+    { label: d.nav.examples, to: '/examples' },
+    { label: d.nav.exercises, to: '/exercises' },
+    { label: d.nav.digitalLogic, to: '/digital-logic' },
+    { label: d.nav.fpga, to: '/fpga' },
+  ];
+
   return (
     <footer className="lx-footer">
       <div className="lx-container">
         <div className="lx-footer__grid">
           <div className="lx-footer__brand">
             <p className="lx-footer__name">{PLATFORM_NAME}</p>
-            <p className="lx-footer__tagline">
-              Browser-based tools for learning, teaching and simulating digital hardware.
-            </p>
+            <p className="lx-footer__tagline">{t.tagline}</p>
           </div>
 
-          <nav aria-label="Tools">
-            <p className="lx-mono lx-footer__label">Tools</p>
+          <nav aria-label={t.tools}>
+            <p className="lx-mono lx-footer__label">{t.tools}</p>
             <ul>
-              {TOOL_LINKS.map(link => (
+              {toolLinks.map(link => (
                 <li key={link.to}><Link to={link.to}>{link.label}</Link></li>
               ))}
             </ul>
           </nav>
 
-          <nav aria-label="Resources">
-            <p className="lx-mono lx-footer__label">Resources</p>
+          <nav aria-label={t.resources}>
+            <p className="lx-mono lx-footer__label">{t.resources}</p>
             <ul>
-              {RESOURCE_LINKS.map(link => (
+              {resourceLinks.map(link => (
                 <li key={link.to}><Link to={link.to}>{link.label}</Link></li>
               ))}
             </ul>
           </nav>
 
-          <nav aria-label="Project">
-            <p className="lx-mono lx-footer__label">Project</p>
+          <nav aria-label={t.project}>
+            <p className="lx-mono lx-footer__label">{t.project}</p>
             <ul>
               <li>
                 <a
@@ -60,7 +61,7 @@ export function Footer() {
         </div>
 
         <div className="lx-footer__bottom lx-mono">
-          <span>{PLATFORM_NAME} — Browser-Based Digital Engineering</span>
+          <span>{PLATFORM_NAME} — {t.bottom}</span>
           <span>Altera DE2 · Cyclone II EP2C35</span>
         </div>
       </div>

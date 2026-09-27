@@ -1,46 +1,43 @@
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { EXAMPLES_LIST } from '../../examples/registry';
+import { useI18n } from '../../i18n/I18nProvider';
+import { fmt } from '../../i18n/dictionary';
 import { Reveal } from './Reveal';
 
 /** Featured example ids, in display order. Tags are read from the registry. */
-const FEATURED = [
-  { id: 'basic_gates', label: 'Basic Logic Gates' },
-  { id: 'half_adder', label: 'Half Adder' },
-  { id: 'full_adder', label: 'Full Adder' },
-  { id: 'mux_2to1', label: 'Multiplexer' },
-  { id: 'decoder_3to8', label: 'Decoder' },
-  { id: 'de2_interactive_io', label: 'HEX Display & Board I/O' },
-  { id: 'de2_lcd_hello', label: 'LCD Hello' },
-];
+const FEATURED = ['basic_gates', 'half_adder', 'full_adder', 'mux_2to1', 'decoder_3to8', 'de2_interactive_io', 'de2_lcd_hello'];
 
 /** Compact example list shown before the final call-to-action. */
 export function LearningSection() {
-  const rows = FEATURED.flatMap(item => {
-    const example = EXAMPLES_LIST.find(e => e.id === item.id);
+  const { d } = useI18n();
+  const t = d.examplesStrip;
+  const rows = FEATURED.flatMap(id => {
+    const example = EXAMPLES_LIST.find(e => e.id === id);
     if (!example) return [];
     const tags = [
       { name: 'DE2', on: example.tools.de2 },
       { name: 'Waveform', on: example.tools.waveform },
       { name: 'Schematic', on: example.tools.schematic },
     ];
-    return [{ ...item, title: example.title, description: example.description, tags }];
+    return [{ id, label: t.labels[id] ?? example.title, description: t.descriptions[id] ?? example.description, tags }];
   });
 
   return (
     <section className="lx-section lx-light lx-examples" aria-labelledby="lx-examples-title">
       <div className="lx-container lx-examples__grid">
         <Reveal className="lx-examples__intro">
-          <p className="lx-eyebrow">Example library</p>
+          <p className="lx-eyebrow">{t.eyebrow}</p>
           <h2 id="lx-examples-title" className="lx-heading lx-heading--sm">
-            Start from a working design.
+            {t.title}
           </h2>
-          <p className="lx-lead">
-            {EXAMPLES_LIST.length} verified Verilog/SystemVerilog designs, from single gates to
-            board-level I/O. Open one, run it, then make it your own.
-          </p>
+          <p className="lx-lead">{fmt(t.lead, { count: EXAMPLES_LIST.length })}</p>
           <Link to="/examples" className="lx-link">
-            Explore all examples
+            {t.link}
+            <ArrowRight size={16} aria-hidden="true" />
+          </Link>
+          <Link to="/exercises" className="lx-link lx-link--secondary" data-testid="landing-exercises-link">
+            {t.practiceLink}
             <ArrowRight size={16} aria-hidden="true" />
           </Link>
         </Reveal>

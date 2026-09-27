@@ -1,31 +1,22 @@
+import { useI18n } from '../../i18n/I18nProvider';
 import { Reveal } from './Reveal';
 
-const USES = [
-  'Digital logic courses',
-  'FPGA introduction',
-  'Classroom demonstrations',
-  'Self-study',
-  'Lab preparation',
-];
-
 export function TeachingSection() {
+  const { d } = useI18n();
+  const t = d.teaching;
   return (
     <section className="lx-section lx-dark lx-teaching" aria-labelledby="lx-teaching-title">
       <div className="lx-container lx-teaching__grid">
         <Reveal className="lx-teaching__copy">
-          <p className="lx-eyebrow">Built for learning</p>
+          <p className="lx-eyebrow">{t.eyebrow}</p>
           <h2 id="lx-teaching-title" className="lx-heading lx-heading--stack">
-            <span>See the circuit.</span>
-            <span>Change it.</span>
-            <span className="lx-accent-text">Understand it.</span>
+            <span>{t.title1}</span>
+            <span>{t.title2}</span>
+            <span className="lx-accent-text">{t.title3}</span>
           </h2>
-          <p className="lx-lead">
-            Flip a switch and watch the HEX displays respond. Change one line of HDL and see
-            the waveform and the synthesized gates change with it. Logic Lab makes cause
-            and effect visible—on a projector, in a lab, or at home.
-          </p>
+          <p className="lx-lead">{t.lead}</p>
           <ul className="lx-uses">
-            {USES.map((use, i) => (
+            {t.uses.map((use, i) => (
               <li key={use}>
                 <span className="lx-mono">{String(i + 1).padStart(2, '0')}</span>
                 {use}
@@ -38,7 +29,7 @@ export function TeachingSection() {
           <div className="lx-teaching__frame">
             <img
               src="/landing/screens/de2-demonstration-v2.webp"
-              alt="DE2 board with HEX7 to HEX0 showing 7 6 5 4 3 2 1 0 above the red LEDs and slide switches"
+              alt={t.alt}
               width={1640}
               height={887}
               loading="lazy"
@@ -46,8 +37,8 @@ export function TeachingSection() {
             />
           </div>
           <figcaption className="lx-mono lx-teaching__caption">
-            <span>HEX7–HEX0 · LEDR · SW</span>
-            <span>Live board state</span>
+            <span>{t.captionLeft}</span>
+            <span>{t.captionRight}</span>
           </figcaption>
         </Reveal>
       </div>

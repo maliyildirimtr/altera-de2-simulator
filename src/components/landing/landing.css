@@ -163,6 +163,14 @@
   text-decoration: none;
 }
 
+.lx-link--secondary {
+  display: flex;
+  width: fit-content;
+  margin-top: 14px;
+  color: var(--lx-fg-2);
+  font-weight: 600;
+}
+
 .lx-link svg,
 .lx-tool__cta svg {
   transition: transform 180ms var(--lx-ease);

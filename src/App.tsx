@@ -5,6 +5,7 @@ import { RouteLoading } from './components/Layout/RouteLoading';
 import { PLATFORM_NAME } from './lib/platform';
 import { migrateLegacyStorageKeys, THEME_STORAGE_KEY } from './lib/storageKeys';
 import Home from './pages/Home';
+import { I18nProvider, useI18n } from './i18n/I18nProvider';
 import './index.css';
 
 // Tool pages are split into their own chunks so the home page does not
@@ -16,26 +17,27 @@ const WaveformSimulator = lazy(() => import('./pages/WaveformSimulator'));
 const DigitalLogicHub = lazy(() => import('./pages/DigitalLogicHub'));
 const FpgaHub = lazy(() => import('./pages/FpgaHub'));
 const NotFound = lazy(() => import('./pages/NotFound'));
+const Exercises = lazy(() => import('./pages/Exercises'));
 
 migrateLegacyStorageKeys();
 
-const PAGE_TITLES: Record<string, string> = {
-  '/': 'Digital Logic Simulation',
-  '/de2-simulator': 'DE2 Simulator',
-  '/waveform': 'Waveform',
-  '/schematic': 'Schematic',
-  '/examples': 'Examples',
-  '/projects': 'Examples',
-  '/digital-logic': 'Digital Logic',
-  '/fpga': 'FPGA',
-};
-
 function DocumentTitle() {
   const { pathname } = useLocation();
+  const { d, lang } = useI18n();
   useEffect(() => {
-    const page = PAGE_TITLES[pathname] ?? 'Page not found';
-    document.title = `${PLATFORM_NAME} — ${page}`;
-  }, [pathname]);
+    const titles: Record<string, string> = {
+      '/': lang === 'tr' ? 'Sayısal Mantık Simülasyonu' : 'Digital Logic Simulation',
+      '/de2-simulator': d.nav.de2,
+      '/waveform': d.nav.waveform,
+      '/schematic': d.nav.schematic,
+      '/examples': d.nav.examples,
+      '/projects': d.nav.examples,
+      '/exercises': d.nav.exercises,
+      '/digital-logic': d.nav.digitalLogic,
+      '/fpga': d.nav.fpga,
+    };
+    document.title = `${PLATFORM_NAME} — ${titles[pathname] ?? d.notFound.title}`;
+  }, [pathname, d, lang]);
   return null;
 }
 
@@ -63,6 +65,7 @@ export default function App() {
   }, [isDarkMode]);
 
   return (
+    <I18nProvider>
     <Router>
       <DocumentTitle />
       <div
@@ -85,11 +88,13 @@ export default function App() {
               <Route path="/waveform" element={<WaveformSimulator isDarkMode={isDarkMode} />} />
               <Route path="/digital-logic" element={<DigitalLogicHub />} />
               <Route path="/fpga" element={<FpgaHub />} />
+              <Route path="/exercises" element={<Exercises isDarkMode={isDarkMode} />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
         </div>
       </div>
     </Router>
+    </I18nProvider>
   );
 }

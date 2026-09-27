@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { NavLink, Link } from 'react-router-dom';
-import { Cpu, Activity, GitGraph, BookOpen, Sun, Moon, Menu, X, Layers, Grid } from 'lucide-react';
+import { Cpu, Activity, GitGraph, BookOpen, Sun, Moon, Menu, X, Layers, Grid, GraduationCap } from 'lucide-react';
+import { useI18n } from '../../i18n/I18nProvider';
 import { PLATFORM_NAME } from '../../lib/platform';
 
 interface NavbarProps {
@@ -9,23 +10,25 @@ interface NavbarProps {
 }
 
 const TOOL_LINKS = [
-  { to: '/de2-simulator', label: 'DE2 Simulator', icon: Cpu },
-  { to: '/waveform',      label: 'Waveform',      icon: Activity },
-  { to: '/schematic',     label: 'Schematic',      icon: GitGraph },
-  { to: '/examples',      label: 'Examples',       icon: BookOpen },
+  { to: '/de2-simulator', key: 'de2', icon: Cpu },
+  { to: '/waveform',      key: 'waveform', icon: Activity },
+  { to: '/schematic',     key: 'schematic', icon: GitGraph },
+  { to: '/examples',      key: 'examples', icon: BookOpen },
 ] as const;
 
 const EXPLORE_LINKS = [
-  { to: '/digital-logic', label: 'Digital Logic', icon: Layers },
-  { to: '/fpga',          label: 'FPGA',          icon: Grid },
+  { to: '/exercises',     key: 'exercises', icon: GraduationCap },
+  { to: '/digital-logic', key: 'digitalLogic', icon: Layers },
+  { to: '/fpga',          key: 'fpga', icon: Grid },
 ] as const;
 
 export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { d, lang, setLang } = useI18n();
 
   const desktopLinkClass = ({ isActive }: { isActive: boolean }) =>
     [
-      'flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-[12.5px] font-medium transition-colors select-none',
+      'flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-[12.5px] font-medium transition-colors select-none whitespace-nowrap',
       isActive
         ? 'text-[var(--accent-primary)] bg-[var(--accent-subtle)] border border-[var(--accent-border)] font-semibold'
         : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-transparent',
@@ -79,11 +82,11 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
               className="text-[10px] font-bold uppercase tracking-wider mr-2 select-none"
               style={{ color: 'var(--text-muted)' }}
             >
-              Tools
+              {d.nav.tools}
             </span>
-            {TOOL_LINKS.map(({ to, label }) => (
+            {TOOL_LINKS.map(({ to, key }) => (
               <NavLink key={to} to={to} className={desktopLinkClass}>
-                {label}
+                {d.nav[key]}
               </NavLink>
             ))}
           </div>
@@ -93,11 +96,11 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
               className="text-[10px] font-bold uppercase tracking-wider mr-2 select-none"
               style={{ color: 'var(--text-muted)' }}
             >
-              Explore
+              {d.nav.explore}
             </span>
-            {EXPLORE_LINKS.map(({ to, label }) => (
+            {EXPLORE_LINKS.map(({ to, key }) => (
               <NavLink key={to} to={to} className={desktopLinkClass}>
-                {label}
+                {d.nav[key]}
               </NavLink>
             ))}
           </div>
@@ -105,6 +108,18 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
 
         {/* Right actions */}
         <div className="flex items-center gap-1.5 ml-auto lg:ml-0 xl:ml-auto shrink-0">
+          {/* Language toggle */}
+          <button
+            data-testid="lang-toggle"
+            onClick={() => setLang(lang === 'tr' ? 'en' : 'tr')}
+            className="h-7 px-1.5 flex items-center justify-center rounded-[4px] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] transition-colors cursor-pointer text-[11px] font-semibold"
+            style={{ color: 'var(--text-secondary)', backgroundColor: 'var(--bg-panel)' }}
+            title={`${d.nav.language}: ${d.langName}`}
+            aria-label={`${d.nav.language}: ${d.langName}. ${lang === 'tr' ? 'Switch to English' : 'Türkçeye geç'}`}
+          >
+            {lang === 'tr' ? 'TR' : 'EN'}
+          </button>
+
           {/* Theme toggle */}
           <button
             data-testid="theme-toggle"
@@ -114,8 +129,8 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
               color: 'var(--text-secondary)',
               backgroundColor: 'var(--bg-panel)',
             }}
-            title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            aria-label={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            title={isDarkMode ? d.nav.switchToLight : d.nav.switchToDark}
+            aria-label={isDarkMode ? d.nav.switchToLight : d.nav.switchToDark}
           >
             {isDarkMode ? <Sun size={14} /> : <Moon size={14} />}
           </button>
@@ -128,7 +143,7 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
               color: 'var(--text-secondary)',
               backgroundColor: 'var(--bg-panel)',
             }}
-            aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+            aria-label={mobileOpen ? d.nav.closeMenu : d.nav.openMenu}
             aria-expanded={mobileOpen}
           >
             {mobileOpen ? <X size={15} /> : <Menu size={15} />}
@@ -150,9 +165,9 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
             className="px-4 py-2 mt-2 text-[10px] font-bold uppercase tracking-wider select-none"
             style={{ color: 'var(--text-muted)' }}
           >
-            Tools
+            {d.nav.tools}
           </div>
-          {TOOL_LINKS.map(({ to, label, icon: Icon }) => (
+          {TOOL_LINKS.map(({ to, key, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
@@ -160,7 +175,7 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
               onClick={() => setMobileOpen(false)}
             >
               <Icon size={15} className="shrink-0 text-[var(--text-secondary)]" />
-              {label}
+              {d.nav[key]}
             </NavLink>
           ))}
           <div
@@ -170,9 +185,9 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
               borderColor: 'var(--border-subtle)',
             }}
           >
-            Explore
+            {d.nav.explore}
           </div>
-          {EXPLORE_LINKS.map(({ to, label, icon: Icon }) => (
+          {EXPLORE_LINKS.map(({ to, key, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
@@ -180,7 +195,7 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
               onClick={() => setMobileOpen(false)}
             >
               <Icon size={15} className="shrink-0 text-[var(--text-secondary)]" />
-              {label}
+              {d.nav[key]}
             </NavLink>
           ))}
         </div>

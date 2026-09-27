@@ -12,6 +12,7 @@ Browser-based learning tools for digital logic and Electrical & Electronics Engi
 | `#/waveform` | Waveform | Compiles source and a testbench with local Icarus Verilog WebAssembly in a worker, parses VCD output, and renders interactive timing diagrams. |
 | `#/schematic` | Schematic | Synthesizes HDL with local Yosys WebAssembly and renders an interactive DigitalJS circuit in `SchematicViewport`. |
 | `#/examples` | Examples | Provides 16 curated examples, from single gates to board-level I/O and the LCD. |
+| `#/exercises` | Exercises | 11 auto-graded combinational exercises. The student's module and a hidden reference are both run on the DE2 engine for every input combination; mismatching truth-table rows are highlighted. Progress and code are saved locally. |
 | `#/` | Home | Platform overview and tool entry points. |
 
 The application is a hash-routed SPA. `#/projects` remains as a compatibility alias for `#/examples`; unknown routes show a 404 page.
@@ -20,6 +21,8 @@ The application is a hash-routed SPA. `#/projects` remains as a compatibility al
 
 - Each tool autosaves its HDL project to `localStorage` (`logiclab_<tool>_workspace_v1`), so a refresh or closed tab does not lose work. Only source text is stored, never simulation or synthesis output.
 - **Share links:** each tool's *Share* button copies a link that carries the project itself (deflate-compressed JSON in the `?p=` parameter; nothing is uploaded). *Schematic* buttons in DE2 and Waveform open the current HDL in the Schematic tool the same way.
+- **Logic analyzer (DE2):** a *Logic Analyzer* tab in the DE2 console records every top-level port each time the design is evaluated (256-sample ring), drawn as square waves and hex-labelled buses.
+- **Language:** the navigation, home page, exercises and 404 page are available in English and Turkish (`src/i18n/`); tool workspaces keep their English engineering UI.
 - **Exports:** Schematic → SVG/PNG, Waveform → VCD (opens in GTKWave), DE2 → `.qsf` pin assignments for Quartus.
 - Tool pages are lazy-loaded route chunks. Monaco is loaded only by pages with an editor and is limited to the Verilog/SystemVerilog grammar (`src/lib/monacoSetup.ts`); jQuery and DigitalJS are loaded only by the Schematic viewport.
 

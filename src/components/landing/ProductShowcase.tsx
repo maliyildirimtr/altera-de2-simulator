@@ -1,49 +1,40 @@
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useI18n } from '../../i18n/I18nProvider';
 import { Reveal } from './Reveal';
 
-const BOARD_IO = [
-  { signal: 'SW[17:0]', label: '18 slide switches' },
-  { signal: 'KEY[3:0]', label: '4 push buttons, active-low' },
-  { signal: 'LEDR · LEDG', label: '18 red and 9 green LEDs' },
-  { signal: 'HEX0–HEX7', label: 'Eight 7-segment displays' },
-  { signal: 'LCD', label: '16×2 character display' },
-];
-
-const WORKFLOW_CHIPS = ['QSF pin mapping', 'CLOCK_50', 'Compile → Ready → Run'];
+const BOARD_SIGNALS = ['SW[17:0]', 'KEY[3:0]', 'LEDR · LEDG', 'HEX0–HEX7', 'LCD'];
 
 export function ProductShowcase() {
+  const { d } = useI18n();
+  const t = d.showcase;
   return (
     <section className="lx-section lx-light lx-showcase" aria-labelledby="lx-showcase-title">
       <div className="lx-container lx-showcase__grid">
         <Reveal className="lx-showcase__copy">
-          <p className="lx-eyebrow">Virtual hardware · Altera DE2</p>
+          <p className="lx-eyebrow">{t.eyebrow}</p>
           <h2 id="lx-showcase-title" className="lx-heading">
-            A virtual DE2 board that behaves like hardware.
+            {t.title}
           </h2>
-          <p className="lx-lead">
-            Load your design, map its ports to the board, and drive it with the same switches,
-            buttons and displays you would use on the bench—without cables, drivers or a
-            physical FPGA.
-          </p>
+          <p className="lx-lead">{t.lead}</p>
 
           <dl className="lx-spec">
-            {BOARD_IO.map(row => (
-              <div key={row.signal} className="lx-spec__row">
-                <dt className="lx-mono">{row.signal}</dt>
-                <dd>{row.label}</dd>
+            {BOARD_SIGNALS.map((signal, i) => (
+              <div key={signal} className="lx-spec__row">
+                <dt className="lx-mono">{signal}</dt>
+                <dd>{t.io[i]}</dd>
               </div>
             ))}
           </dl>
 
-          <ul className="lx-chips" aria-label="Simulator workflow">
-            {WORKFLOW_CHIPS.map(chip => (
+          <ul className="lx-chips" aria-label={t.chipsLabel}>
+            {t.chips.map(chip => (
               <li key={chip} className="lx-chip lx-mono">{chip}</li>
             ))}
           </ul>
 
           <Link to="/de2-simulator" className="lx-link">
-            Open DE2 Simulator
+            {t.link}
             <ArrowRight size={16} aria-hidden="true" />
           </Link>
         </Reveal>
@@ -52,7 +43,7 @@ export function ProductShowcase() {
           <div className="lx-showcase__frame">
             <img
               src="/landing/screens/de2-simulator-showcase.webp"
-              alt="DE2 Simulator workspace: project sidebar, virtual DE2 board, and inspector with pin mapping and clock controls"
+              alt={t.alt}
               width={1775}
               height={1044}
               loading="lazy"
@@ -60,8 +51,8 @@ export function ProductShowcase() {
             />
           </div>
           <figcaption className="lx-mono lx-showcase__caption">
-            <span>DE2 Simulator</span>
-            <span>Project · Board · Inspector</span>
+            <span>{t.captionLeft}</span>
+            <span>{t.captionRight}</span>
           </figcaption>
         </Reveal>
       </div>
