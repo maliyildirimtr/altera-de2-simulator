@@ -3,7 +3,7 @@
 // Drives the DE2's 16x2 character LCD through its HD44780 interface and
 // writes two lines of text.
 //
-//   ENGINEERING LAB
+//   LOGIC LAB
 //   HELLO FPGA
 //
 // ── How the bus is driven ───────────────────────────────────────────────
@@ -39,8 +39,8 @@ module de2_lcd_hello (
     output logic LCD_DATA7
 );
 
-    // 31 bytes to send, two clock cycles each.
-    localparam int LAST_STEP = 62;
+    // 25 bytes to send, two clock cycles each.
+    localparam int LAST_STEP = 50;
 
     logic [6:0] step;
 
@@ -71,37 +71,31 @@ module de2_lcd_hello (
             6'd3:  begin rs = 1'b0; data = 8'h01; end  // clear display
             6'd4:  begin rs = 1'b0; data = 8'h80; end  // DDRAM address 0x00
 
-            // ── Line 1: "ENGINEERING LAB" ───────────────────────────────
-            6'd5:  begin rs = 1'b1; data = 8'h45; end  // E
-            6'd6:  begin rs = 1'b1; data = 8'h4E; end  // N
+            // ── Line 1: "LOGIC LAB" ─────────────────────────────────────
+            6'd5:  begin rs = 1'b1; data = 8'h4C; end  // L
+            6'd6:  begin rs = 1'b1; data = 8'h4F; end  // O
             6'd7:  begin rs = 1'b1; data = 8'h47; end  // G
             6'd8:  begin rs = 1'b1; data = 8'h49; end  // I
-            6'd9:  begin rs = 1'b1; data = 8'h4E; end  // N
-            6'd10: begin rs = 1'b1; data = 8'h45; end  // E
-            6'd11: begin rs = 1'b1; data = 8'h45; end  // E
-            6'd12: begin rs = 1'b1; data = 8'h52; end  // R
-            6'd13: begin rs = 1'b1; data = 8'h49; end  // I
-            6'd14: begin rs = 1'b1; data = 8'h4E; end  // N
-            6'd15: begin rs = 1'b1; data = 8'h47; end  // G
-            6'd16: begin rs = 1'b1; data = 8'h20; end  // space
-            6'd17: begin rs = 1'b1; data = 8'h4C; end  // L
-            6'd18: begin rs = 1'b1; data = 8'h41; end  // A
-            6'd19: begin rs = 1'b1; data = 8'h42; end  // B
+            6'd9:  begin rs = 1'b1; data = 8'h43; end  // C
+            6'd10: begin rs = 1'b1; data = 8'h20; end  // space
+            6'd11: begin rs = 1'b1; data = 8'h4C; end  // L
+            6'd12: begin rs = 1'b1; data = 8'h41; end  // A
+            6'd13: begin rs = 1'b1; data = 8'h42; end  // B
 
             // ── Move to line 2 (DDRAM 0x40) ─────────────────────────────
-            6'd20: begin rs = 1'b0; data = 8'hC0; end
+            6'd14: begin rs = 1'b0; data = 8'hC0; end
 
             // ── Line 2: "HELLO FPGA" ────────────────────────────────────
-            6'd21: begin rs = 1'b1; data = 8'h48; end  // H
-            6'd22: begin rs = 1'b1; data = 8'h45; end  // E
-            6'd23: begin rs = 1'b1; data = 8'h4C; end  // L
-            6'd24: begin rs = 1'b1; data = 8'h4C; end  // L
-            6'd25: begin rs = 1'b1; data = 8'h4F; end  // O
-            6'd26: begin rs = 1'b1; data = 8'h20; end  // space
-            6'd27: begin rs = 1'b1; data = 8'h46; end  // F
-            6'd28: begin rs = 1'b1; data = 8'h50; end  // P
-            6'd29: begin rs = 1'b1; data = 8'h47; end  // G
-            6'd30: begin rs = 1'b1; data = 8'h41; end  // A
+            6'd15: begin rs = 1'b1; data = 8'h48; end  // H
+            6'd16: begin rs = 1'b1; data = 8'h45; end  // E
+            6'd17: begin rs = 1'b1; data = 8'h4C; end  // L
+            6'd18: begin rs = 1'b1; data = 8'h4C; end  // L
+            6'd19: begin rs = 1'b1; data = 8'h4F; end  // O
+            6'd20: begin rs = 1'b1; data = 8'h20; end  // space
+            6'd21: begin rs = 1'b1; data = 8'h46; end  // F
+            6'd22: begin rs = 1'b1; data = 8'h50; end  // P
+            6'd23: begin rs = 1'b1; data = 8'h47; end  // G
+            6'd24: begin rs = 1'b1; data = 8'h41; end  // A
 
             // Sequence finished: hold a harmless no-op on the bus.
             default: begin rs = 1'b0; data = 8'h00; end

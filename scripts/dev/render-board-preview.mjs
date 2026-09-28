@@ -90,7 +90,7 @@ if (lcdPath) {
   };
   previewLcd = createLcdState();
   for (const byte of [0x38, 0x0c, 0x06, 0x01, 0x80]) previewLcd = write(previewLcd, 0, byte);
-  for (const ch of 'ENGINEERING LAB') previewLcd = write(previewLcd, 1, ch.charCodeAt(0));
+  for (const ch of 'LOGIC LAB') previewLcd = write(previewLcd, 1, ch.charCodeAt(0));
   previewLcd = write(previewLcd, 0, 0xc0);
   for (const ch of 'HELLO FPGA') previewLcd = write(previewLcd, 1, ch.charCodeAt(0));
 }

@@ -45,7 +45,8 @@
 
 /**
  * Runtime artwork, served from `public/`. WebP for delivery; the PNG master
- * ships alongside it at `de2-board-final.png` and is the source of record.
+ * lives outside the deployed site at `design/boards/de2/de2-board-final.png`
+ * and is the source of record.
  *
  * A plain absolute path rather than `import.meta.env.BASE_URL`: the app is
  * served from the root (`vite.config.ts` sets `base: '/'`), the rest of the
@@ -56,8 +57,7 @@
  */
 export const DE2_ARTWORK_SRC = '/boards/de2/de2-board-final.webp';
 
-/** The PNG master, kept for re-export and re-calibration. Not loaded at runtime. */
-export const DE2_ARTWORK_MASTER = '/boards/de2/de2-board-final.png';
+/** PNG master (repo path, not deployed): design/boards/de2/de2-board-final.png */
 
 /**
  * Intrinsic size of the delivered artwork, and therefore the aspect ratio the
@@ -369,11 +369,9 @@ export const SILK_PATCH = {
  * 0.0004 of the board width, about 1.6 px in the source render.
  * ──────────────────────────────────────────────────────────────────────── */
 
-/** Runtime transparent artwork. Alpha-preserving WebP; PNG master alongside. */
+/** Runtime transparent artwork. Alpha-preserving WebP; PNG master in design/boards/de2/. */
 export const DE2_ARTWORK_TRANSPARENT_SRC = '/boards/de2/de2-board-transparent.webp';
 
-/** The transparent PNG master, kept for re-export and re-measurement. */
-export const DE2_ARTWORK_TRANSPARENT_MASTER = '/boards/de2/de2-board-transparent.png';
 
 /**
  * Where the transparent artwork sits in the artwork viewBox, in viewBox units.

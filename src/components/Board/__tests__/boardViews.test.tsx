@@ -948,14 +948,14 @@ let live = createLcdState();
 live = cmd(live, 0x38);
 live = cmd(live, 0x0c);
 live = cmd(live, 0x01);
-for (const ch of 'ENGINEERING LAB') live = chr(live, ch);
+for (const ch of 'LOGIC LAB') live = chr(live, ch);
 live = cmd(live, 0x80 | LCD_ROW_BASE[1]);
 for (const ch of 'HELLO FPGA') live = chr(live, ch);
 useBoardStore.setState({ lcd: live });
 
 const shown = render2d('artwork');
 assert.ok(shown.includes('data-lcd-visible="true"'), 'a driven LCD renders as on');
-assert.ok(shown.includes('ENGINEERING LAB'), 'line 1 reaches the panel');
+assert.ok(shown.includes('LOGIC LAB'), 'line 1 reaches the panel');
 assert.ok(shown.includes('HELLO FPGA'), 'line 2 reaches the panel');
 
 // Re-rendering must not disturb peripheral state: the controller lives in the
@@ -1003,7 +1003,7 @@ const stepRe = /6'd(\d+):\s*begin\s+rs = 1'b([01]);\s*data = 8'h([0-9A-Fa-f]{2})
 for (let m = stepRe.exec(exampleSource); m; m = stepRe.exec(exampleSource)) {
   sequence[Number(m[1])] = { rs: Number(m[2]), data: parseInt(m[3], 16) };
 }
-assert.ok(sequence.length >= 31, `parsed the example's byte sequence (${sequence.length} bytes)`);
+assert.ok(sequence.length >= 25, `parsed the example's byte sequence (${sequence.length} bytes)`);
 assert.ok(
   sequence.every((entry) => entry !== undefined),
   'the example numbers its steps contiguously from 0',
@@ -1013,7 +1013,7 @@ let demo = createLcdState();
 for (const { rs, data } of sequence) demo = bus(demo, rs, data);
 
 const [demoLine1, demoLine2] = lcdLines(demo);
-assert.strictEqual(demoLine1, 'ENGINEERING LAB'.padEnd(LCD_COLS), 'the example writes line 1');
+assert.strictEqual(demoLine1, 'LOGIC LAB'.padEnd(LCD_COLS), 'the example writes line 1');
 assert.strictEqual(demoLine2, 'HELLO FPGA'.padEnd(LCD_COLS), 'the example writes line 2');
 assert.strictEqual(demo.unsupportedReads, 0, 'the example never attempts an LCD read');
 assert.ok(demo.displayOn, 'the example turns the display on, so its text is actually visible');
@@ -1026,7 +1026,7 @@ const ioSource = fs.readFileSync(
 assert.ok(/assign LEDG0 = ~KEY0;/.test(ioSource), 'the I/O demo inverts active-low KEY0');
 assert.ok(/HEX0_6/.test(ioSource), 'the I/O demo drives all seven segments of HEX0');
 assert.ok(!/vhdl/i.test(ioSource) && !/vhdl/i.test(exampleSource), 'no example claims VHDL support');
-pass('the bundled LCD example writes ENGINEERING LAB / HELLO FPGA');
+pass('the bundled LCD example writes LOGIC LAB / HELLO FPGA');
 
 /* ────────────────────────────────────────────────────────────────────────
  * 12. Silkscreen corrections
@@ -1642,7 +1642,7 @@ function runLcdExample(): void {
 
 runLcdExample();
 const [helloLine1, helloLine2] = lcdLines(store().lcd);
-assert.strictEqual(helloLine1.trimEnd(), 'ENGINEERING LAB', 'line 1 comes from simulated HDL writes');
+assert.strictEqual(helloLine1.trimEnd(), 'LOGIC LAB', 'line 1 comes from simulated HDL writes');
 assert.strictEqual(helloLine2.trimEnd(), 'HELLO FPGA', 'line 2 comes from simulated HDL writes');
 assert.strictEqual(helloLine1.length, LCD_COLS, 'line 1 is padded to the panel width');
 assert.strictEqual(helloLine2.length, LCD_COLS, 'line 2 is padded to the panel width');
@@ -1650,9 +1650,9 @@ assert.ok(store().lcd.displayOn, 'the example turned the display on via 0x0C');
 assert.ok(store().lcd.powered, 'LCD_ON is asserted by the example');
 assert.strictEqual(store().lcd.unsupportedReads, 0, 'the example never attempts an LCD read');
 // The characters really did arrive as DDRAM writes, at the documented addresses.
-assert.strictEqual(store().lcd.ddram[0x00], 'E'.charCodeAt(0), 'line 1 starts at DDRAM 0x00');
+assert.strictEqual(store().lcd.ddram[0x00], 'L'.charCodeAt(0), 'line 1 starts at DDRAM 0x00');
 assert.strictEqual(store().lcd.ddram[0x40], 'H'.charCodeAt(0), 'line 2 starts at DDRAM 0x40');
-pass('the bundled LCD example writes ENGINEERING LAB / HELLO FPGA through the real simulator');
+pass('the bundled LCD example writes LOGIC LAB / HELLO FPGA through the real simulator');
 
 // Board reset must blank it, and re-running must write it again.
 store().resetBoard();
@@ -1664,7 +1664,7 @@ assert.strictEqual(store().lcd.displayOn, false, 'board reset returns the displa
 
 runLcdExample();
 const [againLine1, againLine2] = lcdLines(store().lcd);
-assert.strictEqual(againLine1, 'ENGINEERING LAB '.padEnd(LCD_COLS), 'line 1 is rewritten after a reset');
+assert.strictEqual(againLine1, 'LOGIC LAB'.padEnd(LCD_COLS), 'line 1 is rewritten after a reset');
 assert.strictEqual(againLine2, 'HELLO FPGA'.padEnd(LCD_COLS), 'line 2 is rewritten after a reset');
 pass('board reset clears the LCD and the example rewrites it afterwards');
 
@@ -1699,7 +1699,7 @@ function runLcdSchedule(ticksPerDrain: number): void {
 
 // One tick per drain: the easy case, and the one the old code passed.
 runLcdSchedule(1);
-assert.strictEqual(lcdLines(store().lcd)[0].trimEnd(), 'ENGINEERING LAB', 'one tick per drain works');
+assert.strictEqual(lcdLines(store().lcd)[0].trimEnd(), 'LOGIC LAB', 'one tick per drain works');
 
 /*
  * Two toggles back to back, which is what a busy UI thread produces. Under the
@@ -1708,7 +1708,7 @@ assert.strictEqual(lcdLines(store().lcd)[0].trimEnd(), 'ENGINEERING LAB', 'one t
  */
 runLcdSchedule(2);
 const [burstLine1, burstLine2] = lcdLines(store().lcd);
-assert.strictEqual(burstLine1.trimEnd(), 'ENGINEERING LAB', 'coalesced clock toggles do not drop edges');
+assert.strictEqual(burstLine1.trimEnd(), 'LOGIC LAB', 'coalesced clock toggles do not drop edges');
 assert.strictEqual(burstLine2.trimEnd(), 'HELLO FPGA', 'coalesced clock toggles do not drop edges');
 assert.ok(store().lcd.displayOn, 'the display-on command survives coalesced toggles');
 
@@ -1736,7 +1736,7 @@ const attr = (name: string): string => {
   assert.ok(m, `${name} is present on the LCD element`);
   return m![1];
 };
-assert.strictEqual(attr('data-line1'), 'ENGINEERING LAB ', 'data-line1 reaches the DOM');
+assert.strictEqual(attr('data-line1'), 'LOGIC LAB       ', 'data-line1 reaches the DOM');
 assert.strictEqual(attr('data-line2'), 'HELLO FPGA      ', 'data-line2 reaches the DOM');
 assert.strictEqual(attr('data-display-on'), 'true', 'data-display-on reaches the DOM');
 assert.strictEqual(attr('data-lcd-visible'), 'true', 'the panel reports itself visible');
@@ -1747,7 +1747,7 @@ const cellChars = (dom: string, row: number): string =>
     .map((m) => m[1])
     .join('');
 assert.ok(/data-lcd-row="0"/.test(lcdDom) && /data-lcd-row="1"/.test(lcdDom), 'both character rows are rendered when the display is on');
-assert.strictEqual(cellChars(lcdDom, 0), 'ENGINEERING LAB ', 'row 0 renders one dot-matrix cell per column');
+assert.strictEqual(cellChars(lcdDom, 0), 'LOGIC LAB       ', 'row 0 renders one dot-matrix cell per column');
 assert.strictEqual(cellChars(lcdDom, 1), 'HELLO FPGA      ', 'row 1 renders one dot-matrix cell per column');
 const lcdGroup = /<g data-testid="de2-lcd"[\s\S]*$/.exec(lcdDom)![0];
 assert.ok(lcdGroup.includes('data-lcd-renderer="5x8-dot-matrix"'), '2D LCD uses the same dot-matrix renderer as 2.5D');
@@ -1825,7 +1825,7 @@ for (const [label, build] of MAPPING_CONDITIONS) {
   for (let i = 0; i < 200; i += 1) store().tickClock();
 
   assert.strictEqual(store().simState.KEY0, 1, `${label}: KEY0 reads RELEASED, not held down`);
-  assert.strictEqual(lcdLines(store().lcd)[0].trimEnd(), 'ENGINEERING LAB', `${label}: line 1`);
+  assert.strictEqual(lcdLines(store().lcd)[0].trimEnd(), 'LOGIC LAB', `${label}: line 1`);
   assert.strictEqual(lcdLines(store().lcd)[1].trimEnd(), 'HELLO FPGA', `${label}: line 2`);
   // The exact real-browser fingerprint must be unreachable.
   assert.ok(
@@ -1934,10 +1934,10 @@ try {
     201,
     'each timer firing produced exactly one evaluation — no duplicates, none skipped',
   );
-  assert.ok(store().lcdDebug.fallingEdges > 25, 'the peripheral saw the enable edges');
+  assert.ok(store().lcdDebug.fallingEdges >= 24, 'the peripheral saw the enable edges');
   assert.strictEqual(
     lcdLines(store().lcd)[0].trimEnd(),
-    'ENGINEERING LAB',
+    'LOGIC LAB',
     'the example completes through the REAL run loop',
   );
   assert.strictEqual(lcdLines(store().lcd)[1].trimEnd(), 'HELLO FPGA', 'line 2 through the run loop');
@@ -1961,12 +1961,12 @@ useBoardStore.setState({ engine: lcdEngine, pinMappings: [], simState: {} });
 for (let i = 0; i < 200; i += 1) store().tickClock();
 const dbg = store().lcdDebug;
 assert.ok(dbg.busSeen, 'the diagnostics record that an LCD bus was seen');
-assert.ok(dbg.fallingEdges >= 30, `the diagnostics counted the enable edges (${dbg.fallingEdges})`);
-assert.strictEqual(dbg.step, 62, 'the diagnostics expose the sequencer step');
+assert.ok(dbg.fallingEdges >= 24, `the diagnostics counted the enable edges (${dbg.fallingEdges})`);
+assert.strictEqual(dbg.step, 50, 'the diagnostics expose the sequencer step');
 assert.ok(dbg.cycle >= 200, 'the diagnostics count simulation cycles');
 const dbgDom = render2d('artwork');
-assert.ok(/data-lcd-falling-edges="3\d"/.test(dbgDom), 'the edge count reaches the DOM');
-assert.ok(/data-lcd-step="62"/.test(dbgDom), 'the sequencer step reaches the DOM');
+assert.ok(new RegExp(`data-lcd-falling-edges="${dbg.fallingEdges}"`).test(dbgDom) && dbg.fallingEdges >= 24, 'the edge count reaches the DOM');
+assert.ok(/data-lcd-step="50"/.test(dbgDom), 'the sequencer step reaches the DOM');
 assert.ok(/data-lcd-last-command="data 0x41"/.test(dbgDom), 'the last latched byte reaches the DOM');
 assert.ok(/data-lcd-bus-seen="true"/.test(dbgDom), 'bus presence reaches the DOM');
 assert.ok(/data-lcd-initialised="true"/.test(dbgDom), 'the driven flag reaches the DOM');
@@ -2465,13 +2465,13 @@ pass('LED state reads identically in 2D and the perspective scene, from one stor
   write(0, 0x0c);
   write(0, 0x01);
   write(0, 0x80);
-  for (const ch of 'ENGINEERING LAB') write(1, ch.charCodeAt(0));
+  for (const ch of 'LOGIC LAB') write(1, ch.charCodeAt(0));
   write(0, 0xc0);
   for (const ch of 'HELLO FPGA') write(1, ch.charCodeAt(0));
   useBoardStore.setState({ lcd });
 
   const withText = render25d('artwork');
-  assert.ok(withText.includes('data-line1="ENGINEERING LAB "'), '2.5D publishes LCD line 1');
+  assert.ok(withText.includes('data-line1="LOGIC LAB "'), '2.5D publishes LCD line 1');
   assert.ok(withText.includes('data-line2="HELLO FPGA      "'), '2.5D publishes LCD line 2');
   assert.ok(withText.includes('data-lcd-visible="true"'), 'the 2.5D panel reports itself lit');
   assert.strictEqual(
@@ -2488,7 +2488,7 @@ pass('LED state reads identically in 2D and the perspective scene, from one stor
   const projectiveLcd = /data-projective-display="lcd-screen"([\s\S]*?)<\/foreignObject>/.exec(withText);
   assert.ok(projectiveLcd, 'the projective LCD plane is present');
   assert.ok(!/<text\b/.test(projectiveLcd![1]), '2.5D LCD uses no normal font text');
-  pass('the LCD renders ENGINEERING LAB / HELLO FPGA as a 16x2 5x8 dot matrix');
+  pass('the LCD renders LOGIC LAB / HELLO FPGA as a 16x2 5x8 dot matrix');
 }
 
 /* ── Switching view must not disturb the simulation ── */
