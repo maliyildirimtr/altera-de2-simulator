@@ -116,6 +116,7 @@ import { lintVerilog } from '../../../core/simulator/diagnostics';
 import { extractFsm } from '../../../board/fsmExtract';
 import { applyMetadata, diffOverride, normalizeMetadata } from '../../../examples/metadata';
 import { buildLabReport } from '../../../report/labReport';
+import { defaultSpec, generateTestbench, readPorts, resizeSpec, setValue } from '../../../waveform/stimulus';
 import { minimize, parseExpression, sopText, tableOf, variablesOf } from '../../../logic/boolean';
 import { ISO, project, faceTransform, sevenSegmentShapes } from '../boardGeometry';
 
@@ -2950,6 +2951,38 @@ useBoardStore.setState({ engine: null, pinMappings: [], simState: {} });
   assert.strictEqual(sopText(minimize(4, [0, 2, 8, 10], []), ['a', 'b', 'c', 'd']), "b'd'", 'corner cells group');
   assert.throws(() => parseExpression('a + (b'));
   pass('Boolean minimizer removes redundant terms and groups K-map corners');
+}
+
+
+{
+  // Stimulus editor → testbench.
+  const comb = readPorts('module ha(input logic a, input logic b, output logic s, output logic c);\n assign s = a ^ b;\n assign c = a & b;\nendmodule');
+  assert.ok(comb);
+  let spec = defaultSpec(comb!);
+  assert.strictEqual(spec.clock, null);
+  assert.strictEqual(spec.steps, 4, 'two 1-bit inputs start as all four combinations');
+  assert.deepStrictEqual(spec.values, { a: [0, 0, 1, 1], b: [0, 1, 0, 1] });
+  const tb = generateTestbench(spec);
+  assert.match(tb, /module ha_tb;/);
+  assert.match(tb, /\$dumpfile\("ha_tb\.vcd"\);/);
+  assert.match(tb, /\$dumpvars\(0, ha_tb\);/);
+  assert.match(tb, /ha dut \(\n    \.a\(a\),\n    \.b\(b\),\n    \.s\(s\),\n    \.c\(c\)\n  \);/);
+  assert.match(tb, /a = 1'b0; b = 1'b0; #10;\n    b = 1'b1; #10;\n    a = 1'b1; b = 1'b0; #10;\n    b = 1'b1; #10;\n    \$finish;/, 'only changed inputs are re-assigned');
+  spec = setValue(resizeSpec(spec, 6), 'a', 5, 0);
+  assert.deepStrictEqual(spec.values.a, [0, 0, 1, 1, 1, 0], 'resizing repeats the last value');
+
+  const seq = readPorts('module cnt(input logic clk, input logic reset, input logic [3:0] load, output logic [3:0] q);\n always_ff @(posedge clk) q <= reset ? 4\'d0 : q + 1;\nendmodule');
+  const sspec = defaultSpec(seq!);
+  assert.strictEqual(sspec.clock, 'clk');
+  assert.deepStrictEqual(sspec.values.reset.slice(0, 4), [1, 1, 0, 0], 'reset is pulsed for two steps');
+  assert.ok(!('clk' in sspec.values));
+  const stb = generateTestbench(setValue(sspec, 'load', 3, 0xA));
+  assert.match(stb, /always #5 clk = ~clk;/);
+  assert.match(stb, /logic \[3:0\] load;/);
+  assert.match(stb, /load = 4'hA;/);
+  assert.strictEqual(defaultSpec(readPorts('module r(input logic clk, input logic rst_n, output logic y); endmodule')!).values.rst_n.slice(0, 3).join(''), '001', 'active-low reset starts low');
+  assert.strictEqual(readPorts('not verilog'), null);
+  pass('stimulus editor generates a runnable testbench with clock, reset pulse and only changed assignments');
 }
 
 console.log(`--- DE2 Board Renderer Regression: PASS (${checks.length} checks) ---`);

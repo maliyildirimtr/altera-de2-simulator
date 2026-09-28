@@ -335,6 +335,8 @@ export const TOOL_TR: Record<string, string> = {
   Share: 'Paylaş',
   'Create a printable lab report (save as PDF)': 'Yazdırılabilir laboratuvar raporu oluştur (PDF olarak kaydet)',
   Report: 'Rapor',
+  'Draw input waveforms and generate a testbench': 'Giriş dalga formlarını çiz ve testbench oluştur',
+  Stimulus: 'Uyarı çiz',
   Quartus: 'Quartus',
   // ── Console / log lines ──
   'DE2 Simulator ready. Load or write HDL, then Compile.': "DE2 Simülatörü hazır. HDL yükle veya yaz, sonra Derle'ye bas.",
