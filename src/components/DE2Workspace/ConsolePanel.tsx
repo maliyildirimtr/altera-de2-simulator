@@ -12,6 +12,7 @@ import {
 import { LogicAnalyzer } from './LogicAnalyzer';
 import { FsmView } from './FsmView';
 
+import { useT } from '../../i18n/toolText';
 export interface ConsoleMessage {
   id: string;
   type: 'info' | 'success' | 'error' | 'warn';
@@ -39,13 +40,14 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
   onClear,
   compiledSource = '',
 }) => {
+  const t = useT();
   const [activeTab, setActiveTab] = useState<'console' | 'problems' | 'analyzer' | 'fsm'>('console');
 
   if (!isOpen) {
     return (
       <div
         data-testid="console-panel"
-        aria-label="Simulation Console"
+        aria-label={t("Simulation Console")}
         className="h-8 border-t px-3 flex items-center justify-between text-xs select-none shrink-0"
         style={{
           backgroundColor: 'var(--bg-toolbar)',
@@ -64,7 +66,7 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
             style={{ color: 'var(--text-secondary)' }}
           >
             <Terminal size={13} />
-            <span className="font-medium">Console</span>
+            <span className="font-medium">{t("Console")}</span>
             {messages.length > 0 && (
               <span
                 className="text-[10px] font-mono px-1.5 py-0.2 rounded"
@@ -90,7 +92,7 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
             style={{ color: compileError ? undefined : 'var(--text-secondary)' }}
           >
             <AlertCircle size={13} className={compileError ? 'text-red-500' : 'text-[var(--text-muted)]'} />
-            <span className="font-medium">Problems</span>
+            <span className="font-medium">{t("Problems")}</span>
             {compileError && (
               <span className="text-[10px] font-mono bg-red-500/10 text-red-500 px-1.5 py-0.2 rounded border border-red-500/20 font-semibold">
                 1
@@ -107,7 +109,7 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
             style={{ color: 'var(--text-secondary)' }}
           >
             <Activity size={13} />
-            <span className="font-medium">Logic Analyzer</span>
+            <span className="font-medium">{t("Logic Analyzer")}</span>
           </button>
           <button
             data-testid="console-tab-fsm"
@@ -119,14 +121,14 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
             style={{ color: 'var(--text-secondary)' }}
           >
             <Workflow size={13} />
-            <span className="font-medium">FSM</span>
+            <span className="font-medium">{t("FSM")}</span>
           </button>
         </div>
         <button
           onClick={onToggle}
           className="p-1 rounded-[4px] hover:bg-[var(--bg-hover)] transition-colors"
           style={{ color: 'var(--text-muted)' }}
-          title="Expand Panel"
+          title={t("Expand Panel")}
         >
           <ChevronUp size={14} />
         </button>
@@ -137,7 +139,7 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
   return (
     <div
       data-testid="console-panel"
-      aria-label="Simulation Console"
+      aria-label={t("Simulation Console")}
       style={{
         height: height ?? 190,
         backgroundColor: 'var(--bg-input)',
@@ -163,7 +165,7 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
             }`}
           >
             <Terminal size={13} />
-            <span>Console</span>
+            <span>{t("Console")}</span>
             {messages.length > 0 && (
               <span
                 className="text-[10px] font-mono px-1 rounded ml-1"
@@ -190,7 +192,7 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
             }`}
           >
             <AlertCircle size={13} className={compileError ? 'text-red-500' : 'text-[var(--text-muted)]'} />
-            <span>Problems</span>
+            <span>{t("Problems")}</span>
             {compileError && (
               <span className="text-[10px] font-mono bg-red-500/10 text-red-500 px-1.5 rounded ml-1 border border-red-500/20 font-semibold">
                 1
@@ -208,7 +210,7 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
             }`}
           >
             <Activity size={13} />
-            <span>Logic Analyzer</span>
+            <span>{t("Logic Analyzer")}</span>
           </button>
 
           <button
@@ -221,7 +223,7 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
             }`}
           >
             <Workflow size={13} />
-            <span>FSM</span>
+            <span>{t("FSM")}</span>
           </button>
         </div>
 
@@ -230,8 +232,8 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
             onClick={onClear}
             className="p-1 rounded-[4px] hover:bg-[var(--bg-hover)] transition-colors"
             style={{ color: 'var(--text-muted)' }}
-            title="Clear Messages"
-            aria-label="Clear Messages"
+            title={t("Clear Messages")}
+            aria-label={t("Clear Messages")}
           >
             <Trash2 size={13} />
           </button>
@@ -239,8 +241,8 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
             onClick={onToggle}
             className="p-1 rounded-[4px] hover:bg-[var(--bg-hover)] transition-colors"
             style={{ color: 'var(--text-muted)' }}
-            title="Collapse Panel"
-            aria-label="Collapse Panel"
+            title={t("Collapse Panel")}
+            aria-label={t("Collapse Panel")}
           >
             <ChevronDown size={14} />
           </button>
@@ -268,12 +270,12 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
                         : 'text-[var(--text-primary)]'
                     }`}
                   >
-                    {msg.text}
+                    {t(msg.text)}
                   </span>
                 </div>
               ))
             ) : (
-              <div className="italic" style={{ color: 'var(--text-muted)' }}>No output messages. Click Compile or Run to start.</div>
+              <div className="italic" style={{ color: 'var(--text-muted)' }}>{t("No output messages. Click Compile or Run to start.")}</div>
             )}
           </div>
         )}
@@ -288,14 +290,14 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
               <div className="p-2.5 rounded-[4px] bg-red-500/10 border border-red-500/30 flex items-start gap-2.5">
                 <AlertCircle size={15} className="text-red-400 shrink-0 mt-0.5" />
                 <div className="flex-1 text-xs">
-                  <div className="font-semibold text-red-400 mb-1">Compilation Error</div>
+                  <div className="font-semibold text-red-400 mb-1">{t("Compilation Error")}</div>
                   <pre data-testid="problem-error-text" className="text-red-300 whitespace-pre-wrap font-mono text-xs leading-normal">
-                    {compileError}
+                    {t(compileError)}
                   </pre>
                 </div>
               </div>
             ) : (
-              <div className="italic" style={{ color: 'var(--text-muted)' }}>No problems detected in the design.</div>
+              <div className="italic" style={{ color: 'var(--text-muted)' }}>{t("No problems detected in the design.")}</div>
             )}
           </div>
         )}

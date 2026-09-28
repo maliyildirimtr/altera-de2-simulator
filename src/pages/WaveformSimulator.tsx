@@ -42,6 +42,7 @@ interface WaveformWorkspaceSave {
 }
 import { getExampleById } from '../examples/registry';
 
+import { useT } from '../i18n/toolText';
 // ── Layout Persistence Schema ────────────────────────────────
 const LAYOUT_STORAGE_KEY = 'wf_workspace_layout_v1';
 
@@ -84,6 +85,7 @@ function loadSavedLayout(): WaveformLayout {
 }
 
 export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: boolean }) {
+  const t = useT();
   // ── Layout State ──────────────────────────────────────────
   const [layout, setLayout] = useState<WaveformLayout>(loadSavedLayout);
   const layoutRef = useRef<WaveformLayout>(layout);
@@ -1032,7 +1034,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
                 if (vcd) downloadText(vcd.text, vcd.name, 'text/plain');
               }}
               disabled={!simulationData}
-              title="Download the simulation as a VCD file (opens in GTKWave)"
+              title={t("Download the simulation as a VCD file (opens in GTKWave)")}
               className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-xs font-medium border transition-colors shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
               style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
             >
@@ -1086,7 +1088,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
               <ResizableDivider
                 orientation="vertical"
                 data-testid="splitter-wf-project"
-                aria-label="Resize Project Panel"
+                aria-label={t("Resize Project Panel")}
                 className="z-30"
                 valueNow={layout.projectWidth}
                 valueMin={180}
@@ -1127,7 +1129,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
               <ResizableDivider
                 orientation="vertical"
                 data-testid="splitter-wf-objects"
-                aria-label="Resize Objects Panel"
+                aria-label={t("Resize Objects Panel")}
                 className="z-30"
                 valueNow={layout.objectsWidth}
                 valueMin={200}
@@ -1241,10 +1243,10 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
                   <button
                     onClick={() => sourceInputRef.current?.click()}
                     className="flex items-center gap-1 px-2 py-1 text-xs text-[var(--accent-primary)] hover:text-[var(--accent-hover)] hover:bg-[var(--accent-subtle)] rounded-[4px] border border-dashed border-[var(--accent-border)] transition-colors shrink-0"
-                    title="Add or import another source file"
+                    title={t("Add or import another source file")}
                   >
                     <Plus size={11} />
-                    <span>Add Source</span>
+                    <span>{t("Add Source")}</span>
                   </button>
 
                   <div className="w-px h-4 bg-[var(--border-subtle)] mx-1 shrink-0" />
@@ -1272,7 +1274,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
                 {mainView === 'split' && (
                   <button
                     onClick={() => handleMainViewChange('waveform')}
-                    title="Maximize Waveform"
+                    title={t("Maximize Waveform")}
                     className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 rounded transition-colors text-xs shrink-0"
                   >
                     Hide Editor
@@ -1327,19 +1329,18 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
                     style={{ backgroundColor: 'var(--bg-surface)' }}
                   >
                     <div className="text-[var(--text-primary)] text-sm font-semibold mb-1">
-                      No {activeEditorRole === 'source' ? 'Source Module' : 'Testbench'} Selected
+                      No {activeEditorRole === 'source' ? t("Source Module") : t("Testbench")} Selected
                     </div>
                     <div className="text-[var(--text-muted)] text-xs font-mono max-w-sm mb-4 leading-relaxed">
                       {activeEditorRole === 'source'
-                        ? 'Import or add your Verilog / SystemVerilog design source files (.v, .sv).'
-                        : 'Import your Verilog / SystemVerilog testbench ($dumpfile / $dumpvars) to drive simulation.'}
+                        ? t("Import or add your Verilog / SystemVerilog design source files (.v, .sv).") : 'Import your Verilog / SystemVerilog testbench ($dumpfile / $dumpvars) to drive simulation.'}
                     </div>
                     <button
                       data-testid="wf-empty-editor-import-btn"
                       onClick={() => activeEditorRole === 'source' ? sourceInputRef.current?.click() : tbInputRef.current?.click()}
                       className="px-3.5 py-1.5 rounded-[4px] text-xs font-medium bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white shadow-xs transition-colors"
                     >
-                      Import {activeEditorRole === 'source' ? 'Source File' : 'Testbench File'}
+                      Import {activeEditorRole === 'source' ? t("Source File") : t("Testbench File")}
                     </button>
                   </div>
                 )}
@@ -1351,7 +1352,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
               <ResizableDivider
                 orientation="horizontal"
                 data-testid="splitter-wf-editor-wave"
-                aria-label="Resize Editor vs Waveform"
+                aria-label={t("Resize Editor vs Waveform")}
                 valueNow={layout.editorRatio}
                 valueMin={0.18}
                 valueMax={0.72}
@@ -1402,7 +1403,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
                 <ResizableDivider
                   orientation="vertical"
                   data-testid="splitter-wf-signal-col"
-                  aria-label="Resize Signal Name Column"
+                  aria-label={t("Resize Signal Name Column")}
                   valueNow={layout.signalColumnWidth}
                   valueMin={160}
                   valueMax={380}
@@ -1453,7 +1454,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
             <ResizableDivider
               orientation="horizontal"
               data-testid="splitter-wf-console"
-              aria-label="Resize Console Panel"
+              aria-label={t("Resize Console Panel")}
               valueNow={layout.consoleHeight}
               valueMin={100}
               valueMax={380}

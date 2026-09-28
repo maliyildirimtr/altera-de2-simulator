@@ -17,6 +17,7 @@ import {
   Clock,
 } from 'lucide-react';
 
+import { useT } from '../../i18n/toolText';
 interface DE2ToolbarProps {
   activeView: 'board' | 'split' | 'code';
   onSelectView: (view: 'board' | 'split' | 'code') => void;
@@ -49,6 +50,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
   onToggleConsole,
   onResetLayout,
 }) => {
+  const t = useT();
   const {
     engine,
     compileState,
@@ -86,7 +88,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
         borderColor: 'var(--border-subtle)',
         color: 'var(--text-primary)',
       }}
-      aria-label="DE2 Simulator Toolbar"
+      aria-label={t("DE2 Simulator Toolbar")}
     >
       {/* ── Left: Project Toggle & Status Indicator ── */}
       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
@@ -98,8 +100,8 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
             backgroundColor: projectPanelOpen ? 'var(--accent-subtle)' : 'transparent',
             borderColor: projectPanelOpen ? 'var(--accent-border)' : 'transparent',
           }}
-          title={projectPanelOpen ? 'Hide Project Panel' : 'Show Project Panel'}
-          aria-label="Toggle Project Panel"
+          title={projectPanelOpen ? t("Hide Project Panel") : t("Show Project Panel")}
+          aria-label={t("Toggle Project Panel")}
         >
           <PanelLeft size={15} />
         </button>
@@ -114,7 +116,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
             }}
           >
             <Cpu size={13} />
-            <span className="hidden sm:inline">DE2 Simulator</span>
+            <span className="hidden sm:inline">{t("DE2 Simulator")}</span>
             <span className="inline sm:hidden">DE2</span>
           </div>
 
@@ -145,8 +147,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
                 : isSimRunning
                   ? 'Simulation running'
                   : isReady
-                    ? 'Simulation Engine Ready'
-                    : 'Engine not compiled'
+                    ? t("Simulation Engine Ready") : t("Engine not compiled")
             }
           />
           <span
@@ -160,7 +161,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
                   : 'var(--text-muted)',
             }}
           >
-            {compileState === 'error' ? 'Compile error' : isSimRunning ? 'Running' : isReady ? 'Ready' : 'Not compiled'}
+            {compileState === 'error' ? t("Compile error") : isSimRunning ? t("Running") : isReady ? t("Ready") : t("Not compiled")}
           </span>
         </div>
       </div>
@@ -169,7 +170,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
       <div
         className="inline-flex items-center p-0.5 rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-input)] gap-0.5 shrink-0 mx-1 select-none"
         role="group"
-        aria-label="Workspace View Mode"
+        aria-label={t("Workspace View Mode")}
       >
         <button
           data-testid="view-board"
@@ -179,12 +180,12 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
               ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] shadow-xs font-semibold border border-[var(--border-subtle)]'
               : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-transparent'
           }`}
-          title="Board View — Full Virtual FPGA"
-          aria-label="Board View"
+          title={t("Board View — Full Virtual FPGA")}
+          aria-label={t("Board View")}
           aria-pressed={activeView === 'board'}
         >
           <LayoutGrid size={13} />
-          <span className="hidden md:inline">Board</span>
+          <span className="hidden md:inline">{t("Board")}</span>
         </button>
 
         <button
@@ -195,12 +196,12 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
               ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] shadow-xs font-semibold border border-[var(--border-subtle)]'
               : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-transparent'
           }`}
-          title="Split View — Editor + Board side by side"
-          aria-label="Split View"
+          title={t("Split View — Editor + Board side by side")}
+          aria-label={t("Split View")}
           aria-pressed={activeView === 'split'}
         >
           <Columns2 size={13} />
-          <span className="hidden md:inline">Split</span>
+          <span className="hidden md:inline">{t("Split")}</span>
         </button>
 
         <button
@@ -211,12 +212,12 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
               ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] shadow-xs font-semibold border border-[var(--border-subtle)]'
               : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-transparent'
           }`}
-          title="Code View — Full Monaco HDL Editor"
-          aria-label="Code View"
+          title={t("Code View — Full Monaco HDL Editor")}
+          aria-label={t("Code View")}
           aria-pressed={activeView === 'code'}
         >
           <Code size={13} />
-          <span className="hidden md:inline">Editor</span>
+          <span className="hidden md:inline">{t("Editor")}</span>
         </button>
       </div>
 
@@ -234,11 +235,11 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
               borderColor: 'var(--border-subtle)',
               color: 'var(--text-primary)',
             }}
-            title="Import Verilog (.v, .sv) or Pin Constraints (.qsf)"
-            aria-label="Import HDL"
+            title={t("Import Verilog (.v, .sv) or Pin Constraints (.qsf)")}
+            aria-label={t("Import HDL")}
           >
             <Upload size={13} />
-            <span className="hidden xl:inline">Import</span>
+            <span className="hidden xl:inline">{t("Import")}</span>
           </button>
           {actionsSlot}
 
@@ -262,11 +263,11 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
             onMouseLeave={(e) => {
               e.currentTarget.style.backgroundColor = 'var(--accent-primary)';
             }}
-            title="Compile Verilog Code"
-            aria-label="Compile Code"
+            title={t("Compile Verilog Code")}
+            aria-label={t("Compile Code")}
           >
             <Zap size={13} />
-            <span>{isCompiling ? 'Compiling...' : 'Compile'}</span>
+            <span>{isCompiling ? t("Compiling...") : t("Compile")}</span>
           </button>
 
           {/* Auto Run / Pause */}
@@ -283,11 +284,11 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
                 ? 'bg-amber-600 hover:bg-amber-500'
                 : 'bg-emerald-600 hover:bg-emerald-500'
             }`}
-            title={isSimRunning ? 'Pause Continuous Simulation' : 'Start Continuous Simulation'}
-            aria-label={isSimRunning ? 'Pause Simulation' : 'Run Simulation'}
+            title={isSimRunning ? t("Pause Continuous Simulation") : t("Start Continuous Simulation")}
+            aria-label={isSimRunning ? t("Pause Simulation") : t("Run Simulation")}
           >
             {isSimRunning ? <Pause size={13} /> : <Play size={13} />}
-            <span className="hidden lg:inline">{isSimRunning ? 'Pause' : 'Run'}</span>
+            <span className="hidden lg:inline">{isSimRunning ? t("Pause") : t("Run")}</span>
           </button>
 
           {/* Step Clock - Secondary quiet technical action */}
@@ -301,11 +302,11 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
               borderColor: 'var(--border-subtle)',
               color: 'var(--text-primary)',
             }}
-            title="Manual Clock Pulse (tickClock)"
-            aria-label="Step Clock"
+            title={t("Manual Clock Pulse (tickClock)")}
+            aria-label={t("Step Clock")}
           >
             <Clock size={12} className="text-[var(--text-secondary)]" />
-            <span className="hidden xl:inline">Step Clk</span>
+            <span className="hidden xl:inline">{t("Step Clk")}</span>
           </button>
 
           {/* Reset Board */}
@@ -314,8 +315,8 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
             onClick={resetBoard}
             className="w-[30px] h-[30px] rounded-[4px] flex items-center justify-center transition-colors border border-transparent hover:border-[var(--border-subtle)] hover:bg-[var(--bg-hover)]"
             style={{ color: 'var(--text-secondary)' }}
-            title="Reset Board State (Switches, Keys, LEDs, HEX, Clock)"
-            aria-label="Reset Board"
+            title={t("Reset Board State (Switches, Keys, LEDs, HEX, Clock)")}
+            aria-label={t("Reset Board")}
           >
             <RotateCcw size={14} />
           </button>
@@ -334,8 +335,8 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
               backgroundColor: consoleOpen ? 'var(--accent-subtle)' : 'transparent',
               borderColor: consoleOpen ? 'var(--accent-border)' : 'transparent',
             }}
-            title={consoleOpen ? 'Hide Console' : 'Show Console'}
-            aria-label="Toggle Console"
+            title={consoleOpen ? t("Hide Console") : t("Show Console")}
+            aria-label={t("Toggle Console")}
           >
             <Terminal size={14} />
           </button>
@@ -349,8 +350,8 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
               backgroundColor: inspectorOpen ? 'var(--accent-subtle)' : 'transparent',
               borderColor: inspectorOpen ? 'var(--accent-border)' : 'transparent',
             }}
-            title={inspectorOpen ? 'Hide Inspector' : 'Show Inspector'}
-            aria-label="Toggle Inspector"
+            title={inspectorOpen ? t("Hide Inspector") : t("Show Inspector")}
+            aria-label={t("Toggle Inspector")}
           >
             <PanelRight size={14} />
           </button>
@@ -364,8 +365,8 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
               style={{
                 color: 'var(--text-secondary)',
               }}
-              title="Reset Workspace Layout (Return to Default Board View)"
-              aria-label="Reset Workspace Layout"
+              title={t("Reset Workspace Layout (Return to Default Board View)")}
+              aria-label={t("Reset Workspace Layout")}
             >
               <LayoutGrid size={14} />
             </button>
@@ -383,11 +384,11 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
             style={{
               backgroundColor: 'var(--accent-primary)',
             }}
-            title="Compile Verilog Code"
-            aria-label="Compile Code"
+            title={t("Compile Verilog Code")}
+            aria-label={t("Compile Code")}
           >
             <Zap size={13} />
-            <span className="hidden xs:inline">{isCompiling ? '...' : 'Compile'}</span>
+            <span className="hidden xs:inline">{isCompiling ? '...' : t("Compile")}</span>
           </button>
 
           {/* Run / Pause always visible on mobile */}
@@ -404,8 +405,8 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
                 ? 'bg-amber-600 hover:bg-amber-500'
                 : 'bg-emerald-600 hover:bg-emerald-500'
             }`}
-            title={isSimRunning ? 'Pause Simulation' : 'Run Simulation'}
-            aria-label={isSimRunning ? 'Pause Simulation' : 'Run Simulation'}
+            title={isSimRunning ? t("Pause Simulation") : t("Run Simulation")}
+            aria-label={isSimRunning ? t("Pause Simulation") : t("Run Simulation")}
           >
             {isSimRunning ? <Pause size={13} /> : <Play size={13} />}
           </button>
@@ -421,8 +422,8 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
                 borderColor: 'var(--border-subtle)',
                 color: overflowOpen ? 'var(--accent-primary)' : 'var(--text-secondary)',
               }}
-              title="More Actions"
-              aria-label="More actions"
+              title={t("More Actions")}
+              aria-label={t("More actions")}
               aria-expanded={overflowOpen}
             >
               <MoreHorizontal size={16} />
@@ -451,7 +452,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
                   style={{ color: 'var(--text-primary)' }}
                 >
                   <Upload size={14} style={{ color: 'var(--text-secondary)' }} />
-                  <span>Import Verilog / Constraints</span>
+                  <span>{t("Import Verilog / Constraints")}</span>
                 </button>
 
                 {/* Step Clock */}
@@ -465,7 +466,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
                   style={{ color: 'var(--text-primary)' }}
                 >
                   <Clock size={14} style={{ color: 'var(--text-secondary)' }} />
-                  <span>Step Clock Pulse</span>
+                  <span>{t("Step Clock Pulse")}</span>
                 </button>
 
                 {/* Reset Board */}
@@ -478,7 +479,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
                   style={{ color: 'var(--text-primary)' }}
                 >
                   <RotateCcw size={14} style={{ color: 'var(--state-error)' }} />
-                  <span>Reset Board State</span>
+                  <span>{t("Reset Board State")}</span>
                 </button>
 
                 <div
@@ -497,10 +498,10 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
                 >
                   <div className="flex items-center gap-2.5">
                     <PanelLeft size={14} style={{ color: 'var(--text-secondary)' }} />
-                    <span>Project Panel</span>
+                    <span>{t("Project Panel")}</span>
                   </div>
                   <span className="text-[10px] font-semibold" style={{ color: 'var(--text-muted)' }}>
-                    {projectPanelOpen ? 'ON' : 'OFF'}
+                    {projectPanelOpen ? t("ON") : t("OFF")}
                   </span>
                 </button>
 
@@ -515,10 +516,10 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
                 >
                   <div className="flex items-center gap-2.5">
                     <PanelRight size={14} style={{ color: 'var(--text-secondary)' }} />
-                    <span>Inspector Panel</span>
+                    <span>{t("Inspector Panel")}</span>
                   </div>
                   <span className="text-[10px] font-semibold" style={{ color: 'var(--text-muted)' }}>
-                    {inspectorOpen ? 'ON' : 'OFF'}
+                    {inspectorOpen ? t("ON") : t("OFF")}
                   </span>
                 </button>
 
@@ -533,10 +534,10 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
                 >
                   <div className="flex items-center gap-2.5">
                     <Terminal size={14} style={{ color: 'var(--text-secondary)' }} />
-                    <span>Console / Messages</span>
+                    <span>{t("Console / Messages")}</span>
                   </div>
                   <span className="text-[10px] font-semibold" style={{ color: 'var(--text-muted)' }}>
-                    {consoleOpen ? 'ON' : 'OFF'}
+                    {consoleOpen ? t("ON") : t("OFF")}
                   </span>
                 </button>
 
@@ -552,7 +553,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
                     style={{ color: 'var(--text-primary)' }}
                   >
                     <LayoutGrid size={14} style={{ color: 'var(--accent-primary)' }} />
-                    <span>Reset Workspace Layout</span>
+                    <span>{t("Reset Workspace Layout")}</span>
                   </button>
                 )}
               </div>

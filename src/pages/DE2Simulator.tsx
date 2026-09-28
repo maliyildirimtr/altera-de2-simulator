@@ -23,6 +23,8 @@ import { OpenInSchematicButton } from '../components/Share/OpenInToolButton';
 import { useSharedProject } from '../services/useSharedProject';
 import { EXAMPLES_LIST, getExampleById } from '../examples/registry';
 
+import { useT } from '../i18n/toolText';
+import { useI18n } from '../i18n/I18nProvider';
 const STORAGE_KEY = 'de2_workspace_layout_v1';
 
 export type DE2ViewMode = 'board' | 'split' | 'code';
@@ -71,6 +73,8 @@ function loadSavedLayout(): WorkspaceLayout {
 }
 
 export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boolean }) {
+  const t = useT();
+  const { lang } = useI18n();
   const {
     hdlCode,
     setHdlCode,
@@ -263,7 +267,7 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
       const diagnostics = lintVerilog(hdlCode, module.transpileError);
       publishDiagnostics(diagnostics);
       for (const dgn of diagnostics) {
-        addLog(dgn.severity === 'error' ? 'error' : 'warn', `Line ${dgn.line}: ${dgn.message.en}`);
+        addLog(dgn.severity === 'error' ? 'error' : 'warn', `Line ${dgn.line}: ${dgn.message[lang]}`);
       }
       setEngine(module);
       setCompiledSource(hdlCode);
@@ -305,16 +309,16 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
       publishDiagnostics(diagnostics);
       const firstError = diagnostics.find((dgn) => dgn.severity === 'error');
       markCompileFailed();
-      setCompileError(firstError ? `Line ${firstError.line}: ${firstError.message.en}` : rawError);
-      addLog('error', `Compilation failed: ${firstError ? `line ${firstError.line}: ${firstError.message.en}` : rawError}`);
+      setCompileError(firstError ? `Line ${firstError.line}: ${firstError.message[lang]}` : rawError);
+      addLog('error', `Compilation failed: ${firstError ? `Line ${firstError.line}: ${firstError.message[lang]}` : rawError}`);
       for (const dgn of diagnostics.filter((x) => x !== firstError)) {
-        addLog(dgn.severity === 'error' ? 'error' : 'warn', `Line ${dgn.line}: ${dgn.message.en}`);
+        addLog(dgn.severity === 'error' ? 'error' : 'warn', `Line ${dgn.line}: ${dgn.message[lang]}`);
       }
       setIsConsoleOpen(true);
     } finally {
       setIsCompiling(false);
     }
-  }, [hdlCode, pinMappings, setEngine, setPinMappings, runSimulationCycle, stopAutoSimulation, markCompileFailed, addLog]);
+  }, [hdlCode, pinMappings, setEngine, setPinMappings, runSimulationCycle, stopAutoSimulation, markCompileFailed, addLog, lang]);
 
   return (
     <div
@@ -344,10 +348,10 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
             onClick={handleExportQuartus}
             className="flex items-center gap-1.5 px-2.5 h-[30px] rounded-[4px] border font-medium transition-colors text-xs"
             style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-primary)', backgroundColor: 'var(--bg-surface)' }}
-            title="Download a Quartus II project (.qpf/.qsf/.sdc + source) for the real DE2 board"
+            title={t("Download a Quartus II project (.qpf/.qsf/.sdc + source) for the real DE2 board")}
           >
             <Cpu size={13} />
-            <span className="hidden xl:inline">Quartus</span>
+            <span className="hidden xl:inline">{t("Quartus")}</span>
           </button>
           <ShareButton
             className="flex items-center gap-1.5 px-2.5 h-[30px] rounded-[4px] border font-medium transition-colors text-xs"
@@ -390,7 +394,7 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
           <ResizableDivider
             orientation="vertical"
             data-testid="splitter-project"
-            aria-label="Resize Project Panel"
+            aria-label={t("Resize Project Panel")}
             valueMin={170}
             valueMax={360}
             valueNow={layout.projectWidth}
@@ -424,7 +428,7 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
               <ResizableDivider
                 orientation="vertical"
                 data-testid="splitter-editor-board"
-                aria-label="Resize HDL Editor and Board Viewport"
+                aria-label={t("Resize HDL Editor and Board Viewport")}
                 valueMin={25}
                 valueMax={68}
                 valueNow={Math.round(layout.editorRatio * 100)}
@@ -476,7 +480,7 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
           <ResizableDivider
             orientation="vertical"
             data-testid="splitter-inspector"
-            aria-label="Resize Inspector Panel"
+            aria-label={t("Resize Inspector Panel")}
             valueMin={240}
             valueMax={450}
             valueNow={layout.inspectorWidth}
@@ -520,7 +524,7 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
         <ResizableDivider
           orientation="horizontal"
           data-testid="splitter-console"
-          aria-label="Resize Console Panel"
+          aria-label={t("Resize Console Panel")}
           valueMin={100}
           valueMax={Math.max(220, Math.floor((bodyRef.current?.clientHeight || 600) * 0.45))}
           valueNow={layout.consoleHeight}

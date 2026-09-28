@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Zap, ChevronDown, ChevronUp } from 'lucide-react';
 
+import { useT } from '../../i18n/toolText';
 export const LogicLegend: React.FC = () => {
+  const t = useT();
   const [isExpanded, setIsExpanded] = useState(false);
 
   const legendItems = [
@@ -41,7 +43,7 @@ export const LogicLegend: React.FC = () => {
         }}
       >
         <Zap size={12} className="text-[var(--text-muted)]" />
-        <span className="text-[11px] font-sans">Logic Colors</span>
+        <span className="text-[11px] font-sans">{t("Logic Colors")}</span>
         <span className="inline-flex items-center text-[var(--text-muted)]">
           {isExpanded ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
         </span>

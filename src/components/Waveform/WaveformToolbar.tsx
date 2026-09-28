@@ -6,6 +6,7 @@ import {
 import type { VCDTimescale } from '../../services/vcdParser';
 import { formatTime } from '../../services/waveformRenderer';
 
+import { useT } from '../../i18n/toolText';
 export interface WaveformToolbarProps {
   fileName?: string | null;
   isCompiled: boolean;
@@ -65,6 +66,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
   onZoomOut,
   onZoomFit,
 }) => {
+  const t = useT();
   return (
     <header
       className="h-[42px] px-3 sm:px-4 flex items-center justify-between shrink-0 z-20 select-none border-b min-w-0"
@@ -79,7 +81,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
         <button
           data-testid="wf-toggle-project"
           onClick={onToggleProjectPanel}
-          title="Toggle Project Panel (Alt+P)"
+          title={t("Toggle Project Panel (Alt+P)")}
           className={`flex items-center gap-1.5 px-2 py-1 rounded-[4px] text-xs font-medium border transition-colors ${
             projectPanelOpen
               ? 'bg-[var(--accent-subtle)] text-[var(--accent-primary)] border-[var(--accent-border)] font-semibold shadow-xs'
@@ -87,13 +89,13 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
           }`}
         >
           <FolderOpen size={13} />
-          <span className="hidden md:inline">Project</span>
+          <span className="hidden md:inline">{t("Project")}</span>
         </button>
 
         <button
           data-testid="wf-toggle-objects"
           onClick={onToggleObjectsPanel}
-          title="Toggle Objects Panel (Alt+O)"
+          title={t("Toggle Objects Panel (Alt+O)")}
           className={`flex items-center gap-1.5 px-2 py-1 rounded-[4px] text-xs font-medium border transition-colors ${
             objectsPanelOpen
               ? 'bg-[var(--accent-subtle)] text-[var(--accent-primary)] border-[var(--accent-border)] font-semibold shadow-xs'
@@ -101,7 +103,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
           }`}
         >
           <Layers size={13} />
-          <span className="hidden md:inline">Objects</span>
+          <span className="hidden md:inline">{t("Objects")}</span>
         </button>
 
         <div className="w-px h-4 bg-[var(--border-subtle)] mx-0.5 hidden sm:block" />
@@ -121,10 +123,10 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
                 ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
                 : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-transparent'
             }`}
-            title="Waveform View"
+            title={t("Waveform View")}
           >
             <Activity size={13} />
-            <span className="hidden sm:inline">Waveform</span>
+            <span className="hidden sm:inline">{t("Waveform")}</span>
           </button>
 
           <button
@@ -141,11 +143,11 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
                 ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
                 : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-transparent'
             }`}
-            title="Code Editor View (Alt+E)"
+            title={t("Code Editor View (Alt+E)")}
           >
             <FileCode size={13} />
-            <span className="hidden xl:inline">Code </span>
-            <span className="hidden sm:inline">Editor</span>
+            <span className="hidden xl:inline">{t("Code")} </span>
+            <span className="hidden sm:inline">{t("Editor")}</span>
           </button>
 
           <button
@@ -158,10 +160,10 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
                 ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
                 : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-transparent'
             }`}
-            title="Split View (Editor + Waveform)"
+            title={t("Split View (Editor + Waveform)")}
           >
             <Columns size={13} />
-            <span className="hidden lg:inline">Split</span>
+            <span className="hidden lg:inline">{t("Split")}</span>
           </button>
         </div>
 
@@ -169,8 +171,8 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
           <button
             data-testid="wf-reset-layout"
             onClick={onResetLayout}
-            title="Reset Workspace Layout"
-            aria-label="Reset Workspace Layout"
+            title={t("Reset Workspace Layout")}
+            aria-label={t("Reset Workspace Layout")}
             className="p-1.5 rounded-[4px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors border border-transparent flex items-center"
           >
             <RotateCcw size={13} />
@@ -190,10 +192,10 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
             borderColor: 'var(--border-subtle)',
             color: 'var(--text-primary)',
           }}
-          title="Upload .sv / .v / .vcd file"
+          title={t("Upload .sv / .v / .vcd file")}
         >
           <Upload size={13} />
-          <span className="hidden md:inline">Upload</span>
+          <span className="hidden md:inline">{t("Upload")}</span>
         </button>
         {actionsSlot}
 
@@ -209,14 +211,14 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
               ? 'opacity-60 cursor-not-allowed bg-[var(--accent-primary)] text-white'
               : 'bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white'
           }`}
-          title="Compile HDL with Icarus Verilog"
+          title={t("Compile HDL with Icarus Verilog")}
         >
           {isCompiling ? (
             <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
           ) : (
             <Settings size={13} />
           )}
-          <span>{isCompiling ? 'Compiling...' : 'Compile'}</span>
+          <span>{isCompiling ? t("Compiling...") : t("Compile")}</span>
         </button>
 
         {/* Run Button (Preserves exact !isCompiled || isCompiling || isPlaying logic; neutral disabled styling without green glow) */}
@@ -229,10 +231,10 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
               ? 'bg-[var(--bg-surface)] text-[var(--text-disabled)] border border-[var(--border-subtle)] opacity-40 cursor-not-allowed'
               : 'bg-emerald-600 hover:bg-emerald-500 text-white'
           }`}
-          title="Run Simulation Playback"
+          title={t("Run Simulation Playback")}
         >
           <Play size={13} className={isPlaying ? 'opacity-80' : ''} />
-          <span>{isPlaying ? 'Playing...' : 'Run'}</span>
+          <span>{isPlaying ? t("Playing...") : t("Run")}</span>
         </button>
 
         {/* Restart Button */}
@@ -246,8 +248,8 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
             borderColor: 'var(--border-subtle)',
             color: 'var(--text-primary)',
           }}
-          title="Reset Playhead to Start"
-          aria-label="Reset Playhead to Start"
+          title={t("Reset Playhead to Start")}
+          aria-label={t("Reset Playhead to Start")}
         >
           <RotateCcw size={13} />
         </button>
@@ -260,8 +262,8 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
             data-testid="wf-btn-zoom-out"
             onClick={onZoomOut}
             className="hidden md:flex p-1 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] rounded-[3px] text-[var(--text-muted)] transition-colors"
-            title="Zoom Out"
-            aria-label="Zoom Out"
+            title={t("Zoom Out")}
+            aria-label={t("Zoom Out")}
           >
             <ZoomOut size={13} />
           </button>
@@ -283,8 +285,8 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
             data-testid="wf-btn-zoom-in"
             onClick={onZoomIn}
             className="hidden md:flex p-1 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] rounded-[3px] text-[var(--text-muted)] transition-colors"
-            title="Zoom In"
-            aria-label="Zoom In"
+            title={t("Zoom In")}
+            aria-label={t("Zoom In")}
           >
             <ZoomIn size={13} />
           </button>
@@ -293,11 +295,11 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
             data-testid="wf-btn-zoom-fit"
             onClick={onZoomFit}
             className="flex items-center gap-1 px-1.5 py-0.5 ml-0 md:ml-0.5 hover:bg-[var(--bg-hover)] hover:text-[var(--accent-primary)] rounded-[3px] text-[var(--text-muted)] transition-colors text-[10px] font-medium md:border-l md:border-[var(--border-subtle)]"
-            title="Zoom to Fit Full Simulation Duration (Alt+F)"
-            aria-label="Zoom to Fit Full Simulation Duration (Alt+F)"
+            title={t("Zoom to Fit Full Simulation Duration (Alt+F)")}
+            aria-label={t("Zoom to Fit Full Simulation Duration (Alt+F)")}
           >
             <Maximize2 size={11} />
-            <span className="hidden xl:inline">Fit</span>
+            <span className="hidden xl:inline">{t("Fit")}</span>
           </button>
         </div>
       </div>
@@ -341,7 +343,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
         <button
           data-testid="wf-toggle-console"
           onClick={onToggleConsole}
-          title="Toggle Console (Alt+T)"
+          title={t("Toggle Console (Alt+T)")}
           className={`flex items-center gap-1.5 px-2 py-1 rounded-[4px] text-xs font-medium border transition-colors ${
             consoleOpen
               ? 'bg-[var(--accent-subtle)] text-[var(--accent-primary)] border-[var(--accent-border)] font-semibold shadow-xs'
@@ -349,7 +351,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
           }`}
         >
           <Terminal size={13} />
-          <span className="hidden sm:inline">Console</span>
+          <span className="hidden sm:inline">{t("Console")}</span>
         </button>
       </div>
     </header>

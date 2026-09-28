@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Terminal, AlertTriangle, XCircle, X } from 'lucide-react';
 
+import { useT } from '../../i18n/toolText';
 interface SchematicConsoleProps {
   isOpen: boolean;
   onClose: () => void;
@@ -18,6 +19,7 @@ export const SchematicConsole: React.FC<SchematicConsoleProps> = ({
   error,
   onClear,
 }) => {
+  const t = useT();
   const [activeTab, setActiveTab] = useState<'console' | 'problems'>(error ? 'problems' : 'console');
 
   useEffect(() => {
@@ -74,7 +76,7 @@ export const SchematicConsole: React.FC<SchematicConsoleProps> = ({
             }`}
           >
             <Terminal size={12} />
-            <span>Output</span>
+            <span>{t("Output")}</span>
           </button>
           <button
             data-testid="tab-problems"
@@ -88,7 +90,7 @@ export const SchematicConsole: React.FC<SchematicConsoleProps> = ({
             }`}
           >
             <AlertTriangle size={12} className={errorMessages.length > 0 ? 'text-red-500' : 'text-[var(--text-muted)]'} />
-            <span>Problems</span>
+            <span>{t("Problems")}</span>
             {errorMessages.length > 0 && (
               <span className="text-[10px] font-mono px-1.5 py-0.2 bg-red-500/10 text-red-500 rounded font-semibold border border-red-500/20">
                 {errorMessages.length}
@@ -100,16 +102,16 @@ export const SchematicConsole: React.FC<SchematicConsoleProps> = ({
         <div className="flex items-center gap-1">
           <button
             onClick={onClear}
-            title="Clear Console"
+            title={t("Clear Console")}
             className="p-1 rounded-[4px] hover:bg-[var(--bg-hover)] transition-colors text-xs font-sans"
             style={{ color: 'var(--text-muted)' }}
           >
-            Clear
+            {t("Clear")}
           </button>
           <button
             onClick={onClose}
-            title="Close Panel"
-            aria-label="Close Console"
+            title={t("Close Panel")}
+            aria-label={t("Close Console")}
             className="p-1 rounded-[4px] hover:bg-[var(--bg-hover)] transition-colors"
             style={{ color: 'var(--text-muted)' }}
           >

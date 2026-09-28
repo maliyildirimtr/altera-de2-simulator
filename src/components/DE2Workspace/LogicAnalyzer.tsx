@@ -19,6 +19,7 @@ import type { TriggerCondition } from '../../board/signalRecorder';
 import { downloadText } from '../../utils/svgExport';
 import { setPendingVcd } from '../../services/vcdHandoff';
 
+import { useT } from '../../i18n/toolText';
 startSignalRecorder();
 
 const NAME_W = 132;
@@ -50,6 +51,7 @@ function formatValue(v: number, width: number): string {
  * labelled in hex.
  */
 export function LogicAnalyzer() {
+  const t = useT();
   const cap = useThrottledCapture();
   const paused = useSyncExternalStore(subscribeCapture, isCapturePaused);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -126,7 +128,7 @@ export function LogicAnalyzer() {
           data-testid="analyzer-pause"
         >
           {paused ? <Play size={11} /> : <Pause size={11} />}
-          {paused ? 'Resume' : 'Pause'}
+          {paused ? t("Resume") : t("Pause")}
         </button>
         <button
           type="button"
@@ -135,7 +137,7 @@ export function LogicAnalyzer() {
           style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-primary)', backgroundColor: 'var(--bg-surface)' }}
           data-testid="analyzer-clear"
         >
-          <Trash2 size={11} /> Clear
+          <Trash2 size={11} /> {t("Clear")}
         </button>
         <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
           {samples.length} / {MAX_SAMPLES} samples · click a name to hide it
@@ -146,17 +148,17 @@ export function LogicAnalyzer() {
           </button>
         )}
         <span className="flex-1" />
-        <button type="button" onClick={exportVcd} disabled={samples.length === 0} className={btn} style={btnStyle} data-testid="analyzer-export-vcd" title="Download the capture as a .vcd file">
+        <button type="button" onClick={exportVcd} disabled={samples.length === 0} className={btn} style={btnStyle} data-testid="analyzer-export-vcd" title={t("Download the capture as a .vcd file")}>
           <Download size={11} /> VCD
         </button>
-        <button type="button" onClick={openInWaveform} disabled={samples.length === 0} className={btn} style={btnStyle} data-testid="analyzer-open-waveform" title="Open the capture in the Waveform tool">
-          <Waves size={11} /> Open in Waveform
+        <button type="button" onClick={openInWaveform} disabled={samples.length === 0} className={btn} style={btnStyle} data-testid="analyzer-open-waveform" title={t("Open the capture in the Waveform tool")}>
+          <Waves size={11} /> {t("Open in Waveform")}
         </button>
       </div>
 
       <div className="flex items-center gap-2 flex-wrap font-sans" data-testid="analyzer-trigger">
         <Crosshair size={12} style={{ color: 'var(--text-muted)' }} />
-        <span className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>Trigger</span>
+        <span className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>{t("Trigger")}</span>
         <select
           value={armed ? armed.signal : selectedSignal}
           disabled={!!armed}
@@ -164,7 +166,7 @@ export function LogicAnalyzer() {
           className={field}
           style={fieldStyle}
           data-testid="analyzer-trigger-signal"
-          aria-label="Trigger signal"
+          aria-label={t("Trigger signal")}
         >
           {cap.signals.map((sig) => <option key={sig} value={sig}>{sig}</option>)}
         </select>
@@ -175,12 +177,12 @@ export function LogicAnalyzer() {
           className={field}
           style={fieldStyle}
           data-testid="analyzer-trigger-condition"
-          aria-label="Trigger condition"
+          aria-label={t("Trigger condition")}
         >
-          {selectedWidth === 1 && <option value="rise">rising edge</option>}
-          {selectedWidth === 1 && <option value="fall">falling edge</option>}
-          <option value="change">any change</option>
-          <option value="equals">equals</option>
+          {selectedWidth === 1 && <option value="rise">{t("rising edge")}</option>}
+          {selectedWidth === 1 && <option value="fall">{t("falling edge")}</option>}
+          <option value="change">{t("any change")}</option>
+          <option value="equals">{t("equals")}</option>
         </select>
         {(armed ? armed.condition : trigCondition) === 'equals' && (
           <input
@@ -190,12 +192,12 @@ export function LogicAnalyzer() {
             className={`${field} w-16`}
             style={fieldStyle}
             data-testid="analyzer-trigger-value"
-            aria-label="Trigger value (decimal, 0x hex or 0b binary)"
+            aria-label={t("Trigger value (decimal, 0x hex or 0b binary)")}
             placeholder="0x0F"
           />
         )}
         <button type="button" onClick={toggleTrigger} className={btn} style={btnStyle} data-testid="analyzer-trigger-arm">
-          {armed ? 'Disarm' : 'Arm'}
+          {armed ? t("Disarm") : t("Arm")}
         </button>
         {triggerText && (
           <span className="text-[11px]" data-testid="analyzer-trigger-status" data-status={triggerStatus} style={{ color: triggerStatus === 'armed' ? 'var(--state-warning)' : 'var(--state-success)' }}>
@@ -209,7 +211,7 @@ export function LogicAnalyzer() {
           width={width}
           height={signals.length * ROW_H + 4}
           role="img"
-          aria-label="Logic analyzer traces"
+          aria-label={t("Logic analyzer traces")}
           style={{ display: 'block' }}
         >
           {signals.map((sig, row) => {

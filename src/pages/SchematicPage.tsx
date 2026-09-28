@@ -21,6 +21,7 @@ import { consumePendingHandoff, peekPendingHandoff, markWorkspaceOrigin, markWor
 import { getExampleById } from '../examples/registry';
 import '../index.css';
 
+import { useT } from '../i18n/toolText';
 const LAYOUT_STORAGE_KEY = 'schematic_workspace_layout_v1';
 
 interface SchematicLayoutConfig {
@@ -51,6 +52,7 @@ const DEFAULT_LAYOUT: SchematicLayoutConfig = {
 };
 
 export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
+  const t = useT();
   // Layout persistence
   const [layout, setLayout] = useState<SchematicLayoutConfig>(() => {
     try {
@@ -792,7 +794,7 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
               <div className="p-1.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-500">
                 <AlertCircle className="w-4 h-4" />
               </div>
-              <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Action Blocked</h3>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t("Action Blocked")}</h3>
             </div>
             <div className="p-5 text-xs" style={{ color: 'var(--text-secondary)' }}>
               {alertMessage}
@@ -828,10 +830,10 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
               <div className="p-1.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-blue-500">
                 <FileCode className="w-4 h-4" />
               </div>
-              <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Create New Module</h3>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t("Create New Module")}</h3>
             </div>
             <div className="p-5">
-              <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Enter HDL module file name:</label>
+              <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>{t("Enter HDL module file name:")}</label>
               <input
                 type="text"
                 value={createPromptValue}

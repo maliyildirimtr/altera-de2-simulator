@@ -4,6 +4,7 @@ import { parseQsf, parseXdc, type ParsedPort } from '../../utils/parser/pinParse
 import { markWorkspaceUser } from '../../services/exampleHandoff';
 import { Upload, FileCode, FileText, X, Check, AlertCircle } from 'lucide-react';
 
+import { useT } from '../../i18n/toolText';
 interface StagedFile {
   name: string;
   type: 'hdl' | 'qsf' | 'xdc' | 'unknown';
@@ -22,6 +23,7 @@ export const ImportDialog: React.FC<ImportDialogProps> = ({
   onClose,
   onImportSuccess,
 }) => {
+  const t = useT();
   const { setHdlCode, setPinMappings, pinMappings } = useBoardStore();
   const [dragActive, setDragActive] = useState(false);
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
@@ -146,7 +148,7 @@ export const ImportDialog: React.FC<ImportDialogProps> = ({
           <button
             onClick={onClose}
             className="p-1 rounded text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
-            aria-label="Close dialog"
+            aria-label={t("Close dialog")}
           >
             <X size={16} />
           </button>
@@ -186,7 +188,7 @@ export const ImportDialog: React.FC<ImportDialogProps> = ({
             />
             <Upload size={28} className="text-blue-400 mb-2" />
             <p className="text-sm font-semibold text-white mb-0.5">
-              Drag &amp; drop files here, or <span className="text-blue-400 underline">browse</span>
+              Drag &amp; drop files here, or <span className="text-blue-400 underline">{t("browse")}</span>
             </p>
             <p className="text-xs text-slate-400">
               Supports Verilog (.v, .sv) and Pin Constraints (.qsf, .xdc)
@@ -225,7 +227,7 @@ export const ImportDialog: React.FC<ImportDialogProps> = ({
                         removeStaged(idx);
                       }}
                       className="text-slate-500 hover:text-red-400 p-1 transition-colors"
-                      title="Remove"
+                      title={t("Remove")}
                     >
                       <X size={14} />
                     </button>

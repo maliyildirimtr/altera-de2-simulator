@@ -1,6 +1,7 @@
 import React from 'react';
 import { Table2, Loader2, X } from 'lucide-react';
 
+import { useT } from '../../i18n/toolText';
 export interface TruthTableRow {
   inputs: Record<string, string>;
   outputs: Record<string, string>;
@@ -29,6 +30,7 @@ export const TruthTableDrawer: React.FC<TruthTableDrawerProps> = ({
   width = 340,
   isMobile = false,
 }) => {
+  const t = useT();
   if (!isOpen) return null;
 
   const hasData = truthTableData.length > 0;
@@ -105,7 +107,7 @@ export const TruthTableDrawer: React.FC<TruthTableDrawerProps> = ({
             className="text-[11px] font-bold uppercase tracking-wider truncate"
             style={{ color: 'var(--text-muted)' }}
           >
-            Truth Table
+            {t("Truth Table")}
           </span>
           {hasData && (
             <span
@@ -123,7 +125,7 @@ export const TruthTableDrawer: React.FC<TruthTableDrawerProps> = ({
         <button
           data-testid="truth-table-close-btn"
           onClick={onClose}
-          title="Close Truth Table"
+          title={t("Close Truth Table")}
           className="p-1 rounded-[4px] hover:bg-[var(--bg-hover)] transition-colors"
           style={{ color: 'var(--text-muted)' }}
         >
@@ -167,7 +169,7 @@ export const TruthTableDrawer: React.FC<TruthTableDrawerProps> = ({
             }}
           >
             <Loader2 size={18} className="animate-spin text-blue-500" />
-            <span style={{ fontSize: '0.78rem' }}>Evaluating combinations in live circuit...</span>
+            <span style={{ fontSize: '0.78rem' }}>{t("Evaluating combinations in live circuit...")}</span>
           </div>
         ) : hasData ? (
           <table
@@ -201,7 +203,7 @@ export const TruthTableDrawer: React.FC<TruthTableDrawerProps> = ({
                     letterSpacing: '0.5px',
                   }}
                 >
-                  Inputs
+                  {t("Inputs")}
                 </th>
                 <th style={{ width: '8px', borderLeft: '1px solid var(--border-subtle)', borderRight: '1px solid var(--border-subtle)' }} />
                 <th
@@ -214,7 +216,7 @@ export const TruthTableDrawer: React.FC<TruthTableDrawerProps> = ({
                     letterSpacing: '0.5px',
                   }}
                 >
-                  Outputs
+                  {t("Outputs")}
                 </th>
               </tr>
               {/* Variable names header */}

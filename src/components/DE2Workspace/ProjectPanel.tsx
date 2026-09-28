@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useBoardStore } from '../../store/boardStore';
 import { FileCode, FileText, Plus, ChevronLeft, BookOpen, Upload } from 'lucide-react';
 
+import { useT } from '../../i18n/toolText';
 interface ProjectPanelProps {
   isOpen: boolean;
   width?: number;
@@ -20,6 +21,7 @@ export const ProjectPanel: React.FC<ProjectPanelProps> = ({
   activeView,
   onSelectFile,
 }) => {
+  const t = useT();
   const navigate = useNavigate();
   const { hdlCode, pinMappings } = useBoardStore();
 
@@ -38,7 +40,7 @@ export const ProjectPanel: React.FC<ProjectPanelProps> = ({
         color: 'var(--text-primary)',
       }}
       className="border-r border-[var(--border-subtle)] flex flex-col shrink-0 select-none z-10 overflow-hidden"
-      aria-label="Project Explorer"
+      aria-label={t("Project Explorer")}
     >
       {/* Panel Header */}
       <div
@@ -49,15 +51,15 @@ export const ProjectPanel: React.FC<ProjectPanelProps> = ({
           className="text-[11px] font-bold uppercase tracking-wider select-none"
           style={{ color: 'var(--text-muted)' }}
         >
-          Project
+          {t("Project")}
         </span>
         <div className="flex items-center gap-1">
           <button
             onClick={onOpenImport}
             className="w-6 h-6 rounded-[4px] flex items-center justify-center transition-colors border border-transparent hover:border-[var(--border-subtle)] hover:bg-[var(--bg-hover)]"
             style={{ color: 'var(--text-secondary)' }}
-            title="Import File (.sv, .v, .qsf, .xdc)"
-            aria-label="Import File"
+            title={t("Import File (.sv, .v, .qsf, .xdc)")}
+            aria-label={t("Import File")}
           >
             <Plus size={13} />
           </button>
@@ -65,8 +67,8 @@ export const ProjectPanel: React.FC<ProjectPanelProps> = ({
             onClick={onToggle}
             className="w-6 h-6 rounded-[4px] flex items-center justify-center transition-colors border border-transparent hover:border-[var(--border-subtle)] hover:bg-[var(--bg-hover)]"
             style={{ color: 'var(--text-secondary)' }}
-            title="Collapse Project Panel"
-            aria-label="Collapse Project Panel"
+            title={t("Collapse Project Panel")}
+            aria-label={t("Collapse Project Panel")}
           >
             <ChevronLeft size={14} />
           </button>
@@ -78,7 +80,7 @@ export const ProjectPanel: React.FC<ProjectPanelProps> = ({
         {/* Section: Sources */}
         <div>
           <div className="px-2 py-1 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider select-none text-[var(--text-muted)]">
-            <span>Sources</span>
+            <span>{t("Sources")}</span>
             {hasHdl && (
               <span className="text-[10px] font-mono font-normal text-[var(--text-muted)]">
                 1 file
@@ -107,9 +109,9 @@ export const ProjectPanel: React.FC<ProjectPanelProps> = ({
           ) : (
             <div className="py-4 px-2 flex flex-col items-center text-center">
               <FileCode size={22} className="text-[var(--text-muted)] opacity-50 mb-1.5" />
-              <span className="text-xs font-semibold text-[var(--text-primary)]">No HDL Source</span>
+              <span className="text-xs font-semibold text-[var(--text-primary)]">{t("No HDL Source")}</span>
               <p className="text-[11px] text-[var(--text-muted)] mt-0.5 mb-3 leading-snug">
-                Import a Verilog file or open an example.
+                {t("Import a Verilog file or open an example.")}
               </p>
               <div className="w-full flex flex-col gap-1.5">
                 <button
@@ -117,14 +119,14 @@ export const ProjectPanel: React.FC<ProjectPanelProps> = ({
                   className="w-full flex items-center justify-center gap-1.5 h-[28px] px-2 rounded-[4px] text-xs font-medium bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-[var(--text-on-accent)] transition-colors shadow-xs"
                 >
                   <Upload size={12} />
-                  Import HDL
+                  {t("Import HDL")}
                 </button>
                 <button
                   onClick={() => navigate('/examples')}
                   className="w-full flex items-center justify-center gap-1.5 h-[28px] px-2 rounded-[4px] text-xs font-medium border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors"
                 >
                   <BookOpen size={12} />
-                  Open Example
+                  {t("Open Example")}
                 </button>
               </div>
             </div>
@@ -134,7 +136,7 @@ export const ProjectPanel: React.FC<ProjectPanelProps> = ({
         {/* Section: Constraints */}
         <div>
           <div className="px-2 py-1 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider select-none text-[var(--text-muted)]">
-            <span>Constraints</span>
+            <span>{t("Constraints")}</span>
             {hasPins && (
               <span className="text-[10px] font-mono font-normal text-[var(--text-muted)]">
                 1 file
@@ -157,7 +159,7 @@ export const ProjectPanel: React.FC<ProjectPanelProps> = ({
             </div>
           ) : (
             <div className="px-2 py-1.5 text-[11px] text-[var(--text-muted)] italic">
-              No pin constraint file loaded (.qsf)
+              {t("No pin constraint file loaded (.qsf)")}
             </div>
           )}
         </div>
@@ -173,7 +175,7 @@ export const ProjectPanel: React.FC<ProjectPanelProps> = ({
           className="w-full h-[30px] flex items-center justify-center gap-1.5 px-3 rounded-[4px] text-xs font-medium border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors"
         >
           <Plus size={13} />
-          Add / Import File
+          {t("Add / Import File")}
         </button>
       </div>
     </aside>

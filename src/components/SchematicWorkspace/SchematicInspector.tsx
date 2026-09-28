@@ -1,6 +1,7 @@
 import React from 'react';
 import { Search, X, Lightbulb, AlertTriangle, CircuitBoard } from 'lucide-react';
 
+import { useT } from '../../i18n/toolText';
 export interface SelectedItemInfo {
   id: string;
   name: string;
@@ -56,6 +57,7 @@ export const SchematicInspector: React.FC<SchematicInspectorProps> = ({
   onSetInputValue,
   onClose,
 }) => {
+  const t = useT();
   // Normalize component type for hint lookup
   const getHint = (type: string): string | null => {
     if (!type) return null;
@@ -111,13 +113,13 @@ export const SchematicInspector: React.FC<SchematicInspectorProps> = ({
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
           <Search size={14} className="text-slate-400" />
-          <span>Inspector</span>
+          <span>{t("Inspector")}</span>
         </div>
         {onClose && (
           <button
             onClick={onClose}
-            title="Close Inspector"
-            aria-label="Close Inspector"
+            title={t("Close Inspector")}
+            aria-label={t("Close Inspector")}
             style={{
               background: 'transparent',
               border: 'none',
@@ -158,7 +160,7 @@ export const SchematicInspector: React.FC<SchematicInspectorProps> = ({
                   marginBottom: '4px',
                 }}
               >
-                {selectedItem.isLink ? 'Interconnect Wire' : 'Circuit Component'}
+                {selectedItem.isLink ? t("Interconnect Wire") : t("Circuit Component")}
               </div>
               <div
                 data-testid="inspector-selected-name"
@@ -315,7 +317,7 @@ export const SchematicInspector: React.FC<SchematicInspectorProps> = ({
                   }}
                 >
                   <Lightbulb size={13} className="text-amber-400 shrink-0" />
-                  <span>Component Principle</span>
+                  <span>{t("Component Principle")}</span>
                 </div>
                 <div style={{ color: 'var(--text-primary)' }}>
                   {getHint(selectedItem.type)}
@@ -337,7 +339,7 @@ export const SchematicInspector: React.FC<SchematicInspectorProps> = ({
                   gap: '4px',
                 }}
               >
-                <div style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Connectivity</div>
+                <div style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{t("Connectivity")}</div>
                 {selectedItem.source && <div>From: {selectedItem.source}</div>}
                 {selectedItem.target && <div>To: {selectedItem.target}</div>}
               </div>
@@ -393,10 +395,10 @@ export const SchematicInspector: React.FC<SchematicInspectorProps> = ({
                 <CircuitBoard size={24} className="text-sky-400" />
               </div>
               <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.9rem' }}>
-                NO CURRENT SCHEMATIC
+                {t("NO CURRENT SCHEMATIC")}
               </div>
               <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', lineHeight: 1.4 }}>
-                Synthesize your HDL design to generate and inspect the digital logic schematic.
+                {t("Synthesize your HDL design to generate and inspect the digital logic schematic.")}
               </div>
             </div>
           </div>
@@ -451,7 +453,7 @@ export const SchematicInspector: React.FC<SchematicInspectorProps> = ({
                 <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#38bdf8' }}>
                   {inputs.length}
                 </div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Inputs</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{t("Inputs")}</div>
               </div>
               <div
                 style={{
@@ -464,7 +466,7 @@ export const SchematicInspector: React.FC<SchematicInspectorProps> = ({
                 <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#22c55e' }}>
                   {outputs.length}
                 </div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Outputs</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{t("Outputs")}</div>
               </div>
               <div
                 style={{
@@ -477,7 +479,7 @@ export const SchematicInspector: React.FC<SchematicInspectorProps> = ({
                 <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--accent-color)' }}>
                   {gates.length}
                 </div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Logic Gates</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{t("Logic Gates")}</div>
               </div>
             </div>
 

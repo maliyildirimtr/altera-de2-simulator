@@ -26,6 +26,7 @@ import {
 } from '../../services/waveformRenderer';
 import type { RenderableRow } from './SignalNamePanel';
 
+import { useT } from '../../i18n/toolText';
 // ── F2.4: Marker type ─────────────────────────────────────────
 export interface WaveformMarker {
   id: string;
@@ -74,6 +75,7 @@ export function WaveformCanvas({
   onTimeChange, onCursorBChange, onHoverChange,
   onAddMarker, onRemoveMarker,
 }: WaveformCanvasProps) {
+  const t = useT();
   const waveformRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState<number>(0);
 
@@ -183,7 +185,7 @@ export function WaveformCanvas({
       >
         <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 font-mono text-xs gap-2.5 select-none">
           <div className="w-5 h-5 border-2 border-[var(--accent-primary)] border-t-transparent rounded-full animate-spin" />
-          <span>Compiling HDL &amp; Generating VCD...</span>
+          <span>{t("Compiling HDL & Generating VCD...")}</span>
         </div>
       </div>
     );
@@ -213,10 +215,10 @@ export function WaveformCanvas({
             <Activity size={20} />
           </div>
           <div className="text-slate-200 font-semibold text-sm mb-1">
-            No Simulation Data
+            {t("No Simulation Data")}
           </div>
           <div className="text-slate-400 text-xs max-w-sm font-sans leading-relaxed">
-            Add HDL sources and a testbench in the Project panel, then click Compile to generate timing waveforms.
+            {t("Add HDL sources and a testbench in the Project panel, then click Compile to generate timing waveforms.")}
           </div>
         </div>
       </div>
@@ -264,11 +266,11 @@ export function WaveformCanvas({
           style={{ top: markerMenu.y, left: markerMenu.x }}
           onMouseLeave={() => setMarkerMenu(null)}
         >
-          <div className="px-3 py-1 text-[10px] text-gray-400 border-b border-[#333] mb-1">Marker</div>
+          <div className="px-3 py-1 text-[10px] text-gray-400 border-b border-[#333] mb-1">{t("Marker")}</div>
           <button
             className="w-full text-left px-3 py-1 text-xs text-red-400 hover:bg-[#2a2d3e]"
             onClick={() => { onRemoveMarker(markerMenu.id); setMarkerMenu(null); }}
-          >Remove</button>
+          >{t("Remove")}</button>
         </div>
       )}
 
@@ -424,7 +426,7 @@ export function WaveformCanvas({
                 <button
                   className="pointer-events-auto text-white/70 hover:text-white leading-none ml-0.5"
                   onClick={e => { e.stopPropagation(); onCursorBChange(null); }}
-                  title="Clear Cursor B"
+                  title={t("Clear Cursor B")}
                 >×</button>
               </div>
             </div>

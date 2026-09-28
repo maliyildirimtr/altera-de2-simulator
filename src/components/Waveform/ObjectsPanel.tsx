@@ -8,6 +8,7 @@ import { Layers } from 'lucide-react';
 import type { VCDScope, VCDSignal } from '../../services/vcdParser';
 import { getSignalValueAtTime } from '../../services/waveformRenderer';
 
+import { useT } from '../../i18n/toolText';
 export interface ObjectsPanelProps {
   activeScope: VCDScope | null;
   currentTime: number;
@@ -20,6 +21,7 @@ export interface ObjectsPanelProps {
 export function ObjectsPanel({
   activeScope, currentTime, waveSignalNames, isCompiled = false, hasSimulationData = false, onAddSignals,
 }: ObjectsPanelProps) {
+  const t = useT();
   const [selectedObjects, setSelectedObjects] = useState<string[]>([]);
   const [lastSelected, setLastSelected]       = useState<string | null>(null);
 
@@ -88,7 +90,7 @@ export function ObjectsPanel({
           style={{ backgroundColor: 'var(--bg-panel)' }}
         >
           <Layers size={24} className="mb-2.5 opacity-30 text-blue-400" />
-          <p className="font-semibold text-slate-300 mb-1 text-xs">No signals loaded</p>
+          <p className="font-semibold text-slate-300 mb-1 text-xs">{t("No signals loaded")}</p>
           <p className="text-[11px] text-slate-500 max-w-[210px] leading-relaxed">
             Compile an HDL project or import a VCD file to inspect design signals.
           </p>
@@ -104,9 +106,9 @@ export function ObjectsPanel({
               color: 'var(--text-muted)',
             }}
           >
-            <div className="truncate">Name</div>
-            <div className="truncate">Value</div>
-            <div className="truncate">Type</div>
+            <div className="truncate">{t("Name")}</div>
+            <div className="truncate">{t("Value")}</div>
+            <div className="truncate">{t("Type")}</div>
           </div>
 
           {/* ── Responsive Signal Rows ── */}
@@ -152,7 +154,7 @@ export function ObjectsPanel({
                     <button
                       onClick={e => handleAddOne(e, sig.name)}
                       className="opacity-0 group-hover:opacity-100 shrink-0 px-1.5 py-0.5 bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white rounded text-[9px] cursor-pointer shadow-xs transition-opacity ml-1 font-sans"
-                      title="Add to Waveform"
+                      title={t("Add to Waveform")}
                     >
                       + Add
                     </button>

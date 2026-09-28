@@ -9,6 +9,7 @@ import type { TruthTableRow } from './TruthTableDrawer';
 import { ResizableDivider } from '../DE2Workspace/ResizableDivider';
 import { serializeStyledSvg } from '../../utils/svgExport';
 
+import { useT } from '../../i18n/toolText';
 export interface SchematicViewportHandle {
   zoomIn: () => void;
   zoomOut: () => void;
@@ -73,6 +74,7 @@ export const SchematicViewport = forwardRef<SchematicViewportHandle, SchematicVi
     },
     ref
   ) => {
+  const t = useT();
     const containerRef = useRef<HTMLDivElement>(null);
     const wrapperRef = useRef<HTMLDivElement>(null);
     const paperRef = useRef<any>(null);
@@ -753,7 +755,7 @@ export const SchematicViewport = forwardRef<SchematicViewportHandle, SchematicVi
             <div
               data-testid="schematic-synthesis-progress"
               role="progressbar"
-              aria-label="Synthesis progress"
+              aria-label={t("Synthesis progress")}
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={progress?.percent ?? 0}
@@ -818,7 +820,7 @@ export const SchematicViewport = forwardRef<SchematicViewportHandle, SchematicVi
                 <AlertTriangle size={32} className="text-red-500" />
               </div>
               <h3 style={{ margin: '0 0 8px 0', color: '#ef4444', fontSize: '1.1rem' }}>
-                {errorKind === 'internal' ? 'Internal Schematic Processing Error' : 'Synthesis Error'}
+                {errorKind === 'internal' ? t("Internal Schematic Processing Error") : t("Synthesis Error")}
               </h3>
               <p
                 style={{
@@ -866,7 +868,7 @@ export const SchematicViewport = forwardRef<SchematicViewportHandle, SchematicVi
                     fontSize: '0.85rem',
                   }}
                 >
-                  {errorKind === 'internal' ? 'View Technical Diagnostics' : 'View Problems & Log'}
+                  {errorKind === 'internal' ? t("View Technical Diagnostics") : t("View Problems & Log")}
                 </button>
               )}
             </div>
@@ -917,7 +919,7 @@ export const SchematicViewport = forwardRef<SchematicViewportHandle, SchematicVi
                   color: 'var(--text-primary)',
                 }}
               >
-                No schematic loaded
+                {t("No schematic loaded")}
               </div>
               <div
                 style={{
@@ -927,7 +929,7 @@ export const SchematicViewport = forwardRef<SchematicViewportHandle, SchematicVi
                   lineHeight: 1.5,
                 }}
               >
-                Create or import an HDL module, then synthesize it to inspect the generated logic schematic.
+                {t("Create or import an HDL module, then synthesize it to inspect the generated logic schematic.")}
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -953,7 +955,7 @@ export const SchematicViewport = forwardRef<SchematicViewportHandle, SchematicVi
                     }}
                   >
                     <FileCode size={14} />
-                    <span>Create HDL Module</span>
+                    <span>{t("Create HDL Module")}</span>
                   </button>
                 )}
                 {onImportHDL && (
@@ -978,7 +980,7 @@ export const SchematicViewport = forwardRef<SchematicViewportHandle, SchematicVi
                     }}
                   >
                     <Upload size={14} />
-                    <span>Import Verilog</span>
+                    <span>{t("Import Verilog")}</span>
                   </button>
                 )}
                 <button
@@ -996,7 +998,7 @@ export const SchematicViewport = forwardRef<SchematicViewportHandle, SchematicVi
                     marginTop: '4px',
                   }}
                 >
-                  Browse Examples
+                  {t("Browse Examples")}
                 </button>
               </div>
             </div>
@@ -1062,7 +1064,7 @@ export const SchematicViewport = forwardRef<SchematicViewportHandle, SchematicVi
                   }}
                 >
                   <Cpu size={14} />
-                  <span>Synthesize Design</span>
+                  <span>{t("Synthesize Design")}</span>
                 </button>
               )}
             </div>
@@ -1096,7 +1098,7 @@ export const SchematicViewport = forwardRef<SchematicViewportHandle, SchematicVi
           <ResizableDivider
             orientation="vertical"
             data-testid="splitter-truth-table"
-            aria-label="Resize Truth Table"
+            aria-label={t("Resize Truth Table")}
             valueMin={260}
             valueMax={600}
             valueNow={truthTableWidth || 340}

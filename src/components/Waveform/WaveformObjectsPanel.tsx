@@ -3,6 +3,7 @@ import { Layers, Search, X } from 'lucide-react';
 import type { VCDScope, VCDSignal } from '../../services/vcdParser';
 import { ObjectsPanel } from './ObjectsPanel';
 
+import { useT } from '../../i18n/toolText';
 export interface WaveformObjectsPanelProps {
   width: number;
   activeScope: VCDScope | null;
@@ -24,6 +25,7 @@ export const WaveformObjectsPanel: React.FC<WaveformObjectsPanelProps> = ({
   onAddSignals,
   onClose,
 }) => {
+  const t = useT();
   const [filterQuery, setFilterQuery] = useState('');
 
   const totalSignalCount = activeScope ? Object.keys(activeScope.signals).length : 0;
@@ -90,7 +92,7 @@ export const WaveformObjectsPanel: React.FC<WaveformObjectsPanelProps> = ({
         {onClose && (
           <button
             onClick={onClose}
-            title="Collapse Objects Panel (Alt+O)"
+            title={t("Collapse Objects Panel (Alt+O)")}
             className="p-1 rounded-[4px] hover:bg-[var(--bg-hover)] transition-colors"
             style={{ color: 'var(--text-muted)' }}
           >
@@ -113,7 +115,7 @@ export const WaveformObjectsPanel: React.FC<WaveformObjectsPanelProps> = ({
             type="text"
             value={filterQuery}
             onChange={(e) => setFilterQuery(e.target.value)}
-            placeholder="Filter signals..."
+            placeholder={t("Filter signals...")}
             className="w-full text-xs pl-7 pr-6 py-1 rounded-[4px] border font-mono transition-colors"
             style={{
               backgroundColor: 'var(--bg-input)',

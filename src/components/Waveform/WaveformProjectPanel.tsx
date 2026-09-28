@@ -5,6 +5,7 @@ import {
 import type { VCDScope } from '../../services/vcdParser';
 import { InstanceTree } from './InstanceTree';
 
+import { useT } from '../../i18n/toolText';
 export interface ProjectSlotFile {
   id: string;
   name: string;
@@ -51,6 +52,7 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
   activeScope,
   onScopeSelect,
 }) => {
+  const t = useT();
   const sources: ProjectSlotFile[] = sourceFiles && sourceFiles.length > 0
     ? sourceFiles
     : (sourceFile ? [sourceFile] : []);
@@ -80,7 +82,7 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
         >
           <span className="flex items-center gap-1.5 min-w-0 truncate">
             <FolderOpen size={13} className="text-blue-500 shrink-0" />
-            <span className="truncate">Project Files</span>
+            <span className="truncate">{t("Project Files")}</span>
           </span>
           <span
             className="text-[10px] px-1.5 py-0.2 rounded font-mono shrink-0 ml-1 border"
@@ -100,16 +102,16 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
             <div className="flex items-center justify-between px-1">
               <span className="text-[10px] font-bold tracking-wider text-[var(--text-muted)] uppercase flex items-center gap-1 min-w-0 truncate">
                 <Cpu size={11} className="text-[var(--accent-primary)] shrink-0" />
-                <span className="truncate">Sources ({sources.length})</span>
+                <span className="truncate">{t("Sources")} ({sources.length})</span>
               </span>
               <button
                 data-testid="wf-import-source-btn"
                 onClick={onImportSource}
                 className="text-[11px] text-[var(--accent-primary)] hover:text-[var(--accent-hover)] flex items-center gap-0.5 px-1.5 py-0.5 rounded hover:bg-[var(--bg-hover)] transition-colors"
-                title="Add design source file (.v, .sv)"
+                title={t("Add design source file (.v, .sv)")}
               >
                 <Plus size={11} />
-                <span>Add</span>
+                <span>{t("Add")}</span>
               </button>
             </div>
 
@@ -122,7 +124,7 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
                 }}
               >
                 <div className="text-[11px] text-[var(--text-muted)] mb-2 font-mono">
-                  No design sources loaded
+                  {t("No design sources loaded")}
                 </div>
                 <button
                   onClick={onImportSource}
@@ -134,7 +136,7 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
                   }}
                 >
                   <Upload size={12} />
-                  <span>Import Source</span>
+                  <span>{t("Import Source")}</span>
                 </button>
               </div>
             ) : (
@@ -214,7 +216,7 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
             <div className="px-2.5 py-1.5 flex items-center justify-between border-b border-[var(--border-subtle)]">
               <span className="text-[10px] font-bold tracking-wider text-[var(--text-muted)] uppercase flex items-center gap-1">
                 <Layers size={11} className="text-slate-400" />
-                Testbench (TB)
+                {t("Testbench (TB)")}
               </span>
               {testbenchFile && (
                 <button
@@ -224,7 +226,7 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
                     onClearSlot('testbench');
                   }}
                   className="text-[var(--text-muted)] hover:text-rose-400 transition-colors p-0.5"
-                  title="Remove Testbench File"
+                  title={t("Remove Testbench File")}
                 >
                   <Trash2 size={12} />
                 </button>
@@ -235,7 +237,7 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
               <div
                 onClick={() => onSelectSlot('testbench')}
                 className="p-2.5 flex items-center gap-2 cursor-pointer group"
-                title="Click to edit Testbench file"
+                title={t("Click to edit Testbench file")}
               >
                 <FileCode size={15} className="text-slate-400 shrink-0" />
                 <div className="min-w-0 flex-1">
@@ -245,7 +247,7 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
                   <div className="text-[10px] text-[var(--text-muted)] flex items-center gap-1.5">
                     <span className="font-mono">{testbenchFile.content.split('\n').length} lines</span>
                     <span className="text-slate-400 flex items-center gap-0.5 text-[9px] px-1 py-0.2 rounded border border-[var(--border-subtle)] bg-[var(--bg-input)]">
-                      <CheckCircle2 size={8} className="text-emerald-400" /> Assigned
+                      <CheckCircle2 size={8} className="text-emerald-400" /> {t("Assigned")}
                     </span>
                   </div>
                 </div>
@@ -253,7 +255,7 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
             ) : (
               <div className="p-3 text-center">
                 <div className="text-[11px] text-[var(--text-muted)] mb-2 font-mono">
-                  No testbench loaded
+                  {t("No testbench loaded")}
                 </div>
                 <button
                   data-testid="wf-import-tb-btn"
@@ -266,7 +268,7 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
                   }}
                 >
                   <Upload size={12} />
-                  <span>Import Testbench</span>
+                  <span>{t("Import Testbench")}</span>
                 </button>
               </div>
             )}
@@ -281,13 +283,13 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
                   <div className="text-xs font-mono text-emerald-200 truncate font-medium">
                     {vcdFile.name}
                   </div>
-                  <div className="text-[10px] text-emerald-400/70">Direct VCD Mode</div>
+                  <div className="text-[10px] text-emerald-400/70">{t("Direct VCD Mode")}</div>
                 </div>
               </div>
               <button
                 onClick={() => onClearSlot('vcd')}
                 className="text-slate-500 hover:text-red-400 transition-colors p-1"
-                title="Remove VCD File"
+                title={t("Remove VCD File")}
               >
                 <Trash2 size={12} />
               </button>
@@ -301,7 +303,7 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
                 onClick={onImportVcd}
                 className="text-[10px] text-slate-500 hover:text-slate-300 underline transition-colors"
               >
-                or load pre-generated .vcd directly
+                {t("or load pre-generated .vcd directly")}
               </button>
             </div>
           )}
@@ -322,7 +324,7 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
           }}
         >
           <Cpu size={13} style={{ color: 'var(--text-muted)' }} />
-          <span>Hardware Hierarchy</span>
+          <span>{t("Hardware Hierarchy")}</span>
         </div>
 
         <div className="flex-1 overflow-y-auto p-2">
@@ -334,7 +336,7 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
             />
           ) : (
             <div className="px-3 py-6 text-center text-xs italic" style={{ color: 'var(--text-muted)' }}>
-              Compile HDL to inspect design instance hierarchy.
+              {t("Compile HDL to inspect design instance hierarchy.")}
             </div>
           )}
         </div>

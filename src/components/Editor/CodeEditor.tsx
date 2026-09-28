@@ -7,6 +7,7 @@ import { markWorkspaceDirty } from '../../services/exampleHandoff';
 import { publishDiagnostics, subscribeDiagnostics } from '../../core/simulator/diagnostics';
 import { FileCode, Upload, BookOpen } from 'lucide-react';
 
+import { useT } from '../../i18n/toolText';
 interface CodeEditorProps {
   isOpen: boolean;
   onOpenImport?: () => void;
@@ -14,6 +15,7 @@ interface CodeEditorProps {
 }
 
 export const CodeEditor: React.FC<CodeEditorProps> = ({ isOpen, onOpenImport, isDarkMode = true }) => {
+  const t = useT();
   const navigate = useNavigate();
   const { hdlCode, setHdlCode } = useBoardStore();
 
@@ -44,9 +46,9 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ isOpen, onOpenImport, is
         {!hasHdl ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-10 bg-[#080d18]">
             <FileCode size={36} className="text-slate-600 mb-3" />
-            <h4 className="text-sm font-semibold text-slate-300 mb-1">No HDL source loaded</h4>
+            <h4 className="text-sm font-semibold text-slate-300 mb-1">{t("No HDL source loaded")}</h4>
             <p className="text-xs text-slate-500 max-w-xs mb-4">
-              Write Verilog/SystemVerilog directly, import an existing file, or start from a gallery example.
+              {t("Write Verilog/SystemVerilog directly, import an existing file, or start from a gallery example.")}
             </p>
             <div className="flex items-center gap-2">
               {onOpenImport && (
@@ -55,7 +57,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ isOpen, onOpenImport, is
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium shadow transition-colors"
                 >
                   <Upload size={13} />
-                  Import HDL
+                  {t("Import HDL")}
                 </button>
               )}
               <button
@@ -63,14 +65,14 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ isOpen, onOpenImport, is
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-colors"
               >
                 <BookOpen size={13} />
-                Open Example
+                {t("Open Example")}
               </button>
             </div>
             <button
               onClick={() => setHdlCode('module main (\n  input  SW0,\n  output LEDR0\n);\n  assign LEDR0 = SW0;\nendmodule\n')}
               className="mt-4 text-[11px] text-slate-500 hover:text-blue-400 underline transition-colors"
             >
-              Or click here to create a minimal module
+              {t("Or click here to create a minimal module")}
             </button>
           </div>
         ) : null}

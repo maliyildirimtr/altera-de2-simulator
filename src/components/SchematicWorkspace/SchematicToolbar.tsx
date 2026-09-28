@@ -16,6 +16,7 @@ import {
   Code,
 } from 'lucide-react';
 
+import { useT } from '../../i18n/toolText';
 export type SynthesisStatus = 'no_source' | 'ready' | 'synthesizing' | 'modified' | 'error';
 export type ViewMode = 'schematic' | 'split' | 'code';
 
@@ -70,6 +71,7 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
   errorCount = 0,
   hasCircuit,
 }) => {
+  const t = useT();
   const getStatusBadge = () => {
     switch (status) {
       case 'ready':
@@ -132,7 +134,7 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 min-w-0">
         <button
           data-testid="schematic-project-toggle"
-          title={isProjectOpen ? 'Collapse Project Explorer' : 'Expand Project Explorer'}
+          title={isProjectOpen ? t("Collapse Project Explorer") : t("Expand Project Explorer")}
           onClick={onToggleProject}
           className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-xs font-medium border transition-colors ${
             isProjectOpen
@@ -141,13 +143,13 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
           }`}
         >
           <FolderTree size={13} />
-          <span className="hidden xl:inline">Project</span>
+          <span className="hidden xl:inline">{t("Project")}</span>
         </button>
 
         <div className="flex items-center gap-1.5 ml-0.5">
           <GitGraph size={14} style={{ color: 'var(--accent-primary)' }} />
           <span className="font-semibold text-xs tracking-tight hidden lg:inline" style={{ color: 'var(--text-primary)' }}>
-            Schematic
+            {t("Schematic")}
           </span>
         </div>
 
@@ -165,7 +167,7 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
             className="w-1.5 h-1.5 rounded-full shrink-0"
             style={{ backgroundColor: badge.dot }}
           />
-          <span className="hidden sm:inline">{badge.text}</span>
+          <span className="hidden sm:inline">{t(badge.text)}</span>
         </div>
       </div>
 
@@ -185,10 +187,10 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
                 ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
                 : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-transparent'
             }`}
-            title="Schematic View"
+            title={t("Schematic View")}
           >
             <GitGraph size={13} />
-            <span className="hidden md:inline">Schematic</span>
+            <span className="hidden md:inline">{t("Schematic")}</span>
           </button>
           <button
             data-testid="view-mode-split"
@@ -200,10 +202,10 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
                 ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
                 : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-transparent'
             }`}
-            title="Split View"
+            title={t("Split View")}
           >
             <Columns2 size={13} />
-            <span className="hidden md:inline">Split View</span>
+            <span className="hidden md:inline">{t("Split View")}</span>
           </button>
           <button
             data-testid="view-mode-code"
@@ -215,10 +217,10 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
                 ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
                 : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-transparent'
             }`}
-            title="Code Editor"
+            title={t("Code Editor")}
           >
             <Code size={13} />
-            <span className="hidden md:inline">Code</span>
+            <span className="hidden md:inline">{t("Code")}</span>
           </button>
         </div>
 
@@ -226,8 +228,8 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
           <button
             data-testid="schematic-reset-layout-btn"
             onClick={onResetLayout}
-            title="Reset Workspace Layout"
-            aria-label="Reset Workspace Layout"
+            title={t("Reset Workspace Layout")}
+            aria-label={t("Reset Workspace Layout")}
             className="flex p-1.5 rounded-[4px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors border border-transparent items-center"
           >
             <RotateCcw size={13} />
@@ -240,7 +242,7 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
         <button
           data-testid="schematic-upload-btn"
           onClick={onUploadClick}
-          title="Upload Verilog/SystemVerilog files"
+          title={t("Upload Verilog/SystemVerilog files")}
           className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-[4px] text-xs font-medium border transition-colors shadow-xs"
           style={{
             backgroundColor: 'var(--bg-surface)',
@@ -249,7 +251,7 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
           }}
         >
           <Upload size={13} />
-          <span className="hidden sm:inline">Upload</span>
+          <span className="hidden sm:inline">{t("Upload")}</span>
         </button>
         {actionsSlot}
 
@@ -257,7 +259,7 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
           data-testid="schematic-synthesize-btn"
           onClick={onSynthesize}
           disabled={status === 'synthesizing'}
-          title="Synthesize HDL into Logic Schematic"
+          title={t("Synthesize HDL into Logic Schematic")}
           className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-[4px] text-xs font-semibold transition-colors shadow-xs border ${
             status === 'synthesizing'
               ? 'opacity-60 cursor-not-allowed bg-[var(--accent-primary)] text-white border-transparent'
@@ -269,7 +271,7 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
           ) : (
             <Cpu size={13} />
           )}
-          <span className="hidden sm:inline">{status === 'synthesizing' ? `Synthesizing${progress ? ` ${progress.percent}%` : '...'}` : 'Synthesize'}</span>
+          <span className="hidden sm:inline">{status === 'synthesizing' ? `${t('Synthesizing')}${progress ? ` ${progress.percent}%` : '...'}` : t('Synthesize')}</span>
         </button>
 
         <div className="w-px h-4 bg-[var(--border-subtle)] mx-0.5 hidden md:block" />
@@ -280,8 +282,8 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
             data-testid="schematic-zoom-out-btn"
             onClick={onZoomOut}
             disabled={!hasCircuit}
-            title="Zoom Out (Ctrl -)"
-            aria-label="Zoom Out"
+            title={t("Zoom Out (Ctrl -)")}
+            aria-label={t("Zoom Out")}
             className="hidden md:flex p-1 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] rounded-[3px] text-[var(--text-muted)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <ZoomOut size={13} />
@@ -290,19 +292,19 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
             data-testid="schematic-fit-btn"
             onClick={onFit}
             disabled={!hasCircuit}
-            title="Fit Schematic to Viewport"
-            aria-label="Fit Schematic to Viewport"
+            title={t("Fit Schematic to Viewport")}
+            aria-label={t("Fit Schematic to Viewport")}
             className="flex items-center gap-1 px-1.5 py-0.5 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] rounded-[3px] text-[var(--text-muted)] transition-colors text-[10px] font-medium disabled:opacity-40 disabled:cursor-not-allowed md:border-x md:border-[var(--border-subtle)]"
           >
             <Maximize2 size={11} />
-            <span className="hidden xl:inline">Fit</span>
+            <span className="hidden xl:inline">{t("Fit")}</span>
           </button>
           <button
             data-testid="schematic-zoom-in-btn"
             onClick={onZoomIn}
             disabled={!hasCircuit}
-            title="Zoom In (Ctrl +)"
-            aria-label="Zoom In"
+            title={t("Zoom In (Ctrl +)")}
+            aria-label={t("Zoom In")}
             className="hidden md:flex p-1 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] rounded-[3px] text-[var(--text-muted)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <ZoomIn size={13} />
@@ -311,8 +313,8 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
             data-testid="schematic-reset-view-btn"
             onClick={onResetView}
             disabled={!hasCircuit}
-            title="Reset Pan & Zoom"
-            aria-label="Reset Pan & Zoom (1:1)"
+            title={t("Reset Pan & Zoom")}
+            aria-label={t("Reset Pan & Zoom (1:1)")}
             className="hidden md:flex px-1.5 py-0.5 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] rounded-[3px] text-[var(--text-muted)] transition-colors text-[10px] font-mono font-medium disabled:opacity-40 disabled:cursor-not-allowed border-l border-[var(--border-subtle)]"
           >
             <span>1:1</span>
@@ -326,7 +328,7 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
           data-testid="schematic-truth-table-toggle"
           onClick={onToggleTruthTable}
           disabled={!hasCircuit}
-          title={isTruthTableOpen ? 'Close Truth Table' : 'Open Interactive Truth Table'}
+          title={isTruthTableOpen ? t("Close Truth Table") : t("Open Interactive Truth Table")}
           className={`flex items-center gap-1.5 px-2 py-1 rounded-[4px] text-xs font-medium border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
             isTruthTableOpen
               ? 'bg-[var(--accent-subtle)] text-[var(--accent-primary)] border-[var(--accent-border)] font-semibold shadow-xs'
@@ -334,14 +336,14 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
           }`}
         >
           <Table2 size={13} />
-          <span className="hidden lg:inline">Truth Table</span>
+          <span className="hidden lg:inline">{t("Truth Table")}</span>
         </button>
 
         {/* Inspector Toggle */}
         <button
           data-testid="schematic-inspector-toggle"
           onClick={onToggleInspector}
-          title={isInspectorOpen ? 'Collapse Inspector' : 'Expand Inspector'}
+          title={isInspectorOpen ? t("Collapse Inspector") : t("Expand Inspector")}
           className={`flex items-center gap-1.5 px-2 py-1 rounded-[4px] text-xs font-medium border transition-colors ${
             isInspectorOpen
               ? 'bg-[var(--accent-subtle)] text-[var(--accent-primary)] border-[var(--accent-border)] font-semibold shadow-xs'
@@ -349,14 +351,14 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
           }`}
         >
           <Info size={13} />
-          <span className="hidden lg:inline">Inspector</span>
+          <span className="hidden lg:inline">{t("Inspector")}</span>
         </button>
 
         {/* Console Toggle */}
         <button
           data-testid="schematic-console-toggle"
           onClick={onToggleConsole}
-          title={isConsoleOpen ? 'Close Console / Problems' : 'Open Console / Problems'}
+          title={isConsoleOpen ? t("Close Console / Problems") : t("Open Console / Problems")}
           className={`flex items-center gap-1.5 px-2 py-1 rounded-[4px] text-xs font-medium border transition-colors ${
             isConsoleOpen
               ? 'bg-[var(--accent-subtle)] text-[var(--accent-primary)] border-[var(--accent-border)] font-semibold shadow-xs'
@@ -364,7 +366,7 @@ export const SchematicToolbar: React.FC<SchematicToolbarProps> = ({
           }`}
         >
           <Terminal size={13} />
-          <span className="hidden sm:inline">Console</span>
+          <span className="hidden sm:inline">{t("Console")}</span>
           {errorCount > 0 && (
             <span className="text-[10px] font-mono px-1 py-0.2 bg-red-500/10 text-red-500 rounded font-semibold border border-red-500/20">
               {errorCount}

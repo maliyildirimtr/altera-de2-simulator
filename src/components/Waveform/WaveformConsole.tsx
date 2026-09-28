@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Terminal, AlertTriangle, Trash2, X } from 'lucide-react';
 
+import { useT } from '../../i18n/toolText';
 export interface WaveformConsoleProps {
   height: number;
   logs: string[];
@@ -16,6 +17,7 @@ export const WaveformConsole: React.FC<WaveformConsoleProps> = ({
   onClearLogs,
   onClose,
 }) => {
+  const t = useT();
   const [activeTab, setActiveTab] = useState<'console' | 'problems'>('console');
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -83,7 +85,7 @@ export const WaveformConsole: React.FC<WaveformConsoleProps> = ({
             }`}
           >
             <Terminal size={12} />
-            <span>Console</span>
+            <span>{t("Console")}</span>
             <span
               className="text-[10px] font-mono px-1 py-0.2 rounded border"
               style={{
@@ -109,7 +111,7 @@ export const WaveformConsole: React.FC<WaveformConsoleProps> = ({
             }`}
           >
             <AlertTriangle size={12} className={problems.length > 0 ? 'text-amber-500' : 'text-[var(--text-muted)]'} />
-            <span>Problems</span>
+            <span>{t("Problems")}</span>
             {problems.length > 0 && (
               <span className="text-[10px] font-mono px-1 py-0.2 bg-amber-500/10 text-amber-500 rounded font-semibold border border-amber-500/20">
                 {problems.length}
@@ -123,13 +125,13 @@ export const WaveformConsole: React.FC<WaveformConsoleProps> = ({
           {isCompiling && (
             <div className="flex items-center gap-1.5 text-[11px] text-blue-500 mr-2 font-mono">
               <div className="w-2.5 h-2.5 border-2 border-blue-500/40 border-t-blue-500 rounded-full animate-spin" />
-              <span>Compiling...</span>
+              <span>{t("Compiling...")}</span>
             </div>
           )}
 
           <button
             onClick={onClearLogs}
-            title="Clear Console Output"
+            title={t("Clear Console Output")}
             className="p-1 rounded-[4px] hover:bg-[var(--bg-hover)] transition-colors"
             style={{ color: 'var(--text-muted)' }}
           >
@@ -139,7 +141,7 @@ export const WaveformConsole: React.FC<WaveformConsoleProps> = ({
           {onClose && (
             <button
               onClick={onClose}
-              title="Close Console (Alt+T)"
+              title={t("Close Console (Alt+T)")}
               className="p-1 rounded-[4px] hover:bg-[var(--bg-hover)] transition-colors ml-1"
               style={{ color: 'var(--text-muted)' }}
             >
@@ -158,13 +160,12 @@ export const WaveformConsole: React.FC<WaveformConsoleProps> = ({
         {displayedLogs.length === 0 ? (
           <div className="italic" style={{ color: 'var(--text-muted)' }}>
             {activeTab === 'problems'
-              ? 'No errors or warnings recorded.'
-              : 'Console ready. Upload or write HDL files and click Compile.'}
+              ? t("No errors or warnings recorded.") : t("Console ready. Upload or write HDL files and click Compile.")}
           </div>
         ) : (
           displayedLogs.map((line, idx) => (
             <div key={idx} className={`whitespace-pre-wrap mb-0.5 ${getLogStyle(line)}`}>
-              {line}
+              {t(line)}
             </div>
           ))
         )}

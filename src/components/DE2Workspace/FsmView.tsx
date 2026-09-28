@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { extractFsm, type FsmModel } from '../../board/fsmExtract';
 import { useBoardStore } from '../../store/boardStore';
 
+import { useT } from '../../i18n/toolText';
 const NODE_R = 30;
 
 /** Current numeric value of the state register (flattened names tolerated). */
@@ -40,6 +41,7 @@ function layout(model: FsmModel, width: number, height: number) {
  * source text, and never drives the simulation.
  */
 export function FsmView({ source }: { source: string }) {
+  const t = useT();
   const model = useMemo(() => (source ? extractFsm(source) : null), [source]);
   const value = useStateValue(model?.stateVar ?? null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -65,7 +67,7 @@ export function FsmView({ source }: { source: string }) {
   }, [current]);
 
   if (!source) {
-    return <div data-testid="fsm-view" className="italic text-xs" style={{ color: 'var(--text-muted)' }}>Compile a design to see its state machine.</div>;
+    return <div data-testid="fsm-view" className="italic text-xs" style={{ color: 'var(--text-muted)' }}>{t("Compile a design to see its state machine.")}</div>;
   }
   if (!model) {
     return (
@@ -93,7 +95,7 @@ export function FsmView({ source }: { source: string }) {
         {current ? <> · now <b style={{ color: '#f59e0b' }}>{current}</b></> : value !== null ? <> · value {value} (unnamed)</> : null}
       </div>
       <div ref={wrapRef} className="flex-1 min-h-0">
-        <svg width={w} height={h} role="img" aria-label="State diagram" style={{ display: 'block' }}>
+        <svg width={w} height={h} role="img" aria-label={t("State diagram")} style={{ display: 'block' }}>
           <defs>
             <marker id="fsm-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
               <path d="M0,0 L10,5 L0,10 z" fill="var(--text-secondary)" />

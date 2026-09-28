@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FolderTree, FileCode, Plus, X } from 'lucide-react';
 
+import { useT } from '../../i18n/toolText';
 export interface ProjectFile {
   name: string;
   content: string;
@@ -35,6 +36,7 @@ export const SchematicProjectPanel: React.FC<SchematicProjectPanelProps> = ({
   synthesisStatus,
   onClose,
 }) => {
+  const t = useT();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   return (
@@ -67,7 +69,7 @@ export const SchematicProjectPanel: React.FC<SchematicProjectPanelProps> = ({
             className="text-[11px] font-bold uppercase tracking-wider truncate"
             style={{ color: 'var(--text-muted)' }}
           >
-            Project Files
+            {t("Project Files")}
           </span>
           <span
             className="text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0 border"
@@ -84,7 +86,7 @@ export const SchematicProjectPanel: React.FC<SchematicProjectPanelProps> = ({
           <button
             data-testid="create-file-btn"
             onClick={onCreateFile}
-            title="Create New HDL File"
+            title={t("Create New HDL File")}
             className="p-1 rounded-[4px] border transition-colors hover:bg-[var(--bg-hover)]"
             style={{
               backgroundColor: 'var(--bg-surface)',
@@ -97,7 +99,7 @@ export const SchematicProjectPanel: React.FC<SchematicProjectPanelProps> = ({
           {onClose && (
             <button
               onClick={onClose}
-              title="Collapse Project Panel"
+              title={t("Collapse Project Panel")}
               className="p-1 rounded-[4px] hover:bg-[var(--bg-hover)] transition-colors"
               style={{ color: 'var(--text-muted)' }}
             >
@@ -118,7 +120,7 @@ export const SchematicProjectPanel: React.FC<SchematicProjectPanelProps> = ({
               fontSize: '0.78rem',
             }}
           >
-            No source files loaded
+            {t("No source files loaded")}
           </div>
         ) : (
           files.map((file, idx) => {
@@ -166,7 +168,7 @@ export const SchematicProjectPanel: React.FC<SchematicProjectPanelProps> = ({
                         e.stopPropagation();
                         onDeleteFile(idx);
                       }}
-                      title="Delete File"
+                      title={t("Delete File")}
                       style={{
                         background: 'transparent',
                         border: 'none',
@@ -199,7 +201,7 @@ export const SchematicProjectPanel: React.FC<SchematicProjectPanelProps> = ({
             backgroundColor: 'var(--bg-app)',
           }}
         >
-          <span>Top Module: </span>
+          <span>{t("Top Module:")} </span>
           <strong style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>{topModule}</strong>
         </div>
       )}
@@ -225,7 +227,7 @@ export const SchematicProjectPanel: React.FC<SchematicProjectPanelProps> = ({
             letterSpacing: '0.5px',
           }}
         >
-          Synthesis Settings
+          {t("Synthesis Settings")}
         </span>
 
         <label
@@ -248,7 +250,7 @@ export const SchematicProjectPanel: React.FC<SchematicProjectPanelProps> = ({
             }}
             style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)' }}
           />
-          Optimize Logic (Yosys)
+          {t("Optimize Logic (Yosys)")}
         </label>
 
         <label
@@ -271,7 +273,7 @@ export const SchematicProjectPanel: React.FC<SchematicProjectPanelProps> = ({
             }}
             style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)' }}
           />
-          Simplify RTL Diagram
+          {t("Simplify RTL Diagram")}
         </label>
       </div>
     </aside>

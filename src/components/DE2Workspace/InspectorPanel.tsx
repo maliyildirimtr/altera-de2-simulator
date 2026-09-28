@@ -48,6 +48,7 @@ function getComponentLabel(vc: string | null): string {
 import { ResizableDivider } from './ResizableDivider';
 import { downloadText } from '../../utils/svgExport';
 
+import { useT } from '../../i18n/toolText';
 interface InspectorPanelProps {
   isOpen: boolean;
   width?: number;
@@ -67,6 +68,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
   onPinMappingResizeEnd,
   onToggle,
 }) => {
+  const t = useT();
   const {
     pinMappings,
     setPinMappings,
@@ -173,7 +175,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
         color: 'var(--text-primary)',
       }}
       className="border-l border-[var(--border-subtle)] flex flex-col shrink-0 select-none z-10 overflow-hidden"
-      aria-label="Inspector Panel"
+      aria-label={t("Inspector Panel")}
     >
       {/* Header */}
       <div
@@ -186,15 +188,15 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
             className="text-[11px] font-bold uppercase tracking-wider select-none"
             style={{ color: 'var(--text-muted)' }}
           >
-            Inspector
+            {t("Inspector")}
           </span>
         </div>
         <button
           onClick={onToggle}
           className="w-6 h-6 rounded-[4px] flex items-center justify-center transition-colors border border-transparent hover:border-[var(--border-subtle)] hover:bg-[var(--bg-hover)]"
           style={{ color: 'var(--text-secondary)' }}
-          title="Collapse Inspector"
-          aria-label="Collapse Inspector"
+          title={t("Collapse Inspector")}
+          aria-label={t("Collapse Inspector")}
         >
           <ChevronRight size={14} />
         </button>
@@ -211,7 +213,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
             style={{ backgroundColor: 'var(--bg-panel-header)', color: 'var(--text-primary)' }}
           >
             <span className="flex items-center gap-1.5">
-              <span>Pin Mapping</span>
+              <span>{t("Pin Mapping")}</span>
               <span
                 className="text-[10px] font-mono font-normal px-1.5 py-0.2 rounded border"
                 style={{
@@ -233,7 +235,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                   className="text-[10px] uppercase font-bold tracking-wider select-none"
                   style={{ color: 'var(--text-muted)' }}
                 >
-                  HDL Port → Board
+                  {t("HDL Port → Board")}
                 </span>
                 <div className="flex items-center gap-1.5">
                   <button
@@ -246,10 +248,10 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                       borderColor: 'var(--border-subtle)',
                       color: copiedQsf ? 'var(--state-success, #10b981)' : 'var(--text-secondary)',
                     }}
-                    title="Copy QSF constraints"
+                    title={t("Copy QSF constraints")}
                   >
                     <Copy size={11} />
-                    {copiedQsf ? <span>Copied!</span> : 'Copy QSF'}
+                    {copiedQsf ? <span>{t("Copied!")}</span> : t("Copy QSF")}
                   </button>
                   <button
                     data-testid="download-qsf-btn"
@@ -261,8 +263,8 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                       borderColor: 'var(--border-subtle)',
                       color: 'var(--text-secondary)',
                     }}
-                    title="Download a .qsf file for Quartus"
-                    aria-label="Download QSF file"
+                    title={t("Download a .qsf file for Quartus")}
+                    aria-label={t("Download QSF file")}
                   >
                     <Download size={11} />
                     .qsf
@@ -276,9 +278,9 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                       borderColor: 'var(--accent-border)',
                       color: 'var(--accent-primary)',
                     }}
-                    title="Add new pin mapping"
+                    title={t("Add new pin mapping")}
                   >
-                    <Plus size={11} /> Add
+                    <Plus size={11} /> {t("Add")}
                   </button>
                 </div>
               </div>
@@ -310,7 +312,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                               type="text"
                               value={pin.portName}
                               onChange={e => updatePin(i, 'portName', e.target.value)}
-                              placeholder="Port (e.g. SW[0])"
+                              placeholder={t("Port (e.g. SW[0])")}
                               style={{
                                 backgroundColor: 'var(--bg-panel)',
                                 borderColor: 'var(--border-subtle)',
@@ -337,8 +339,8 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                               data-testid={`pin-delete-${i}`}
                               onClick={() => deletePin(i)}
                               className="p-1 rounded text-[var(--text-muted)] hover:text-red-500 hover:bg-[var(--bg-hover)] transition-colors"
-                              title="Delete mapping"
-                              aria-label="Delete mapping"
+                              title={t("Delete mapping")}
+                              aria-label={t("Delete mapping")}
                             >
                               <Trash2 size={12} />
                             </button>
@@ -350,7 +352,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                               className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                                 isAssigned ? 'bg-emerald-500' : 'bg-amber-500/70'
                               }`}
-                              title={isAssigned ? 'Assigned' : 'Unmapped'}
+                              title={isAssigned ? t("Assigned") : t("Unmapped")}
                             />
                             <select
                               data-testid={`pin-virtual-${i}`}
@@ -385,7 +387,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                     className="p-4 text-center text-xs italic"
                     style={{ color: 'var(--text-muted)' }}
                   >
-                    No pin assignments loaded. Import a .qsf file or add pins above.
+                    {t("No pin assignments loaded. Import a .qsf file or add pins above.")}
                   </div>
                 )}
               </div>
@@ -398,7 +400,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
           <ResizableDivider
             orientation="horizontal"
             data-testid="splitter-pin-mapping"
-            aria-label="Resize Pin Mapping Table"
+            aria-label={t("Resize Pin Mapping Table")}
             valueMin={120}
             valueMax={480}
             valueNow={pinMappingHeight ?? 220}
@@ -417,7 +419,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
           >
             <span className="flex items-center gap-2">
               <Clock size={13} className="text-[var(--accent-primary)]" />
-              <span>Clock &amp; Timing</span>
+              <span>{t("Clock & Timing")}</span>
             </span>
             {openSections.clock ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </button>
@@ -448,17 +450,17 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                   onClick={() => tickClock()}
                   disabled={!canSimulate || isSimRunning}
                   className="px-2.5 py-1 rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] text-xs font-medium transition-colors flex items-center gap-1.5 shadow-xs"
-                  title="Pulse Clock Signal"
+                  title={t("Pulse Clock Signal")}
                 >
                   <Clock size={11} className="text-[var(--text-muted)]" />
-                  Step Clock
+                  {t("Step Clock")}
                 </button>
               </div>
 
               {/* Continuous Auto-Simulation */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[var(--text-secondary)] font-medium">Continuous Run</span>
+                  <span className="text-[var(--text-secondary)] font-medium">{t("Continuous Run")}</span>
                   <button
                     onClick={() => {
                       if (isSimRunning) stopAutoSimulation();
@@ -477,7 +479,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                       </>
                     ) : (
                       <>
-                        <Play size={12} /> Auto Run
+                        <Play size={12} /> {t("Auto Run")}
                       </>
                     )}
                   </button>
@@ -486,7 +488,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                 {/* Frequency Slider */}
                 <div className="pt-1">
                   <div className="flex justify-between text-[11px] text-[var(--text-muted)] mb-1.5">
-                    <span>Frequency</span>
+                    <span>{t("Frequency")}</span>
                     <span className="font-mono text-[var(--text-primary)] font-semibold">
                       {simFrequency} Hz
                     </span>
@@ -515,7 +517,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
           >
             <span className="flex items-center gap-2">
               <RotateCcw size={13} className="text-[var(--text-secondary)]" />
-              <span>Board Reset</span>
+              <span>{t("Board Reset")}</span>
             </span>
             {openSections.reset ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </button>
@@ -530,7 +532,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                 className="w-full h-[30px] flex items-center justify-center gap-1.5 px-3 rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] font-medium transition-colors shadow-xs"
               >
                 <RotateCcw size={13} />
-                Reset Board State
+                {t("Reset Board State")}
               </button>
             </div>
           )}
@@ -545,7 +547,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
           >
             <span className="flex items-center gap-2">
               <Activity size={13} className="text-emerald-500" />
-              <span>Live I/O Status</span>
+              <span>{t("Live I/O Status")}</span>
             </span>
             {openSections.io ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </button>
@@ -562,7 +564,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                   className="text-[10px] font-bold uppercase tracking-wider block mb-1 select-none"
                   style={{ color: 'var(--text-muted)' }}
                 >
-                  Active Inputs
+                  {t("Active Inputs")}
                 </span>
                 <div className="flex flex-wrap gap-1">
                   {activeSwitches.length > 0 || pressedKeys.length > 0 ? (
@@ -586,7 +588,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                     </>
                   ) : (
                     <span className="italic text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                      All default (SW=0, KEY=1)
+                      {t("All default (SW=0, KEY=1)")}
                     </span>
                   )}
                 </div>
@@ -598,7 +600,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                   className="text-[10px] font-bold uppercase tracking-wider block mb-1 select-none"
                   style={{ color: 'var(--text-muted)' }}
                 >
-                  Active Outputs
+                  {t("Active Outputs")}
                 </span>
                 <div className="flex flex-wrap gap-1">
                   {activeLedR.length > 0 || activeLedG.length > 0 ? (
@@ -622,7 +624,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                     </>
                   ) : (
                     <span className="italic text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                      No active LEDs
+                      {t("No active LEDs")}
                     </span>
                   )}
                 </div>

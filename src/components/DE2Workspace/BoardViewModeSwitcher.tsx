@@ -2,6 +2,7 @@ import React from 'react';
 import type { BoardViewMode } from '../../board/boardViewMode';
 import { BOARD_VIEW_MODES } from '../../board/boardViewMode';
 
+import { useT } from '../../i18n/toolText';
 interface BoardViewModeSwitcherProps {
   mode: BoardViewMode;
   onSelect: (mode: BoardViewMode) => void;
@@ -14,7 +15,9 @@ interface BoardViewModeSwitcherProps {
  * renderer is discoverable without pretending it exists. Selection is a pure
  * view preference and never touches simulation state.
  */
-export const BoardViewModeSwitcher: React.FC<BoardViewModeSwitcherProps> = ({ mode, onSelect }) => (
+export const BoardViewModeSwitcher: React.FC<BoardViewModeSwitcherProps> = ({ mode, onSelect }) => {
+  const t = useT();
+  return (
   <div
     data-testid="de2-board-view-switcher"
     data-active-mode={mode}
@@ -25,7 +28,7 @@ export const BoardViewModeSwitcher: React.FC<BoardViewModeSwitcherProps> = ({ mo
       boxShadow: 'var(--shadow-sm)',
     }}
     role="group"
-    aria-label="Board view mode"
+    aria-label={t("Board view mode")}
   >
     {BOARD_VIEW_MODES.map((option) => {
       const isActive = option.mode === mode && option.enabled;
@@ -39,7 +42,7 @@ export const BoardViewModeSwitcher: React.FC<BoardViewModeSwitcherProps> = ({ mo
           disabled={!option.enabled}
           aria-pressed={isActive}
           aria-disabled={!option.enabled}
-          title={option.description}
+          title={t(option.description)}
           className="flex items-center gap-1 px-2 h-[24px] rounded-[3px] text-[11px] font-semibold transition-colors disabled:cursor-not-allowed"
           style={{
             backgroundColor: isActive ? 'var(--accent-subtle)' : 'transparent',
@@ -61,11 +64,12 @@ export const BoardViewModeSwitcher: React.FC<BoardViewModeSwitcherProps> = ({ mo
                 color: 'var(--text-muted)',
               }}
             >
-              {option.badge}
+              {t(option.badge)}
             </span>
           )}
         </button>
       );
     })}
   </div>
-);
+  );
+};

@@ -11,6 +11,7 @@ import { findEdge } from '../../services/transitionSearch';
 import { ChevronRight, ChevronDown, Binary } from 'lucide-react';
 import { useResizableColumns } from '../../hooks/useResizableColumns';
 
+import { useT } from '../../i18n/toolText';
 export interface RenderableRow {
   type: 'signal' | 'bit';
   id: string;
@@ -47,6 +48,7 @@ export function SignalNamePanel({
   radixes = {},
   width,
 }: SignalNamePanelProps) {
+  const t = useT();
 
   // ── Resizable columns: [Name, Value] widths in px ─────────────
   const { widths, getHandleProps } = useResizableColumns([140, 75]);
@@ -114,7 +116,7 @@ export function SignalNamePanel({
       >
         {/* Name header */}
         <div className="flex items-center px-3 truncate shrink-0" style={{ width: nameW }}>
-          Signal
+          {t("Signal")}
         </div>
 
         {/* Drag handle */}
@@ -126,7 +128,7 @@ export function SignalNamePanel({
 
         {/* Value header */}
         <div className="flex-1 h-full flex items-center px-3 truncate overflow-hidden">
-          Value
+          {t("Value")}
         </div>
       </div>
 
@@ -202,14 +204,14 @@ export function SignalNamePanel({
                     <button
                       className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 shadow-xs transition-colors"
                       onClick={e => handleEdgeSearch(e, row, 'prev')}
-                      title="Previous Edge"
+                      title={t("Previous Edge")}
                     >
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 18l-6-6 6-6"/></svg>
                     </button>
                     <button
                       className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 shadow-xs transition-colors"
                       onClick={e => handleEdgeSearch(e, row, 'next')}
-                      title="Next Edge"
+                      title={t("Next Edge")}
                     >
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 18l6-6-6-6"/></svg>
                     </button>

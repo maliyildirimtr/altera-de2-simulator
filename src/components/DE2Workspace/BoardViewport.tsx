@@ -7,6 +7,7 @@ import { loadBoardViewMode, saveBoardViewMode } from '../../board/boardViewMode'
 import { detailForScale } from '../../board/de2Layout';
 import { ZoomIn, ZoomOut, Maximize2, Minimize2, RotateCcw, Expand } from 'lucide-react';
 
+import { useT } from '../../i18n/toolText';
 interface BoardViewportProps {
   isSplitView?: boolean;
 }
@@ -88,6 +89,7 @@ const CONTROL_BUTTON_CLASS =
   'p-1 rounded-[3px] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]';
 
 export const BoardViewport: React.FC<BoardViewportProps> = ({ isSplitView }) => {
+  const t = useT();
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [viewMode, setViewMode] = useState<BoardViewMode>(loadBoardViewMode);
@@ -500,7 +502,7 @@ export const BoardViewport: React.FC<BoardViewportProps> = ({ isSplitView }) => 
       }}
       tabIndex={0}
       role="group"
-      aria-label="DE2 board viewport — arrow keys pan, plus and minus zoom, 0 fits the board"
+      aria-label={t("DE2 board viewport — arrow keys pan, plus and minus zoom, 0 fits the board")}
       onKeyDown={handleKeyDown}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -552,30 +554,30 @@ export const BoardViewport: React.FC<BoardViewportProps> = ({ isSplitView }) => 
         </span>
         <button
           onClick={() => handleZoomStep('out')}
-          title="Zoom Out"
+          title={t("Zoom Out")}
           className={CONTROL_BUTTON_CLASS}
           style={{ color: 'var(--text-secondary)' }}
-          aria-label="Zoom Out"
+          aria-label={t("Zoom Out")}
           data-testid="de2-zoom-out"
         >
           <ZoomOut size={13} />
         </button>
         <button
           onClick={handleFitToScreen}
-          title="Fit Board to Screen"
+          title={t("Fit Board to Screen")}
           className={CONTROL_BUTTON_CLASS}
           style={{ color: 'var(--text-secondary)' }}
-          aria-label="Fit Board to Screen"
+          aria-label={t("Fit Board to Screen")}
           data-testid="de2-fit-view"
         >
           <Maximize2 size={13} />
         </button>
         <button
           onClick={() => handleZoomStep('in')}
-          title="Zoom In"
+          title={t("Zoom In")}
           className={CONTROL_BUTTON_CLASS}
           style={{ color: 'var(--text-secondary)' }}
-          aria-label="Zoom In"
+          aria-label={t("Zoom In")}
           data-testid="de2-zoom-in"
         >
           <ZoomIn size={13} />
@@ -583,20 +585,20 @@ export const BoardViewport: React.FC<BoardViewportProps> = ({ isSplitView }) => 
         <span className="w-px h-3.5 mx-0.5" style={{ backgroundColor: 'var(--border-subtle)' }} />
         <button
           onClick={handleFitToScreen}
-          title="Reset View"
+          title={t("Reset View")}
           className={CONTROL_BUTTON_CLASS}
           style={{ color: 'var(--text-secondary)' }}
-          aria-label="Reset View"
+          aria-label={t("Reset View")}
           data-testid="de2-reset-view"
         >
           <RotateCcw size={13} />
         </button>
         <button
           onClick={handleToggleFullscreen}
-          title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Board'}
+          title={isFullscreen ? t("Exit Fullscreen") : t("Fullscreen Board")}
           className={CONTROL_BUTTON_CLASS}
           style={{ color: 'var(--text-secondary)' }}
-          aria-label={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Board'}
+          aria-label={isFullscreen ? t("Exit Fullscreen") : t("Fullscreen Board")}
           aria-pressed={isFullscreen}
           data-testid="de2-fullscreen"
         >

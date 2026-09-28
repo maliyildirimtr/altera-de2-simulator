@@ -4,6 +4,7 @@ import '../../lib/monacoSetup';
 import { FileCode, X, Upload } from 'lucide-react';
 import type { ProjectFile } from './SchematicProjectPanel';
 
+import { useT } from '../../i18n/toolText';
 interface SchematicEditorProps {
   files: ProjectFile[];
   activeFileIndex: number;
@@ -23,6 +24,7 @@ export const SchematicEditor: React.FC<SchematicEditorProps> = ({
   onClose,
   isModified,
 }) => {
+  const t = useT();
   const [isEditorReady, setIsEditorReady] = useState(false);
   const currentFile = files[activeFileIndex];
 
@@ -74,7 +76,7 @@ export const SchematicEditor: React.FC<SchematicEditorProps> = ({
             <span>{currentFile?.name || 'untitled.sv'}</span>
             {isModified && (
               <span
-                title="File modified since last synthesis"
+                title={t("File modified since last synthesis")}
                 style={{
                   width: '6px',
                   height: '6px',
@@ -105,12 +107,12 @@ export const SchematicEditor: React.FC<SchematicEditorProps> = ({
             }}
           >
             <Upload size={12} />
-            <span>Import HDL</span>
+            <span>{t("Import HDL")}</span>
           </button>
           {onClose && (
             <button
               onClick={onClose}
-              title="Close Editor"
+              title={t("Close Editor")}
               className="p-1 rounded-[4px] hover:bg-[var(--bg-hover)] transition-colors"
               style={{
                 background: 'transparent',
@@ -183,7 +185,7 @@ export const SchematicEditor: React.FC<SchematicEditorProps> = ({
               color: 'var(--text-secondary)',
             }}
           >
-            <div>No HDL file open.</div>
+            <div>{t("No HDL file open.")}</div>
             <button
               onClick={onImportHDL}
               style={{
@@ -196,7 +198,7 @@ export const SchematicEditor: React.FC<SchematicEditorProps> = ({
                 cursor: 'pointer',
               }}
             >
-              Import HDL
+              {t("Import HDL")}
             </button>
           </div>
         )}
