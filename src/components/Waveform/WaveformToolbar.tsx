@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Play, RotateCcw, ZoomIn, ZoomOut, Maximize2, Settings,
-  FolderOpen, FileCode, Upload, Terminal, Layers, Activity, Columns,
+  FolderOpen, FileCode, Terminal, Layers, Activity, Columns,
 } from 'lucide-react';
 import type { VCDTimescale } from '../../services/vcdParser';
 import { formatTime } from '../../services/waveformRenderer';
@@ -27,9 +27,11 @@ export interface WaveformToolbarProps {
   onToggleObjectsPanel: () => void;
   onToggleEditor?: () => void;
   onToggleConsole: () => void;
+  /** Kept for callers; the layout reset now lives in the page's File menu. */
   onResetLayout?: () => void;
-  onUpload: () => void;
-  /** Rendered next to Upload (share link, export actions). */
+  /** Kept for callers; upload now lives in the page's File menu. */
+  onUpload?: () => void;
+  /** Rendered before Compile (stimulus editor, File menu). */
   actionsSlot?: React.ReactNode;
   onCompile: () => void;
   onRun: () => void;
@@ -56,8 +58,6 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
   onToggleObjectsPanel,
   onToggleEditor,
   onToggleConsole,
-  onResetLayout,
-  onUpload,
   actionsSlot,
   onCompile,
   onRun,
@@ -146,7 +146,6 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
             title={t("Code Editor View (Alt+E)")}
           >
             <FileCode size={13} />
-            <span className="hidden xl:inline">{t("Code")} </span>
             <span className="hidden sm:inline">{t("Editor")}</span>
           </button>
 
@@ -167,36 +166,10 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
           </button>
         </div>
 
-        {onResetLayout && (
-          <button
-            data-testid="wf-reset-layout"
-            onClick={onResetLayout}
-            title={t("Reset Workspace Layout")}
-            aria-label={t("Reset Workspace Layout")}
-            className="p-1.5 rounded-[4px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors border border-transparent flex items-center"
-          >
-            <RotateCcw size={13} />
-          </button>
-        )}
       </div>
 
       {/* ── Center: Engine Actions & Zoom ──────────────────────── */}
       <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-        {/* Upload Button */}
-        <button
-          data-testid="wf-btn-upload"
-          onClick={onUpload}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-xs font-medium border transition-colors shadow-xs"
-          style={{
-            backgroundColor: 'var(--bg-surface)',
-            borderColor: 'var(--border-subtle)',
-            color: 'var(--text-primary)',
-          }}
-          title={t("Upload .sv / .v / .vcd file")}
-        >
-          <Upload size={13} />
-          <span className="hidden md:inline">{t("Upload")}</span>
-        </button>
         {actionsSlot}
 
         <div className="w-px h-4 bg-[var(--border-subtle)] mx-0.5 hidden sm:block" />
@@ -238,6 +211,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
         </button>
 
         {/* Restart Button */}
+        {isCompiled && (
         <button
           data-testid="wf-btn-restart"
           onClick={onRestart}
@@ -253,7 +227,11 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
         >
           <RotateCcw size={13} />
         </button>
+        )}
 
+        {/* Zoom and cursor readouts only matter once there is a waveform. */}
+        {isCompiled && mainView !== 'editor' && (
+        <>
         <div className="w-px h-4 bg-[var(--border-subtle)] mx-0.5 hidden md:block" />
 
         {/* Zoom Controls */}
@@ -302,11 +280,15 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
             <span className="hidden xl:inline">{t("Fit")}</span>
           </button>
         </div>
+        </>
+        )}
       </div>
 
       {/* ── Right: Real Timing Display & Console Toggle ─────────── */}
       <div className="flex items-center gap-2 shrink-0">
         {/* Read-Only Cursors & Delta Timing Display */}
+        {isCompiled && mainView !== 'editor' && (
+        <>
         <div
           data-testid="wf-timing-display"
           className="hidden xl:flex items-center gap-2.5 px-2.5 py-1 border border-[var(--border-subtle)] rounded-[4px] font-mono text-[11px] bg-[var(--bg-input)] text-[var(--text-secondary)] shadow-xs"
@@ -338,6 +320,8 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
         </div>
 
         <div className="w-px h-4 bg-[var(--border-subtle)] hidden xl:block" />
+        </>
+        )}
 
         {/* Console Toggle */}
         <button

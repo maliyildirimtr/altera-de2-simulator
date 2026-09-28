@@ -13,7 +13,7 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import MonacoEditor from '@monaco-editor/react';
 import '../lib/monacoSetup';
-import { Download, Plus, Share2, Wand2, X } from 'lucide-react';
+import { Download, FolderInput, Plus, RotateCcw, Upload, Wand2, X } from 'lucide-react';
 import { ToolbarMenu, MENU_ITEM_CLASS, MENU_ITEM_STYLE } from '../components/common/ToolbarMenu';
 import { StimulusEditor } from '../components/Waveform/StimulusEditor';
 import { ShareButton } from '../components/Share/ShareButton';
@@ -1046,7 +1046,12 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
               <Wand2 size={13} />
               <span className="hidden xl:inline">{t("Stimulus")}</span>
             </button>
-            <ToolbarMenu label={t("Export")} icon={<Share2 size={13} />} testId="wf-export-menu" className="flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-xs font-medium border transition-colors shadow-xs">
+            <ToolbarMenu label={t("File")} icon={<FolderInput size={13} />} testId="wf-export-menu" className="flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-xs font-medium border transition-colors shadow-xs">
+              <button type="button" role="menuitem" data-testid="wf-btn-upload" onClick={() => generalInputRef.current?.click()} className={MENU_ITEM_CLASS} style={MENU_ITEM_STYLE} title={t("Upload .sv / .v / .vcd file")}>
+                <Upload size={13} />
+                <span>{t("Open file (.sv / .v / .vcd)")}</span>
+              </button>
+              <div className="h-px my-1" style={{ backgroundColor: 'var(--border-subtle)' }} />
               <OpenInSchematicButton
                 className={MENU_ITEM_CLASS}
                 style={MENU_ITEM_STYLE}
@@ -1083,6 +1088,11 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
                 })}
                 onMessage={(msg) => setConsoleLogs((prev) => [...prev, msg.startsWith('Share link') ? `[Share] ${msg}` : `[ERROR] ${msg}`])}
               />
+              <div className="h-px my-1" style={{ backgroundColor: 'var(--border-subtle)' }} />
+              <button type="button" role="menuitem" data-testid="wf-reset-layout" onClick={handleResetLayout} className={MENU_ITEM_CLASS} style={MENU_ITEM_STYLE}>
+                <RotateCcw size={13} />
+                <span>{t("Reset Workspace Layout")}</span>
+              </button>
             </ToolbarMenu>
           </>
         }

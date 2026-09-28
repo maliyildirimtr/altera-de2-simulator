@@ -336,6 +336,8 @@ export const TOOL_TR: Record<string, string> = {
   'Create a printable lab report (save as PDF)': 'Yazdırılabilir laboratuvar raporu oluştur (PDF olarak kaydet)',
   Report: 'Rapor',
   Export: 'Dışa aktar',
+  File: 'Dosya',
+  'Open file (.sv / .v / .vcd)': 'Dosya aç (.sv / .v / .vcd)',
   'Lab report (PDF)': 'Laboratuvar raporu (PDF)',
   'Quartus project (.zip)': 'Quartus projesi (.zip)',
   'Download VCD': 'VCD indir',
