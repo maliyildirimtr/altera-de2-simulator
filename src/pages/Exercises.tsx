@@ -8,6 +8,18 @@ import { lintVerilog, type Diagnostic } from '../core/simulator/diagnostics';
 import { OpenInSchematicButton } from '../components/Share/OpenInToolButton';
 import { useI18n } from '../i18n/I18nProvider';
 import { fmt } from '../i18n/dictionary';
+import { useLocation, useNavigate } from 'react-router-dom';
+import {
+  ASSIGN_PARAM,
+  buildResult,
+  decodeAssignment,
+  loadActiveAssignment,
+  safeFileName,
+  saveActiveAssignment,
+  type ActiveAssignment,
+  type ExerciseStat,
+} from '../classroom/assignment';
+import { downloadText } from '../utils/svgExport';
 
 const STORAGE_KEY = 'logiclab_exercises_v1';
 const MAX_ROWS_SHOWN = 128;
@@ -16,6 +28,8 @@ interface Progress {
   active: string;
   code: Record<string, string>;
   solved: Record<string, boolean>;
+  /** Attempts and best score per exercise (reported in assignment result files). */
+  stats: Record<string, ExerciseStat>;
 }
 
 function loadProgress(): Progress {
@@ -28,13 +42,14 @@ function loadProgress(): Progress {
           active: getExercise(p.active) ? p.active : EXERCISES[0].id,
           code: p.code ?? {},
           solved: p.solved ?? {},
+          stats: p.stats ?? {},
         };
       }
     }
   } catch {
     /* start fresh */
   }
-  return { active: EXERCISES[0].id, code: {}, solved: {} };
+  return { active: EXERCISES[0].id, code: {}, solved: {}, stats: {} };
 }
 
 function bits(value: number, width: number): string {
@@ -172,6 +187,53 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
   const [showHint, setShowHint] = useState(false);
   const [onlyMismatches, setOnlyMismatches] = useState(false);
 
+  /* ── Classroom assignment (serverless: arrives in the URL) ── */
+  const c = d.classroom;
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [assignmentNote, setAssignmentNote] = useState<string | null>(null);
+  const [active, setActive] = useState<ActiveAssignment | null>(loadActiveAssignment);
+  const [onlyAssigned, setOnlyAssigned] = useState(true);
+  useEffect(() => {
+    const encoded = new URLSearchParams(location.search).get(ASSIGN_PARAM);
+    if (!encoded) return;
+    const a = decodeAssignment(encoded, (id) => !!getExercise(id));
+    if (a) {
+      const next = { assignment: a, student: active?.assignment.id === a.id ? active.student : active?.student ?? '' };
+      setActive(next);
+      saveActiveAssignment(next);
+      setOnlyAssigned(true);
+      setProgress((p) => (a.exercises.includes(p.active) ? p : { ...p, active: a.exercises[0] }));
+      setAssignmentNote(fmt(c.joined, { title: a.title }));
+    } else {
+      setAssignmentNote(c.badLink);
+    }
+    navigate('/exercises', { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]);
+  const assigned = active ? active.assignment.exercises : null;
+  const listed = assigned && onlyAssigned ? EXERCISES.filter((e) => assigned.includes(e.id)) : EXERCISES;
+  const setStudent = (student: string) => {
+    if (!active) return;
+    const next = { ...active, student };
+    setActive(next);
+    saveActiveAssignment(next);
+  };
+  const leaveAssignment = () => {
+    setActive(null);
+    saveActiveAssignment(null);
+    setAssignmentNote(null);
+  };
+  const downloadResult = async () => {
+    if (!active) return;
+    if (!active.student.trim()) {
+      setAssignmentNote(c.nameFirst);
+      return;
+    }
+    const res = await buildResult({ ...active, student: active.student.trim() }, latest.current.stats);
+    downloadText(JSON.stringify(res, null, 2), `${safeFileName(active.assignment.title)}_${safeFileName(active.student)}.json`, 'application/json');
+  };
+
   const exercise: Exercise = getExercise(progress.active) ?? EXERCISES[0];
   const code = progress.code[exercise.id] ?? exercise.starter;
   const goal = useMemo(() => expectedTable(exercise.reference, exercise.sequential), [exercise]);
@@ -219,9 +281,25 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
     // Line-level hints only when something is wrong.
     setDiagnostics(r.kind === 'graded' && r.passed === r.total ? [] : lintVerilog(code, r.kind === 'unsupported' ? r.message : undefined));
     setOnlyMismatches(r.kind === 'graded' && r.passed < r.total && r.total > 16);
-    if (r.kind === 'graded' && r.passed === r.total) {
-      setProgress((p) => ({ ...p, solved: { ...p.solved, [exercise.id]: true } }));
-    }
+    setProgress((p) => {
+      const prev = p.stats[exercise.id] ?? { solved: false, attempts: 0, bestPassed: 0, total: 0 };
+      const passed = r.kind === 'graded' ? r.passed : 0;
+      const total = r.kind === 'graded' ? r.total : prev.total;
+      const solvedNow = r.kind === 'graded' && r.passed === r.total;
+      return {
+        ...p,
+        solved: solvedNow ? { ...p.solved, [exercise.id]: true } : p.solved,
+        stats: {
+          ...p.stats,
+          [exercise.id]: {
+            solved: prev.solved || solvedNow,
+            attempts: prev.attempts + 1,
+            bestPassed: Math.max(prev.bestPassed, passed),
+            total,
+          },
+        },
+      };
+    });
   };
 
   const reset = () => {
@@ -256,7 +334,46 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
           <p data-testid="exercise-progress" className="text-[12px] mt-1" style={{ color: 'var(--text-secondary)' }}>
             {fmt(t.progress, { done: solvedCount, total: EXERCISES.length })}
           </p>
+          {assignmentNote && (
+            <p data-testid="assignment-note" className="text-[11.5px] mt-1.5" style={{ color: 'var(--accent-primary)' }}>{assignmentNote}</p>
+          )}
         </div>
+        {active && (
+          <div data-testid="assignment-banner" className="px-4 py-3 border-b flex flex-col gap-2" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--accent-subtle)' }}>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--accent-primary)' }}>{c.assignment}</p>
+              <p data-testid="assignment-title" className="text-[13.5px] font-bold leading-snug">{active.assignment.title}</p>
+              <p className="text-[11.5px]" style={{ color: 'var(--text-secondary)' }}>
+                {[active.assignment.teacher && fmt(c.bannerBy, { teacher: active.assignment.teacher }), active.assignment.due && fmt(c.bannerDue, { date: active.assignment.due })].filter(Boolean).join(' · ')}
+              </p>
+              <p className="text-[11.5px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                {fmt(c.assignedProgress, { done: active.assignment.exercises.filter((id) => progress.solved[id]).length, total: active.assignment.exercises.length })}
+              </p>
+            </div>
+            <label className="flex flex-col gap-1 text-[11.5px]" style={{ color: 'var(--text-secondary)' }}>
+              {c.yourName}
+              <input
+                data-testid="assignment-student"
+                value={active.student}
+                onChange={(e) => setStudent(e.target.value)}
+                placeholder={c.namePlaceholder}
+                className="h-8 px-2 rounded-[4px] border text-[13px]"
+                style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-panel)', color: 'var(--text-primary)' }}
+              />
+            </label>
+            <label className="flex items-center gap-1.5 text-[11.5px]" style={{ color: 'var(--text-secondary)' }}>
+              <input type="checkbox" checked={onlyAssigned} onChange={(e) => setOnlyAssigned(e.target.checked)} />
+              {c.onlyAssigned}
+            </label>
+            <button type="button" data-testid="assignment-download" onClick={downloadResult} className="h-8 rounded-[4px] text-xs font-semibold text-white" style={{ backgroundColor: 'var(--accent-primary)' }}>
+              {c.downloadResult}
+            </button>
+            <p className="text-[11px] leading-snug" style={{ color: 'var(--text-muted)' }}>{c.resultHint}</p>
+            <button type="button" onClick={leaveAssignment} className="text-[11px] underline self-start" style={{ color: 'var(--text-secondary)' }}>
+              {c.leave}
+            </button>
+          </div>
+        )}
         {/* Mobile: compact picker */}
         <div className="md:hidden p-3">
           <select
@@ -266,7 +383,7 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
             onChange={(e) => select(e.target.value)}
             aria-label={t.pageTitle}
           >
-            {EXERCISES.map((e, i) => (
+            {listed.map((e, i) => (
               <option key={e.id} value={e.id}>
                 {progress.solved[e.id] ? '✓ ' : ''}{String(i + 1).padStart(2, '0')} · {e.title[lang]}
               </option>
@@ -274,7 +391,7 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
           </select>
         </div>
         <ol className="hidden md:block flex-1 overflow-y-auto py-1">
-          {EXERCISES.map((e, i) => {
+          {listed.map((e, i) => {
             const active = e.id === exercise.id;
             return (
               <li key={e.id}>

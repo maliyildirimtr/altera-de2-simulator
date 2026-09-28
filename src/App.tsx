@@ -18,6 +18,7 @@ const DigitalLogicHub = lazy(() => import('./pages/DigitalLogicHub'));
 const FpgaHub = lazy(() => import('./pages/FpgaHub'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const Exercises = lazy(() => import('./pages/Exercises'));
+const Classroom = lazy(() => import('./pages/Classroom'));
 
 migrateLegacyStorageKeys();
 
@@ -33,6 +34,7 @@ function DocumentTitle() {
       '/examples': d.nav.examples,
       '/projects': d.nav.examples,
       '/exercises': d.nav.exercises,
+      '/classroom': d.nav.classroom,
       '/digital-logic': d.nav.digitalLogic,
       '/fpga': d.nav.fpga,
     };
@@ -89,6 +91,7 @@ export default function App() {
               <Route path="/digital-logic" element={<DigitalLogicHub />} />
               <Route path="/fpga" element={<FpgaHub />} />
               <Route path="/exercises" element={<Exercises isDarkMode={isDarkMode} />} />
+              <Route path="/classroom" element={<Classroom />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
