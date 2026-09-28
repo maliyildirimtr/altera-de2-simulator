@@ -333,6 +333,8 @@ export const TOOL_TR: Record<string, string> = {
   'This project is too large to share as a link. Download the files instead.': 'Bu proje link olarak paylaşmak için çok büyük. Dosyaları indir.',
   Copied: 'Kopyalandı',
   Share: 'Paylaş',
+  'Create a printable lab report (save as PDF)': 'Yazdırılabilir laboratuvar raporu oluştur (PDF olarak kaydet)',
+  Report: 'Rapor',
   Quartus: 'Quartus',
   // ── Console / log lines ──
   'DE2 Simulator ready. Load or write HDL, then Compile.': "DE2 Simülatörü hazır. HDL yükle veya yaz, sonra Derle'ye bas.",

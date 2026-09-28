@@ -114,6 +114,9 @@ import { parseBitRef, readSignal, readVector, writeSignal } from '../../../core/
 import { expandTarget, parseVirtualComponent } from '../../../board/virtualComponents';
 import { lintVerilog } from '../../../core/simulator/diagnostics';
 import { extractFsm } from '../../../board/fsmExtract';
+import { applyMetadata, diffOverride, normalizeMetadata } from '../../../examples/metadata';
+import { buildLabReport } from '../../../report/labReport';
+import { minimize, parseExpression, sopText, tableOf, variablesOf } from '../../../logic/boolean';
 import { ISO, project, faceTransform, sevenSegmentShapes } from '../boardGeometry';
 
 /* ────────────────────────────────────────────────────────────────────────
@@ -2888,6 +2891,65 @@ useBoardStore.setState({ engine: null, pinMappings: [], simState: {} });
   assert.strictEqual(fsm!.initial, 'A');
   assert.strictEqual(extractFsm('module m(input logic [1:0] s, output logic y);\n always_comb case (s) 0: y = 1; default: y = 0; endcase\nendmodule'), null, 'a mux case is not an FSM');
   pass('beginner diagnostics have no false positives on examples, and FSM extraction reads a case(state) machine');
+}
+
+
+{
+  // Example metadata: bad entries are dropped, overrides only touch text fields.
+  const meta = normalizeMetadata({
+    overrides: { half_adder: { title: 'Yarım Toplayıcı', difficulty: 'hard', topics: ['A'] }, 'Bad Id': { title: 'x' } },
+    added: [
+      { id: 'demo_mux', title: 'Demo', description: 'D', difficulty: 'beginner', category: 'routing', topics: [], learningObjectives: [], sourceFile: 'demo.sv', topModule: 'demo', testbenchFile: 'demo_tb.sv' },
+      { id: 'demo_mux', title: 'Dup', description: 'D', difficulty: 'beginner', category: 'routing', sourceFile: 'demo.sv', topModule: 'demo' },
+      { id: 'missing', title: 'M', description: 'D', difficulty: 'beginner', category: 'routing', sourceFile: 'nope.sv', topModule: 'm' },
+      { id: 'evil', title: 'E', description: 'D', difficulty: 'beginner', category: 'routing', sourceFile: '../../etc/passwd', topModule: 'm' },
+    ],
+  });
+  assert.deepStrictEqual(Object.keys(meta.overrides), ['half_adder']);
+  assert.deepStrictEqual(meta.overrides.half_adder, { title: 'Yarım Toplayıcı', topics: ['A'] }, 'invalid difficulty is dropped');
+  assert.deepStrictEqual(meta.added.map((a) => a.id), ['demo_mux', 'missing'], 'duplicate ids and unsafe file names are rejected');
+  const base = [{ id: 'half_adder', title: 'Half Adder', description: 'x', difficulty: 'beginner' as const, category: 'arithmetic' as const, topics: ['T'], learningObjectives: [], topModule: 'half_adder', source: { filename: 'half_adder.sv', language: 'systemverilog' as const, code: 'module half_adder; endmodule' }, tools: { schematic: true, waveform: true, de2: false } }];
+  const list = applyMetadata(base, meta, { 'demo.sv': 'module demo; endmodule', 'demo_tb.sv': 'module tb; endmodule' });
+  assert.deepStrictEqual(list.map((e) => e.id), ['half_adder', 'demo_mux'], 'an added example without its source file is skipped');
+  assert.strictEqual(list[0].title, 'Yarım Toplayıcı');
+  assert.strictEqual(list[0].source.code, 'module half_adder; endmodule', 'sources are never overridden');
+  assert.deepStrictEqual(list[1].tools, { schematic: true, waveform: true, de2: false });
+  assert.strictEqual(diffOverride(base[0], { title: 'Half Adder', topics: ['T'] }), null, 'unchanged fields store no override');
+  pass('example metadata overrides and additions are validated and applied');
+}
+
+{
+  // Lab report: self-contained, escaped, with a truth table for small combinational designs.
+  const board = { switches: Array(18).fill(0), keys: [1, 1, 1, 1], ledR: Array(18).fill(0), ledG: Array(9).fill(0), hex: Array.from({ length: 8 }, () => Array(7).fill(1)), lcd: null };
+  const html = buildLabReport({
+    lang: 'tr',
+    source: 'module ha(input logic a, input logic b, output logic s, output logic c);\n  assign s = a ^ b;\n  assign c = a & b;\nendmodule\n',
+    mappings: [{ portName: 'a', virtualComponent: 'SW[0]', physicalPin: 'PIN_N25' }],
+    board,
+    author: '<script>alert(1)</script>',
+    date: new Date(0),
+  });
+  assert.ok(!/<script/i.test(html), 'user text is escaped and the report runs no script');
+  assert.ok(/&lt;script&gt;/.test(html));
+  assert.ok(!/(src|href)="https?:/.test(html), 'no network resources');
+  assert.ok(html.includes('Doğruluk tablosu') && html.includes('PIN_N25') && html.includes('EP2C35F672C6'));
+  const rows = html.split('<table class="truth">')[1].split('</table>')[0].match(/<tr>/g)!.length;
+  assert.strictEqual(rows, 5, 'header + 4 rows for a 2-input design');
+  const seq = buildLabReport({ lang: 'en', source: 'module c(input logic clk, output logic [3:0] q);\n  always_ff @(posedge clk) q <= q + 1;\nendmodule\n', mappings: [], board });
+  assert.ok(!seq.includes('<table class="truth">') && seq.includes('Sequential (clocked)'), 'no truth table for a clocked design');
+  pass('lab report is self-contained, escaped, and includes the truth table only for combinational designs');
+}
+
+{
+  // Karnaugh / Boolean minimizer.
+  const ast = parseExpression("ab + a'c + bc");
+  const vars = variablesOf(ast);
+  const tt = tableOf(ast, vars);
+  const ones = tt.map((v, m) => (v ? m : -1)).filter((m) => m >= 0);
+  assert.strictEqual(sopText(minimize(vars.length, ones, []), vars), "a'c + ab", 'the consensus term bc is removed');
+  assert.strictEqual(sopText(minimize(4, [0, 2, 8, 10], []), ['a', 'b', 'c', 'd']), "b'd'", 'corner cells group');
+  assert.throws(() => parseExpression('a + (b'));
+  pass('Boolean minimizer removes redundant terms and groups K-map corners');
 }
 
 console.log(`--- DE2 Board Renderer Regression: PASS (${checks.length} checks) ---`);

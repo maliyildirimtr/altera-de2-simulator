@@ -1,4 +1,4 @@
-import { Cpu } from 'lucide-react';
+import { Cpu, FileText } from 'lucide-react';
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useBoardStore } from '../store/boardStore';
 import { compileVerilog } from '../core/simulator/verilogEngine';
@@ -10,6 +10,7 @@ import { BoardViewport } from '../components/DE2Workspace/BoardViewport';
 import { InspectorPanel } from '../components/DE2Workspace/InspectorPanel';
 import { ConsolePanel, type ConsoleMessage } from '../components/DE2Workspace/ConsolePanel';
 import { ImportDialog } from '../components/DE2Workspace/ImportDialog';
+import { LabReportDialog } from '../components/DE2Workspace/LabReportDialog';
 import { CodeEditor } from '../components/Editor/CodeEditor';
 import { lintVerilog, publishDiagnostics } from '../core/simulator/diagnostics';
 import { buildQuartusProject } from '../utils/quartusProject';
@@ -100,6 +101,7 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
   const [isProjectOpen, setIsProjectOpen] = useState(true);
   const [isInspectorOpen, setIsInspectorOpen] = useState(true);
   const [isConsoleOpen, setIsConsoleOpen] = useState(false);
+  const [report, setReport] = useState<{ open: boolean; title: string }>({ open: false, title: '' });
 
   const persistLayout = useCallback((updates?: Partial<WorkspaceLayout>) => {
     setLayout(prev => {
@@ -149,6 +151,8 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
       timestamp: new Date().toLocaleTimeString(),
     },
   ]);
+
+  const closeReport = useCallback(() => setReport((r) => ({ ...r, open: false })), []);
 
   const addLog = useCallback((type: ConsoleMessage['type'], text: string) => {
     setConsoleMessages(prev => [
@@ -342,6 +346,22 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
             getFiles={() => [{ name: 'main.sv', content: useBoardStore.getState().hdlCode }]}
             onError={(msg) => addLog('error', msg)}
           />
+          <button
+            type="button"
+            data-testid="de2-lab-report"
+            onClick={() => {
+              const code = useBoardStore.getState().hdlCode;
+              const example = EXAMPLES_LIST.find((ex) => ex.de2?.source === code);
+              const top = /\bmodule\s+([A-Za-z_][A-Za-z0-9_$]*)/.exec(code.replace(/\/\/.*$/gm, ''))?.[1] ?? '';
+              setReport({ open: true, title: example?.title ?? top });
+            }}
+            className="flex items-center gap-1.5 px-2.5 h-[30px] rounded-[4px] border font-medium transition-colors text-xs"
+            style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-primary)', backgroundColor: 'var(--bg-surface)' }}
+            title={t("Create a printable lab report (save as PDF)")}
+          >
+            <FileText size={13} />
+            <span className="hidden xl:inline">{t("Report")}</span>
+          </button>
           <button
             type="button"
             data-testid="de2-export-quartus"
@@ -555,6 +575,13 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
         compileError={compileError}
         onClear={() => setConsoleMessages([])}
         compiledSource={compiledSource}
+      />
+
+      <LabReportDialog
+        open={report.open}
+        defaultTitle={report.title}
+        onClose={closeReport}
+        onMessage={(text, kind) => addLog(kind, text)}
       />
 
       {/* ── File Import Dialog ── */}
