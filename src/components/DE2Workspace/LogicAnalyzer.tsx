@@ -1,14 +1,23 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { Pause, Play, Trash2 } from 'lucide-react';
+import { Crosshair, Download, Pause, Play, Trash2, Waves } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import {
   MAX_SAMPLES,
+  captureToVcd,
   clearCapture,
   getCapture,
+  getTrigger,
+  getTriggerSample,
+  getTriggerStatus,
   isCapturePaused,
   setCapturePaused,
+  setTrigger,
   startSignalRecorder,
   subscribeCapture,
 } from '../../board/signalRecorder';
+import type { TriggerCondition } from '../../board/signalRecorder';
+import { downloadText } from '../../utils/svgExport';
+import { setPendingVcd } from '../../services/vcdHandoff';
 
 startSignalRecorder();
 
@@ -46,6 +55,13 @@ export function LogicAnalyzer() {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(600);
   const [hidden, setHidden] = useState<Record<string, boolean>>({});
+  const navigate = useNavigate();
+  const triggerStatus = useSyncExternalStore(subscribeCapture, getTriggerStatus);
+  const armed = getTrigger();
+  const triggerN = getTriggerSample();
+  const [trigSignal, setTrigSignal] = useState('');
+  const [trigCondition, setTrigCondition] = useState<TriggerCondition>('rise');
+  const [trigValue, setTrigValue] = useState('0');
 
   useLayoutEffect(() => {
     const el = wrapRef.current;
@@ -69,6 +85,35 @@ export function LogicAnalyzer() {
       </div>
     );
   }
+
+  const selectedSignal = cap.signals.includes(trigSignal) ? trigSignal : cap.signals[0];
+  const selectedWidth = cap.widths[selectedSignal] ?? 1;
+  const parseTrigValue = (text: string): number => {
+    const t = text.trim().toLowerCase();
+    const v = t.startsWith('0x') ? parseInt(t.slice(2), 16) : t.startsWith('0b') ? parseInt(t.slice(2), 2) : parseInt(t, 10);
+    return Number.isFinite(v) ? v : 0;
+  };
+  const toggleTrigger = () => {
+    if (armed) setTrigger(null);
+    else {
+      const condition = selectedWidth > 1 && (trigCondition === 'rise' || trigCondition === 'fall') ? 'change' : trigCondition;
+      setTrigger({ signal: selectedSignal, condition, value: parseTrigValue(trigValue) });
+    }
+  };
+  const exportVcd = () => downloadText(captureToVcd(), 'de2_capture.vcd', 'text/plain');
+  const openInWaveform = () => {
+    if (setPendingVcd({ name: 'de2_capture.vcd', content: captureToVcd() })) navigate('/waveform');
+  };
+  const triggerText =
+    triggerStatus === 'armed' ? 'Armed — waiting for trigger'
+    : triggerStatus === 'triggered' ? 'Triggered — capturing post-trigger samples'
+    : triggerStatus === 'done' ? 'Triggered — capture stopped'
+    : '';
+  const triggerIndex = triggerN === null ? -1 : samples.findIndex((sample) => sample.n === triggerN);
+  const btn = 'flex items-center gap-1 px-2 py-0.5 rounded-[4px] border text-[11px] disabled:opacity-40';
+  const btnStyle = { borderColor: 'var(--border-subtle)', color: 'var(--text-primary)', backgroundColor: 'var(--bg-surface)' };
+  const field = 'px-1.5 py-0.5 rounded-[4px] border text-[11px]';
+  const fieldStyle = { borderColor: 'var(--border-subtle)', color: 'var(--text-primary)', backgroundColor: 'var(--bg-input)' };
 
   return (
     <div data-testid="logic-analyzer" className="flex flex-col gap-2 h-full">
@@ -99,6 +144,63 @@ export function LogicAnalyzer() {
           <button type="button" className="text-[11px] underline" style={{ color: 'var(--text-secondary)' }} onClick={() => setHidden({})}>
             Show all
           </button>
+        )}
+        <span className="flex-1" />
+        <button type="button" onClick={exportVcd} disabled={samples.length === 0} className={btn} style={btnStyle} data-testid="analyzer-export-vcd" title="Download the capture as a .vcd file">
+          <Download size={11} /> VCD
+        </button>
+        <button type="button" onClick={openInWaveform} disabled={samples.length === 0} className={btn} style={btnStyle} data-testid="analyzer-open-waveform" title="Open the capture in the Waveform tool">
+          <Waves size={11} /> Open in Waveform
+        </button>
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap font-sans" data-testid="analyzer-trigger">
+        <Crosshair size={12} style={{ color: 'var(--text-muted)' }} />
+        <span className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>Trigger</span>
+        <select
+          value={armed ? armed.signal : selectedSignal}
+          disabled={!!armed}
+          onChange={(e) => setTrigSignal(e.target.value)}
+          className={field}
+          style={fieldStyle}
+          data-testid="analyzer-trigger-signal"
+          aria-label="Trigger signal"
+        >
+          {cap.signals.map((sig) => <option key={sig} value={sig}>{sig}</option>)}
+        </select>
+        <select
+          value={armed ? armed.condition : selectedWidth > 1 && (trigCondition === 'rise' || trigCondition === 'fall') ? 'change' : trigCondition}
+          disabled={!!armed}
+          onChange={(e) => setTrigCondition(e.target.value as TriggerCondition)}
+          className={field}
+          style={fieldStyle}
+          data-testid="analyzer-trigger-condition"
+          aria-label="Trigger condition"
+        >
+          {selectedWidth === 1 && <option value="rise">rising edge</option>}
+          {selectedWidth === 1 && <option value="fall">falling edge</option>}
+          <option value="change">any change</option>
+          <option value="equals">equals</option>
+        </select>
+        {(armed ? armed.condition : trigCondition) === 'equals' && (
+          <input
+            value={armed ? String(armed.value) : trigValue}
+            disabled={!!armed}
+            onChange={(e) => setTrigValue(e.target.value)}
+            className={`${field} w-16`}
+            style={fieldStyle}
+            data-testid="analyzer-trigger-value"
+            aria-label="Trigger value (decimal, 0x hex or 0b binary)"
+            placeholder="0x0F"
+          />
+        )}
+        <button type="button" onClick={toggleTrigger} className={btn} style={btnStyle} data-testid="analyzer-trigger-arm">
+          {armed ? 'Disarm' : 'Arm'}
+        </button>
+        {triggerText && (
+          <span className="text-[11px]" data-testid="analyzer-trigger-status" data-status={triggerStatus} style={{ color: triggerStatus === 'armed' ? 'var(--state-warning)' : 'var(--state-success)' }}>
+            {triggerText}
+          </span>
         )}
       </div>
 
@@ -171,6 +273,18 @@ export function LogicAnalyzer() {
               </g>
             );
           })}
+          {triggerIndex >= 0 && (
+            <line
+              data-testid="analyzer-trigger-marker"
+              x1={x0 + triggerIndex * step}
+              x2={x0 + triggerIndex * step}
+              y1={0}
+              y2={signals.length * ROW_H + 4}
+              stroke="#f59e0b"
+              strokeWidth={1.2}
+              strokeDasharray="4 3"
+            />
+          )}
         </svg>
       </div>
     </div>

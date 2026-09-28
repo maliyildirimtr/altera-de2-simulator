@@ -20,6 +20,7 @@ import { useSharedProject } from '../services/useSharedProject';
 import { downloadText } from '../utils/svgExport';
 
 import { parseRawVCD } from '../services/vcdParser';
+import { consumePendingVcd } from '../services/vcdHandoff';
 import type { SimulationData, VCDSignal, VCDScope } from '../services/vcdParser';
 import { simulateSystemVerilog } from '../services/hardwareSimulator';
 
@@ -308,6 +309,18 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
         markWorkspaceOrigin('waveform', 'example');
       }
     }
+  }, [clearSimulationState]);
+
+  // A capture handed over from the DE2 logic analyzer: load it into the VCD
+  // slot and display it straight away.
+  const pendingVcdRunRef = useRef(false);
+  useEffect(() => {
+    const incoming = consumePendingVcd();
+    if (!incoming) return;
+    setVcdFile({ id: `vcd_${Date.now()}`, name: incoming.name, type: 'vcd', content: incoming.content });
+    clearSimulationState();
+    pendingVcdRunRef.current = true;
+    setConsoleLogs(prev => [...prev, `[Project] Loaded DE2 logic analyzer capture: ${incoming.name}`]);
   }, [clearSimulationState]);
 
   // ── File Handlers (Multi-File Sources & TB) ─────────────────
@@ -705,6 +718,13 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
   };
 
   // ── One-shot Playback Simulation ───────────────────────────
+  useEffect(() => {
+    if (!pendingVcdRunRef.current || !vcdFile) return;
+    pendingVcdRunRef.current = false;
+    void compileSimulation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vcdFile]);
+
   const runSimulation = () => {
     const data = simulationDataRef.current || simulationData;
     if (!data || data.maxTime === 0) return;
