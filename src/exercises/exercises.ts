@@ -1,7 +1,10 @@
 /**
- * Combinational exercises with automatic checking (see grader.ts).
- * Each reference solution defines the exact ports the student must use.
+ * Exercises with automatic checking (see grader.ts). Combinational ones are
+ * checked against every input combination; sequential ones are run through a
+ * fixed list of clock cycles. Each reference solution defines the exact ports
+ * the student must use.
  */
+import type { SequentialSpec } from './grader';
 export type Lang = 'en' | 'tr';
 export type Text = Record<Lang, string>;
 
@@ -15,7 +18,15 @@ export interface Exercise {
   starter: string;
   /** Known-good solution used to compute the expected truth table. Never shown. */
   reference: string;
+  /** Present for clocked exercises: the clock port and the cycle-by-cycle stimulus. */
+  sequential?: SequentialSpec;
 }
+
+/** Build a stimulus list: `rows` lists input values per cycle in `names` order. */
+const cycles = (names: string[], rows: number[][]): Record<string, number>[] =>
+  rows.map((values) => Object.fromEntries(names.map((name, i) => [name, values[i] ?? 0])));
+
+const RESET_THEN_RUN = (extra: number[][]) => cycles(['rst', 'en'], [[1, 0], ...extra]);
 
 export const EXERCISES: Exercise[] = [
   {
@@ -295,6 +306,199 @@ endmodule
     assign s[3] = a[3] ^ b[3] ^ c3;
     assign cout = (a[3] & b[3]) | (c3 & (a[3] ^ b[3]));
 endmodule`,
+  },
+  /* ── Sequential (clocked) ─────────────────────────────────────────── */
+  {
+    id: 'dff_en',
+    level: 'intermediate',
+    title: { en: 'D flip-flop with enable', tr: 'Yetkili (enable) D flip-flop' },
+    prompt: {
+      en: 'On every rising edge of clk, copy d into q, but only while en is 1. When en is 0, q keeps its value.',
+      tr: 'clk\'nin her yükselen kenarında d\'yi q\'ya kopyala; ama yalnızca en 1 iken. en 0 olduğunda q değerini korur.',
+    },
+    hint: {
+      en: 'Use always_ff @(posedge clk) with an if (en) q <= d; inside. Use <= (non-blocking) in clocked blocks.',
+      tr: 'always_ff @(posedge clk) içinde if (en) q <= d; kullan. Saatli bloklarda <= (non-blocking) atama kullan.',
+    },
+    starter: `module dff_en (
+    input  logic clk,
+    input  logic en,
+    input  logic d,
+    output logic q
+);
+
+    // Your code here
+
+endmodule
+`,
+    reference: `module dff_en (input logic clk, input logic en, input logic d, output logic q);
+    always_ff @(posedge clk) begin
+        if (en) q <= d;
+    end
+endmodule`,
+    sequential: {
+      clock: 'clk',
+      steps: cycles(['en', 'd'], [[1, 1], [0, 0], [0, 1], [1, 0], [1, 1], [0, 0], [1, 1], [1, 0]]),
+    },
+  },
+  {
+    id: 'counter4',
+    level: 'intermediate',
+    title: { en: '4-bit counter', tr: '4 bitlik sayıcı' },
+    prompt: {
+      en: 'Build a counter. On each rising edge of clk: if rst is 1, count becomes 0; otherwise, if en is 1, count increases by one (15 wraps to 0).',
+      tr: 'Bir sayıcı yap. clk\'nin her yükselen kenarında: rst 1 ise count 0 olur; değilse ve en 1 ise count bir artar (15\'ten sonra 0\'a döner).',
+    },
+    hint: {
+      en: 'Synchronous reset: check rst first inside always_ff @(posedge clk), then else if (en) count <= count + 1;',
+      tr: 'Senkron reset: always_ff @(posedge clk) içinde önce rst\'yi kontrol et, sonra else if (en) count <= count + 1;',
+    },
+    starter: `module counter4 (
+    input  logic       clk,
+    input  logic       rst,
+    input  logic       en,
+    output logic [3:0] count
+);
+
+    // Your code here
+
+endmodule
+`,
+    reference: `module counter4 (input logic clk, input logic rst, input logic en, output logic [3:0] count);
+    always_ff @(posedge clk) begin
+        if (rst) count <= 4'd0;
+        else if (en) count <= (count + 4'd1) & 4'hF;
+    end
+endmodule`,
+    sequential: {
+      clock: 'clk',
+      steps: RESET_THEN_RUN([
+        [0, 1], [0, 1], [0, 1], [0, 0], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1],
+        [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [1, 1], [0, 1],
+      ]),
+    },
+  },
+  {
+    id: 'shift4',
+    level: 'intermediate',
+    title: { en: '4-bit shift register', tr: '4 bitlik kaydırmalı yazmaç' },
+    prompt: {
+      en: 'On each rising edge of clk, shift q one place to the left and put din into bit 0. rst (synchronous) clears q to 0000.',
+      tr: 'clk\'nin her yükselen kenarında q\'yu bir basamak sola kaydır ve din\'i 0. bite koy. rst (senkron) q\'yu 0000 yapar.',
+    },
+    hint: {
+      en: 'Write each bit: q[3] <= q[2]; q[2] <= q[1]; q[1] <= q[0]; q[0] <= din; (or q <= ((q << 1) | din) & 4\'hF;).',
+      tr: 'Her biti ayrı yaz: q[3] <= q[2]; q[2] <= q[1]; q[1] <= q[0]; q[0] <= din; (ya da q <= ((q << 1) | din) & 4\'hF;).',
+    },
+    starter: `module shift4 (
+    input  logic       clk,
+    input  logic       rst,
+    input  logic       din,
+    output logic [3:0] q
+);
+
+    // Your code here
+
+endmodule
+`,
+    reference: `module shift4 (input logic clk, input logic rst, input logic din, output logic [3:0] q);
+    always_ff @(posedge clk) begin
+        if (rst) q <= 4'd0;
+        else q <= ((q << 1) | din) & 4'hF;
+    end
+endmodule`,
+    sequential: {
+      clock: 'clk',
+      steps: cycles(['rst', 'din'], [[1, 0], [0, 1], [0, 0], [0, 1], [0, 1], [0, 0], [0, 0], [0, 1], [1, 1], [0, 1]]),
+    },
+  },
+  {
+    id: 'edge_detect',
+    level: 'intermediate',
+    title: { en: 'Rising-edge detector', tr: 'Yükselen kenar dedektörü' },
+    prompt: {
+      en: 'pulse must be 1 for exactly one cycle when sig changes from 0 to 1 (compared with its value at the previous clock edge). Otherwise pulse is 0.',
+      tr: 'sig 0\'dan 1\'e geçtiğinde (bir önceki saat kenarındaki değerine göre) pulse tam bir çevrim boyunca 1 olmalı. Diğer durumlarda pulse 0\'dır.',
+    },
+    hint: {
+      en: 'Inside always_ff @(posedge clk): pulse <= sig & ~prev; prev <= sig; — prev holds sig from the previous edge. Outputs are read just after each edge, so pulse must be a register too.',
+      tr: 'always_ff @(posedge clk) içinde: pulse <= sig & ~prev; prev <= sig; — prev, sig\'in bir önceki kenardaki değerini tutar. Çıkışlar her kenardan hemen sonra okunduğu için pulse da bir yazmaç olmalı.',
+    },
+    starter: `module edge_detect (
+    input  logic clk,
+    input  logic sig,
+    output logic pulse
+);
+
+    // Your code here
+
+endmodule
+`,
+    reference: `module edge_detect (input logic clk, input logic sig, output logic pulse);
+    logic prev;
+    always_ff @(posedge clk) begin
+        pulse <= sig & ~prev;
+        prev <= sig;
+    end
+endmodule`,
+    sequential: {
+      clock: 'clk',
+      steps: cycles(['sig'], [[0], [0], [1], [1], [1], [0], [1], [0], [0], [1], [1]]),
+    },
+  },
+  {
+    id: 'seq101',
+    level: 'intermediate',
+    title: { en: 'FSM: "101" sequence detector', tr: 'FSM: "101" dizi dedektörü' },
+    prompt: {
+      en: 'Read one bit of din per clock edge. found must be 1 right after the edge that reads the final 1 of the pattern 1, 0, 1, and 0 otherwise (overlaps count: 10101 gives two hits). rst returns to the start state.',
+      tr: 'Her saat kenarında din\'den bir bit oku. 1, 0, 1 dizisinin son 1\'ini okuyan kenardan hemen sonra found 1, diğer durumlarda 0 olmalı (örtüşmeler sayılır: 10101 iki kez bulur). rst başlangıç durumuna döndürür.',
+    },
+    hint: {
+      en: 'Use a state register with S0 (nothing), S1 (seen 1), S2 (seen 10). In S2 a 1 means found <= 1 and the machine continues in S1. Set found inside the clocked block (default found <= 0).',
+      tr: 'S0 (hiçbir şey), S1 (1 görüldü), S2 (10 görüldü) durumlarıyla bir durum yazmacı kullan. S2\'de gelen 1 için found <= 1 yap ve S1\'e geç. found\'u saatli bloğun içinde ata (varsayılan found <= 0).',
+    },
+    starter: `module seq101 (
+    input  logic clk,
+    input  logic rst,
+    input  logic din,
+    output logic found
+);
+
+    // Your code here
+
+endmodule
+`,
+    reference: `module seq101 (input logic clk, input logic rst, input logic din, output logic found);
+    logic [1:0] state;
+    always_ff @(posedge clk) begin
+        if (rst) begin
+            state <= 2'd0;
+            found <= 1'b0;
+        end else begin
+            found <= 1'b0;
+            case (state)
+                2'd0: if (din) state <= 2'd1;
+                2'd1: if (!din) state <= 2'd2;
+                2'd2: begin
+                    if (din) begin
+                        found <= 1'b1;
+                        state <= 2'd1;
+                    end else begin
+                        state <= 2'd0;
+                    end
+                end
+                default: state <= 2'd0;
+            endcase
+        end
+    end
+endmodule`,
+    sequential: {
+      clock: 'clk',
+      steps: cycles(['rst', 'din'], [
+        [1, 0], [0, 1], [0, 0], [0, 1], [0, 0], [0, 1], [0, 1], [0, 0], [0, 0], [0, 1], [0, 0], [0, 1], [1, 0], [0, 1],
+      ]),
+    },
   },
 ];
 

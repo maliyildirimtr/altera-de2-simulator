@@ -59,12 +59,14 @@ function TruthTable({
   const visible = (graded && onlyMismatches ? rows.filter((r) => !r.ok) : rows).slice(0, MAX_ROWS_SHOWN);
   const total = graded && onlyMismatches ? rows.filter((r) => !r.ok).length : rows.length;
   const th = 'px-2 py-1 text-left font-semibold whitespace-nowrap';
+  const sequential = rows.some((r) => r.cycle !== undefined);
   return (
     <div className="flex flex-col gap-1 min-h-0">
       <div className="overflow-auto border rounded-[4px]" style={{ borderColor: 'var(--border-subtle)' }}>
         <table data-testid="exercise-truth-table" className="w-full text-[12px] font-mono border-collapse">
           <thead style={{ backgroundColor: 'var(--bg-panel-header, var(--bg-surface))', color: 'var(--text-secondary)' }}>
             <tr>
+              {sequential && <th className={th} style={{ color: 'var(--text-muted)' }}>{t.cycle}</th>}
               {inputs.map((p) => (
                 <th key={p.name} className={th}>{p.name}{p.width > 1 ? `[${p.width - 1}:0]` : ''}</th>
               ))}
@@ -87,6 +89,7 @@ function TruthTable({
                   color: 'var(--text-primary)',
                 }}
               >
+                {sequential && <td className="px-2 py-0.5" style={{ color: 'var(--text-muted)' }}>{r.cycle}</td>}
                 {inputs.map((p) => (
                   <td key={p.name} className="px-2 py-0.5">{bits(r.inputs[p.name], p.width)}</td>
                 ))}
@@ -145,10 +148,15 @@ function ResultBanner({ result }: { result: GradeResult }) {
   if (result.kind === 'port-mismatch')
     return box('err', <>{t.portMismatch}{result.missing.length > 0 && <><br />{fmt(t.missingPorts, { ports: result.missing.join(', ') })}</>}</>);
   const all = result.passed === result.total;
+  const cycles = result.rows.some((r) => r.cycle !== undefined);
   return box(
     all ? 'ok' : 'warn',
     <>
-      <b>{all ? fmt(t.passedAll, { total: result.total }) : fmt(t.passedSome, { passed: result.passed, total: result.total })}</b>
+      <b>
+        {all
+          ? fmt(cycles ? t.passedAllCycles : t.passedAll, { total: result.total })
+          : fmt(cycles ? t.passedSomeCycles : t.passedSome, { passed: result.passed, total: result.total })}
+      </b>
       {result.undriven.length > 0 && <><br />{fmt(t.undriven, { ports: result.undriven.join(', ') })}</>}
     </>
   );
@@ -164,7 +172,7 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
 
   const exercise: Exercise = getExercise(progress.active) ?? EXERCISES[0];
   const code = progress.code[exercise.id] ?? exercise.starter;
-  const goal = useMemo(() => expectedTable(exercise.reference), [exercise]);
+  const goal = useMemo(() => expectedTable(exercise.reference, exercise.sequential), [exercise]);
   const solvedCount = EXERCISES.filter((e) => progress.solved[e.id]).length;
 
   // Persist progress (debounced) — code per exercise, solved flags, current exercise.
@@ -203,7 +211,7 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
   };
 
   const check = () => {
-    const r = gradeSubmission(exercise.reference, code);
+    const r = gradeSubmission(exercise.reference, code, exercise.sequential);
     setResult(r);
     setOnlyMismatches(r.kind === 'graded' && r.passed < r.total && r.total > 16);
     if (r.kind === 'graded' && r.passed === r.total) {
@@ -281,7 +289,7 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
                     <span className="block text-[13px] font-medium" style={{ color: active ? 'var(--accent-primary)' : 'var(--text-primary)' }}>
                       {String(i + 1).padStart(2, '0')} · {e.title[lang]}
                     </span>
-                    <span className="block text-[11px]" style={{ color: 'var(--text-muted)' }}>{levelLabel(e)}</span>
+                    <span className="block text-[11px]" style={{ color: 'var(--text-muted)' }}>{levelLabel(e)}{e.sequential ? ` · ${t.sequential}` : ''}</span>
                   </span>
                 </button>
               </li>
@@ -299,6 +307,11 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
               <span className="text-[11px] px-1.5 py-0.5 rounded border" style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}>
                 {levelLabel(exercise)}
               </span>
+              {exercise.sequential && (
+                <span data-testid="exercise-sequential" className="text-[11px] px-1.5 py-0.5 rounded border" style={{ borderColor: 'rgba(96,165,250,0.45)', color: '#60a5fa' }}>
+                  {t.sequential}
+                </span>
+              )}
               {progress.solved[exercise.id] && (
                 <span className="text-[11px] px-1.5 py-0.5 rounded border border-emerald-500/40 text-emerald-500">{t.solved}</span>
               )}
@@ -365,7 +378,7 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
           )}
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-[12px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
-              {graded ? t.resultTable : t.goalTable}
+              {graded ? t.resultTable : exercise.sequential ? t.goalCycles : t.goalTable}
             </h3>
             {graded && (
               <label className="flex items-center gap-1.5 text-[12px]" style={{ color: 'var(--text-secondary)' }}>
@@ -374,6 +387,11 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
               </label>
             )}
           </div>
+          {exercise.sequential && (
+            <p className="text-[11.5px] -mt-1" style={{ color: 'var(--text-muted)' }}>
+              {fmt(t.sequentialNote, { clock: exercise.sequential.clock })}
+            </p>
+          )}
           {result?.kind === 'graded' ? (
             <TruthTable inputs={result.inputs} outputs={result.outputs} rows={result.rows} graded onlyMismatches={onlyMismatches} />
           ) : (

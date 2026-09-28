@@ -124,7 +124,7 @@ const en = {
     pageTitle: 'Exercises',
     eyebrow: 'Practice',
     title: 'Auto-graded exercises',
-    lead: 'Write the module, press Check, and your design is tested against every input combination. Mismatched rows are highlighted in the truth table.',
+    lead: 'Write the module and press Check. Combinational designs are tested against every input combination, clocked ones cycle by cycle. Mismatched rows are highlighted.',
     beginner: 'Beginner',
     intermediate: 'Intermediate',
     solved: 'Solved',
@@ -153,6 +153,12 @@ const en = {
     outputs: 'Outputs',
     notChecked: 'Not checked yet. Write your logic and press Check.',
     progress: '{done} / {total} solved',
+    sequential: 'Sequential',
+    cycle: 'Cycle',
+    goalCycles: 'Expected outputs, cycle by cycle',
+    sequentialNote: 'Each row is one clock cycle: the inputs are applied, {clock} rises once, then the outputs are read.',
+    passedAllCycles: 'All {total} cycles match. Exercise solved!',
+    passedSomeCycles: '{passed} of {total} cycles match.',
   },
 };
 
@@ -287,7 +293,7 @@ const tr: Dictionary = {
     pageTitle: 'Alıştırmalar',
     eyebrow: 'Pratik',
     title: 'Otomatik değerlendirmeli alıştırmalar',
-    lead: 'Modülü yaz, Kontrol Et\'e bas; tasarımın tüm giriş kombinasyonlarıyla test edilir. Uyuşmayan satırlar doğruluk tablosunda işaretlenir.',
+    lead: 'Modülü yaz ve Kontrol Et\'e bas. Kombinasyonel tasarımlar tüm giriş kombinasyonlarıyla, saatli tasarımlar çevrim çevrim test edilir. Uyuşmayan satırlar işaretlenir.',
     beginner: 'Başlangıç',
     intermediate: 'Orta',
     solved: 'Çözüldü',
@@ -316,6 +322,12 @@ const tr: Dictionary = {
     outputs: 'Çıkışlar',
     notChecked: 'Henüz kontrol edilmedi. Mantığını yaz ve Kontrol Et\'e bas.',
     progress: '{total} alıştırmadan {done} tanesi çözüldü',
+    sequential: 'Ardışık',
+    cycle: 'Çevrim',
+    goalCycles: 'Çevrim çevrim beklenen çıkışlar',
+    sequentialNote: 'Her satır bir saat çevrimidir: girişler uygulanır, {clock} bir kez yükselir, ardından çıkışlar okunur.',
+    passedAllCycles: '{total} çevrimin tamamı doğru. Alıştırma çözüldü!',
+    passedSomeCycles: '{total} çevrimden {passed} tanesi doğru.',
   },
 };
 

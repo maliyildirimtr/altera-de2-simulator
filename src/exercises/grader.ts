@@ -14,6 +14,8 @@ export interface Port {
 }
 
 export interface TruthRow {
+  /** Clock cycle number, for sequential exercises only. */
+  cycle?: number;
   inputs: Record<string, number>;
   expected: Record<string, number>;
   actual: Record<string, number> | null;
@@ -34,6 +36,16 @@ export type GradeResult =
       /** Outputs the design never drove in any row. */
       undriven: string[];
     };
+
+/**
+ * A clocked exercise: instead of every input combination, the design is run
+ * through a fixed list of cycles. For each step the inputs are applied with
+ * the clock low, the clock rises once, and the outputs are read.
+ */
+export interface SequentialSpec {
+  clock: string;
+  steps: ReadonlyArray<Record<string, number>>;
+}
 
 /** Most input bits enumerated (2^10 = 1024 rows). */
 export const MAX_INPUT_BITS = 10;
@@ -97,16 +109,45 @@ function evaluate(engine: VerilogModule, values: Record<string, number>, inputs:
   return result;
 }
 
+function runSequence(
+  engine: VerilogModule,
+  inputs: Port[],
+  outputs: Port[],
+  spec: SequentialSpec,
+): TruthRow[] {
+  const rows: TruthRow[] = [];
+  let state: Record<string, number> = {};
+  spec.steps.forEach((step, cycle) => {
+    const iv: Record<string, number> = {};
+    for (const p of inputs) iv[p.name] = (step[p.name] ?? 0) & mask(p.width);
+    const driven = withBits(iv, inputs);
+    // Clock low: inputs settle, no edge.
+    state = engine.evaluate({ ...driven, [spec.clock]: 0 }, { ...state, ...driven, [spec.clock]: 0 });
+    // Rising edge: sequential blocks fire exactly once.
+    state = engine.evaluate({ ...driven, [spec.clock]: 1 }, { ...state, ...driven, [spec.clock]: 1 });
+    // Clock still high: combinational logic settles on the new register values.
+    state = engine.evaluate({ ...driven, [spec.clock]: 1 }, { ...state, ...driven });
+    const out: Record<string, number> = {};
+    for (const o of outputs) out[o.name] = readPort(state, o.name, o.width);
+    rows.push({ cycle, inputs: iv, expected: out, actual: null, ok: true });
+  });
+  return rows;
+}
+
 export function referencePorts(reference: string): { inputs: Port[]; outputs: Port[] } {
   const ref = compileVerilog(reference);
   return { inputs: ports(ref, ref.inputs), outputs: ports(ref, ref.outputs) };
 }
 
-/** Truth table of the reference solution alone (shown as the goal). */
-export function expectedTable(reference: string): { inputs: Port[]; outputs: Port[]; rows: TruthRow[] } {
+/** Truth table (or cycle table) of the reference solution alone (shown as the goal). */
+export function expectedTable(
+  reference: string,
+  sequential?: SequentialSpec,
+): { inputs: Port[]; outputs: Port[]; rows: TruthRow[] } {
   const ref = compileVerilog(reference);
-  const inputs = ports(ref, ref.inputs);
+  const inputs = ports(ref, ref.inputs.filter((n) => n !== sequential?.clock));
   const outputs = ports(ref, ref.outputs);
+  if (sequential) return { inputs, outputs, rows: runSequence(ref, inputs, outputs, sequential) };
   const bits = inputs.reduce((n, p) => n + p.width, 0);
   const rows: TruthRow[] = [];
   for (let combo = 0; combo < 1 << Math.min(bits, MAX_INPUT_BITS); combo++) {
@@ -117,7 +158,7 @@ export function expectedTable(reference: string): { inputs: Port[]; outputs: Por
   return { inputs, outputs, rows };
 }
 
-export function gradeSubmission(reference: string, submission: string): GradeResult {
+export function gradeSubmission(reference: string, submission: string, sequential?: SequentialSpec): GradeResult {
   let student: VerilogModule;
   try {
     student = compileVerilog(submission);
@@ -127,12 +168,16 @@ export function gradeSubmission(reference: string, submission: string): GradeRes
   if (!/\bmodule\b[\s\S]*\bendmodule\b/.test(submission.replace(/\/\/.*$/gm, ''))) {
     return { kind: 'compile-error', message: 'No complete module … endmodule block was found.' };
   }
-  const goal = expectedTable(reference);
+  const goal = expectedTable(reference, sequential);
   const want = [...goal.inputs, ...goal.outputs].map((p) => p.name);
+  if (sequential) want.push(sequential.clock);
   const have = [...student.inputs, ...student.outputs];
   const missing = want.filter((n) => !have.includes(n));
   const extra = have.filter((n) => !want.includes(n));
-  const dirMismatch = goal.inputs.some((p) => !student.inputs.includes(p.name)) || goal.outputs.some((p) => !student.outputs.includes(p.name));
+  const dirMismatch =
+    goal.inputs.some((p) => !student.inputs.includes(p.name)) ||
+    goal.outputs.some((p) => !student.outputs.includes(p.name)) ||
+    (sequential !== undefined && !student.inputs.includes(sequential.clock));
   if (missing.length > 0 || dirMismatch) {
     return {
       kind: 'port-mismatch',
@@ -145,10 +190,18 @@ export function gradeSubmission(reference: string, submission: string): GradeRes
     return { kind: 'unsupported', message: student.transpileError };
   }
   let passed = 0;
-  const rows = goal.rows.map((row) => {
+  let studentRows: TruthRow[] | null = null;
+  if (sequential) {
+    try {
+      studentRows = runSequence(student, goal.inputs, goal.outputs, sequential);
+    } catch {
+      studentRows = null;
+    }
+  }
+  const rows = goal.rows.map((row, i) => {
     let actual: Record<string, number>;
     try {
-      actual = evaluate(student, row.inputs, goal.inputs, goal.outputs);
+      actual = sequential ? studentRows?.[i]?.expected ?? {} : evaluate(student, row.inputs, goal.inputs, goal.outputs);
     } catch {
       actual = {};
     }
