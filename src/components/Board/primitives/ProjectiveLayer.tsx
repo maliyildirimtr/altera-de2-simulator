@@ -60,8 +60,10 @@ export const ProjectiveLayerHost: React.FC<{
           transformOrigin: '0 0',
           transform: `translate(${fit.x}px, ${fit.y}px) scale(${fit.scale})`,
           visibility: fit.scale ? 'visible' : 'hidden',
-          pointerEvents: 'none',
           ...style,
+          // Always last: the layer is paint-only. Clicks must fall through to
+          // the SVG hit polygons underneath, whatever `style` says.
+          pointerEvents: 'none',
         }}
       />
     </div>
