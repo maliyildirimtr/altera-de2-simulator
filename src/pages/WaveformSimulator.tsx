@@ -13,7 +13,8 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import MonacoEditor from '@monaco-editor/react';
 import '../lib/monacoSetup';
-import { Download, Plus, Wand2, X } from 'lucide-react';
+import { Download, Plus, Share2, Wand2, X } from 'lucide-react';
+import { ToolbarMenu, MENU_ITEM_CLASS, MENU_ITEM_STYLE } from '../components/common/ToolbarMenu';
 import { StimulusEditor } from '../components/Waveform/StimulusEditor';
 import { ShareButton } from '../components/Share/ShareButton';
 import { OpenInSchematicButton } from '../components/Share/OpenInToolButton';
@@ -1045,38 +1046,44 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
               <Wand2 size={13} />
               <span className="hidden xl:inline">{t("Stimulus")}</span>
             </button>
-            <OpenInSchematicButton
-              className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-xs font-medium border transition-colors shadow-xs"
-              labelClassName="inline"
-              getFiles={() => sourceFiles.map((f) => ({ name: f.name, content: f.content }))}
-              onError={(msg) => setConsoleLogs((prev) => [...prev, `[ERROR] ${msg}`])}
-            />
-            <ShareButton
-              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-xs font-medium border transition-colors shadow-xs"
-              labelClassName="hidden 2xl:inline"
-              getPayload={() => ({
-                v: 1,
-                tool: 'waveform',
-                files: sourceFiles.map((f) => ({ name: f.name, content: f.content })),
-                testbench: testbenchFile ? { name: testbenchFile.name, content: testbenchFile.content } : null,
-              })}
-              onMessage={(msg) => setConsoleLogs((prev) => [...prev, msg.startsWith('Share link') ? `[Share] ${msg}` : `[ERROR] ${msg}`])}
-            />
-            <button
-              type="button"
-              data-testid="wf-btn-download-vcd"
-              onClick={() => {
-                const vcd = lastVcdRef.current;
-                if (vcd) downloadText(vcd.text, vcd.name, 'text/plain');
-              }}
-              disabled={!simulationData}
-              title={t("Download the simulation as a VCD file (opens in GTKWave)")}
-              className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-xs font-medium border transition-colors shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
-            >
-              <Download size={13} />
-              <span className="hidden 2xl:inline">VCD</span>
-            </button>
+            <ToolbarMenu label={t("Export")} icon={<Share2 size={13} />} testId="wf-export-menu" className="flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-xs font-medium border transition-colors shadow-xs">
+              <OpenInSchematicButton
+                className={MENU_ITEM_CLASS}
+                style={MENU_ITEM_STYLE}
+                labelClassName="inline"
+                label="Open in Schematic"
+                getFiles={() => sourceFiles.map((f) => ({ name: f.name, content: f.content }))}
+                onError={(msg) => setConsoleLogs((prev) => [...prev, `[ERROR] ${msg}`])}
+              />
+              <button
+                type="button"
+                role="menuitem"
+                data-testid="wf-btn-download-vcd"
+                onClick={() => {
+                  const vcd = lastVcdRef.current;
+                  if (vcd) downloadText(vcd.text, vcd.name, 'text/plain');
+                }}
+                disabled={!simulationData}
+                title={t("Download the simulation as a VCD file (opens in GTKWave)")}
+                className={MENU_ITEM_CLASS}
+                style={MENU_ITEM_STYLE}
+              >
+                <Download size={13} />
+                <span>{t("Download VCD")}</span>
+              </button>
+              <ShareButton
+                className={MENU_ITEM_CLASS}
+                style={MENU_ITEM_STYLE}
+                labelClassName="inline"
+                getPayload={() => ({
+                  v: 1,
+                  tool: 'waveform',
+                  files: sourceFiles.map((f) => ({ name: f.name, content: f.content })),
+                  testbench: testbenchFile ? { name: testbenchFile.name, content: testbenchFile.content } : null,
+                })}
+                onMessage={(msg) => setConsoleLogs((prev) => [...prev, msg.startsWith('Share link') ? `[Share] ${msg}` : `[ERROR] ${msg}`])}
+              />
+            </ToolbarMenu>
           </>
         }
         onCompile={compileSimulation}

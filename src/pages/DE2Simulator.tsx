@@ -1,4 +1,5 @@
-import { Cpu, FileText } from 'lucide-react';
+import { Cpu, FileText, Share2 } from 'lucide-react';
+import { ToolbarMenu, MENU_ITEM_CLASS, MENU_ITEM_STYLE } from '../components/common/ToolbarMenu';
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useBoardStore } from '../store/boardStore';
 import { compileVerilog } from '../core/simulator/verilogEngine';
@@ -340,49 +341,55 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
         onSelectView={handleSelectView}
         onOpenImport={() => setUploaderOpen(true)}
         actionsSlot={
-          <>
-          <OpenInSchematicButton
-            className="flex items-center gap-1.5 px-2.5 h-[30px] rounded-[4px] border font-medium transition-colors text-xs"
-            getFiles={() => [{ name: 'main.sv', content: useBoardStore.getState().hdlCode }]}
-            onError={(msg) => addLog('error', msg)}
-          />
-          <button
-            type="button"
-            data-testid="de2-lab-report"
-            onClick={() => {
-              const code = useBoardStore.getState().hdlCode;
-              const example = EXAMPLES_LIST.find((ex) => ex.de2?.source === code);
-              const top = /\bmodule\s+([A-Za-z_][A-Za-z0-9_$]*)/.exec(code.replace(/\/\/.*$/gm, ''))?.[1] ?? '';
-              setReport({ open: true, title: example?.title ?? top });
-            }}
-            className="flex items-center gap-1.5 px-2.5 h-[30px] rounded-[4px] border font-medium transition-colors text-xs"
-            style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-primary)', backgroundColor: 'var(--bg-surface)' }}
-            title={t("Create a printable lab report (save as PDF)")}
-          >
-            <FileText size={13} />
-            <span className="hidden xl:inline">{t("Report")}</span>
-          </button>
-          <button
-            type="button"
-            data-testid="de2-export-quartus"
-            onClick={handleExportQuartus}
-            className="flex items-center gap-1.5 px-2.5 h-[30px] rounded-[4px] border font-medium transition-colors text-xs"
-            style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-primary)', backgroundColor: 'var(--bg-surface)' }}
-            title={t("Download a Quartus II project (.qpf/.qsf/.sdc + source) for the real DE2 board")}
-          >
-            <Cpu size={13} />
-            <span className="hidden xl:inline">{t("Quartus")}</span>
-          </button>
-          <ShareButton
-            className="flex items-center gap-1.5 px-2.5 h-[30px] rounded-[4px] border font-medium transition-colors text-xs"
-            labelClassName="hidden xl:inline"
-            getPayload={() => {
-              const st = useBoardStore.getState();
-              return { v: 1, tool: 'de2', files: [{ name: 'main.sv', content: st.hdlCode }], pinMappings: st.pinMappings };
-            }}
-            onMessage={(msg, kind) => addLog(kind === 'error' ? 'error' : 'info', msg)}
-          />
-          </>
+          <ToolbarMenu label={t("Export")} icon={<Share2 size={13} />} testId="de2-export-menu">
+            <OpenInSchematicButton
+              className={MENU_ITEM_CLASS}
+              style={MENU_ITEM_STYLE}
+              labelClassName="inline"
+              label="Open in Schematic"
+              getFiles={() => [{ name: 'main.sv', content: useBoardStore.getState().hdlCode }]}
+              onError={(msg) => addLog('error', msg)}
+            />
+            <button
+              type="button"
+              role="menuitem"
+              data-testid="de2-lab-report"
+              onClick={() => {
+                const code = useBoardStore.getState().hdlCode;
+                const example = EXAMPLES_LIST.find((ex) => ex.de2?.source === code);
+                const top = /\bmodule\s+([A-Za-z_][A-Za-z0-9_$]*)/.exec(code.replace(/\/\/.*$/gm, ''))?.[1] ?? '';
+                setReport({ open: true, title: example?.title ?? top });
+              }}
+              className={MENU_ITEM_CLASS}
+              style={MENU_ITEM_STYLE}
+              title={t("Create a printable lab report (save as PDF)")}
+            >
+              <FileText size={13} />
+              <span>{t("Lab report (PDF)")}</span>
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              data-testid="de2-export-quartus"
+              onClick={handleExportQuartus}
+              className={MENU_ITEM_CLASS}
+              style={MENU_ITEM_STYLE}
+              title={t("Download a Quartus II project (.qpf/.qsf/.sdc + source) for the real DE2 board")}
+            >
+              <Cpu size={13} />
+              <span>{t("Quartus project (.zip)")}</span>
+            </button>
+            <ShareButton
+              className={MENU_ITEM_CLASS}
+              style={MENU_ITEM_STYLE}
+              labelClassName="inline"
+              getPayload={() => {
+                const st = useBoardStore.getState();
+                return { v: 1, tool: 'de2', files: [{ name: 'main.sv', content: st.hdlCode }], pinMappings: st.pinMappings };
+              }}
+              onMessage={(msg, kind) => addLog(kind === 'error' ? 'error' : 'info', msg)}
+            />
+          </ToolbarMenu>
         }
         onCompile={handleCompile}
         isCompiling={isCompiling}
