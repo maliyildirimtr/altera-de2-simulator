@@ -17,7 +17,7 @@ import { loadWorkspace, restoreWorkspaceFlags, useWorkspaceAutosave } from '../s
 import { ShareButton } from '../components/Share/ShareButton';
 import { OpenInSchematicButton } from '../components/Share/OpenInToolButton';
 import { useSharedProject } from '../services/useSharedProject';
-import { getExampleById } from '../examples/registry';
+import { EXAMPLES_LIST, getExampleById } from '../examples/registry';
 
 const STORAGE_KEY = 'de2_workspace_layout_v1';
 
@@ -163,7 +163,16 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
     const saved = loadWorkspace<{ hdlCode: string; pinMappings: ParsedPort[] }>('de2');
     if (!saved || !saved.data.hdlCode?.trim()) return;
     restoreWorkspaceFlags('de2', saved.origin, saved.dirty);
-    setHdlCode(saved.data.hdlCode);
+    // An unedited example is restored from the current bundle, not from the
+    // saved copy, so a site update (e.g. new example text) is not masked by
+    // an old autosave.
+    let code = saved.data.hdlCode;
+    if (saved.origin === 'example' && !saved.dirty) {
+      const top = /\bmodule\s+(\w+)/.exec(code)?.[1];
+      const current = EXAMPLES_LIST.find((ex) => ex.de2?.supported && ex.de2.topModule === top)?.de2?.source;
+      if (current) code = current;
+    }
+    setHdlCode(code);
     setPinMappings(Array.isArray(saved.data.pinMappings) ? saved.data.pinMappings : []);
     addLog('info', 'Restored your last DE2 project. Compile to run it.');
   }, [setHdlCode, setPinMappings, addLog]);
