@@ -57,9 +57,9 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
           className="flex items-center gap-2.5 group mr-6 sm:mr-8 shrink-0"
           aria-label={`${PLATFORM_NAME} — go to home`}
         >
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-[6px] bg-[#070B14] border border-[var(--border-subtle)] flex items-center justify-center overflow-hidden shrink-0 shadow-xs transition-opacity group-hover:opacity-90">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center shrink-0 transition-opacity group-hover:opacity-90">
             <img
-              src="/brand/logiclab-mark.png"
+              src="/brand/logiclab-mark-96.png"
               alt={`${PLATFORM_NAME} logo`}
               className="w-full h-full object-contain"
               width={32}
