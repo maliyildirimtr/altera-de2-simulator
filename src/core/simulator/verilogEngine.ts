@@ -309,6 +309,10 @@ export function elaborateEngine(modules: Record<string, any>, topModule: string)
     const parser = new Parser(`${combinedRawAssignLogic}\n${combinedRawAlwaysLogic}`);
     const moduleAST = parser.parseModuleBody();
 
+    const internalClocked = moduleAST.alwaysBlocks.filter(
+      (b) => (b.edge === 'posedge' || b.edge === 'negedge') && !!b.signal && !topInputs.includes(b.signal),
+    );
+
     const evaluate = (inputs: Record<string, number>, st: Record<string, number>) => {
       /*
        * Named constants form the BASE layer, with runtime state written over
@@ -329,7 +333,7 @@ export function elaborateEngine(modules: Record<string, any>, topModule: string)
 
       // 1. Sequential Logic (executes exactly once per clock edge)
       for (const block of moduleAST.alwaysBlocks) {
-        if (block.edge === 'posedge' || block.edge === 'negedge') {
+        if ((block.edge === 'posedge' || block.edge === 'negedge') && !internalClocked.includes(block)) {
           if (isEdgeActive(block, state)) {
             evaluateStmt(block.body, ctx);
           }
@@ -350,6 +354,33 @@ export function elaborateEngine(modules: Record<string, any>, topModule: string)
           }
         }
         commitNextState(ctx);
+      }
+
+      // 3. Edges on internal nets, e.g. a ripple counter whose flip-flops are
+      //    clocked by another flip-flop's output. Blocks clocked by top-level
+      //    inputs are handled in step 1, exactly as before. An internal clock
+      //    fires only on a change seen after its level was first recorded, and
+      //    the rounds are bounded, so a design can never loop here.
+      if (internalClocked.length) {
+        for (let round = 0; round < 16; round++) {
+          let fired = false;
+          for (const block of internalClocked) {
+            if (`__prev_${block.signal}` in state && isEdgeActive(block, state)) {
+              evaluateStmt(block.body, ctx);
+              fired = true;
+            }
+          }
+          for (const block of internalClocked) state[`__prev_${block.signal}`] = state[block.signal!] ?? 0;
+          if (!fired) break;
+          commitNextState(ctx);
+          for (let iter = 0; iter < 3; iter++) {
+            for (const assign of moduleAST.continuousAssigns) evaluateStmt(assign, ctx);
+            for (const block of moduleAST.alwaysBlocks) {
+              if (block.edge !== 'posedge' && block.edge !== 'negedge' && isEdgeActive(block, state)) evaluateStmt(block.body, ctx);
+            }
+            commitNextState(ctx);
+          }
+        }
       }
 
       // Sub-module mirrors mapping
