@@ -1,25 +1,43 @@
 /**
- * Gate-level circuit model for the drawing editor: evaluation, unit-delay
- * timing simulation (for glitches), truth tables and Verilog generation.
- * Pure functions, no React.
+ * Gate-level circuit model for the drawing editor: evaluation (with
+ * flip-flop state and clock edges), unit-delay timing simulation (for
+ * glitches), truth tables and Verilog generation. Pure functions, no React.
+ *
+ * Every part has numbered input pins and numbered output pins. A signal is
+ * one output pin of one node; its key is the node id for pin 0 and
+ * `id#pin` for the others (see `sig`).
  */
 
-export type GateType = 'IN' | 'OUT' | 'AND' | 'OR' | 'NOT' | 'NAND' | 'NOR' | 'XOR' | 'XNOR';
+export type GateType =
+  // sources and sinks
+  | 'IN' | 'OUT' | 'BTN' | 'CLK' | 'CONST0' | 'CONST1' | 'SEG7'
+  // gates
+  | 'AND' | 'OR' | 'NOT' | 'NAND' | 'NOR' | 'XOR' | 'XNOR' | 'BUF'
+  // plexers
+  | 'MUX2' | 'MUX4' | 'DEC2'
+  // arithmetic
+  | 'HA' | 'FA'
+  // flip-flops (rising edge)
+  | 'DFF' | 'TFF' | 'JKFF' | 'SRFF';
 
 export interface GateNode {
   id: string;
   type: GateType;
   x: number;
   y: number;
-  /** Signal name for IN/OUT; optional note for gates. */
+  /** Signal name for IN/OUT/BTN/CLK/SEG7; optional note for others. */
   label: string;
-  /** Propagation delay in time units (gates only). */
+  /** Propagation delay in time units (glitch view). */
   delay: number;
+  /** Number of inputs for AND/OR/NAND/NOR/XOR/XNOR (2–4, default 2). */
+  inputs?: number;
 }
 
 export interface Wire {
   id: string;
   from: string;
+  /** Output pin of the source node (default 0). */
+  fromPin?: number;
   to: string;
   pin: number;
 }
@@ -29,28 +47,162 @@ export interface Circuit {
   wires: Wire[];
 }
 
-export const GATE_TYPES: GateType[] = ['AND', 'OR', 'NOT', 'NAND', 'NOR', 'XOR', 'XNOR'];
+export type PartCategory = 'io' | 'logic' | 'plexers' | 'arithmetic' | 'flipflops';
 
-export function inputCount(type: GateType): number {
-  if (type === 'IN') return 0;
-  if (type === 'OUT' || type === 'NOT') return 1;
-  return 2;
+interface PartSpec {
+  category: PartCategory;
+  ins: string[];
+  outs: string[];
+  /** Input pin that is the clock (flip-flops). */
+  clock?: number;
+}
+
+const FF_OUTS = ['Q', 'Q̅'];
+
+export const PARTS: Record<GateType, PartSpec> = {
+  IN: { category: 'io', ins: [], outs: [''] },
+  OUT: { category: 'io', ins: [''], outs: [] },
+  BTN: { category: 'io', ins: [], outs: [''] },
+  CLK: { category: 'io', ins: [], outs: [''] },
+  CONST0: { category: 'io', ins: [], outs: [''] },
+  CONST1: { category: 'io', ins: [], outs: [''] },
+  SEG7: { category: 'io', ins: ['b0', 'b1', 'b2', 'b3'], outs: [] },
+  AND: { category: 'logic', ins: ['', ''], outs: [''] },
+  OR: { category: 'logic', ins: ['', ''], outs: [''] },
+  NOT: { category: 'logic', ins: [''], outs: [''] },
+  NAND: { category: 'logic', ins: ['', ''], outs: [''] },
+  NOR: { category: 'logic', ins: ['', ''], outs: [''] },
+  XOR: { category: 'logic', ins: ['', ''], outs: [''] },
+  XNOR: { category: 'logic', ins: ['', ''], outs: [''] },
+  BUF: { category: 'logic', ins: [''], outs: [''] },
+  MUX2: { category: 'plexers', ins: ['D0', 'D1', 'S'], outs: ['Y'] },
+  MUX4: { category: 'plexers', ins: ['D0', 'D1', 'D2', 'D3', 'S0', 'S1'], outs: ['Y'] },
+  DEC2: { category: 'plexers', ins: ['A0', 'A1'], outs: ['Y0', 'Y1', 'Y2', 'Y3'] },
+  HA: { category: 'arithmetic', ins: ['A', 'B'], outs: ['S', 'C'] },
+  FA: { category: 'arithmetic', ins: ['A', 'B', 'Cin'], outs: ['S', 'Cout'] },
+  DFF: { category: 'flipflops', ins: ['D', 'C'], outs: FF_OUTS, clock: 1 },
+  TFF: { category: 'flipflops', ins: ['T', 'C'], outs: FF_OUTS, clock: 1 },
+  JKFF: { category: 'flipflops', ins: ['J', 'C', 'K'], outs: FF_OUTS, clock: 1 },
+  SRFF: { category: 'flipflops', ins: ['S', 'C', 'R'], outs: FF_OUTS, clock: 1 },
+};
+
+/** Two-input gates whose input count can be raised to 4. */
+export const MULTI_INPUT: GateType[] = ['AND', 'OR', 'NAND', 'NOR', 'XOR', 'XNOR'];
+export const GATE_TYPES: GateType[] = ['AND', 'OR', 'NOT', 'NAND', 'NOR', 'XOR', 'XNOR', 'BUF'];
+export const FLIP_FLOPS: GateType[] = ['DFF', 'TFF', 'JKFF', 'SRFF'];
+/** Nodes whose value the user sets (inputs of the circuit). */
+export const SOURCES: GateType[] = ['IN', 'BTN', 'CLK'];
+
+export const PALETTE: Array<{ category: PartCategory; types: GateType[] }> = [
+  { category: 'logic', types: GATE_TYPES },
+  { category: 'io', types: ['IN', 'OUT', 'BTN', 'CLK', 'CONST0', 'CONST1', 'SEG7'] },
+  { category: 'plexers', types: ['MUX2', 'MUX4', 'DEC2'] },
+  { category: 'arithmetic', types: ['HA', 'FA'] },
+  { category: 'flipflops', types: FLIP_FLOPS },
+];
+
+export function isFlipFlop(type: GateType): boolean {
+  return FLIP_FLOPS.includes(type);
+}
+
+export function isGate(type: GateType): boolean {
+  return GATE_TYPES.includes(type);
+}
+
+export function inputNames(n: Pick<GateNode, 'type' | 'inputs'>): string[] {
+  if (MULTI_INPUT.includes(n.type)) {
+    const k = Math.max(2, Math.min(4, n.inputs ?? 2));
+    return Array(k).fill('');
+  }
+  return PARTS[n.type].ins;
+}
+
+export function outputNames(n: Pick<GateNode, 'type'>): string[] {
+  return PARTS[n.type].outs;
+}
+
+/** Number of input pins (accepts a node, or a type for the default count). */
+export function inputCount(n: GateType | Pick<GateNode, 'type' | 'inputs'>): number {
+  return inputNames(typeof n === 'string' ? { type: n } : n).length;
+}
+
+export function outputCount(n: GateType | Pick<GateNode, 'type'>): number {
+  return outputNames(typeof n === 'string' ? { type: n } : n).length;
 }
 
 export function hasOutput(type: GateType): boolean {
-  return type !== 'OUT';
+  return outputCount(type) > 0;
 }
 
+/** Signal key of one output pin. */
+export function sig(id: string, pin = 0): string {
+  return pin ? `${id}#${pin}` : id;
+}
+
+/** Two-input gate function (kept for callers of the old API). */
 export function applyGate(type: GateType, a: number, b: number): number {
+  return gateValue(type, [a, b]);
+}
+
+function gateValue(type: GateType, ins: number[]): number {
+  const and = ins.every((v) => v === 1) ? 1 : 0;
+  const or = ins.some((v) => v === 1) ? 1 : 0;
+  const xor = ins.reduce((x, v) => x ^ (v & 1), 0);
   switch (type) {
-    case 'AND': return a & b;
-    case 'OR': return a | b;
-    case 'NOT': return a ^ 1;
-    case 'NAND': return (a & b) ^ 1;
-    case 'NOR': return (a | b) ^ 1;
-    case 'XOR': return a ^ b;
-    case 'XNOR': return (a ^ b) ^ 1;
-    default: return a;
+    case 'AND': return and;
+    case 'OR': return or;
+    case 'NAND': return and ^ 1;
+    case 'NOR': return or ^ 1;
+    case 'XOR': return xor;
+    case 'XNOR': return xor ^ 1;
+    case 'NOT': return (ins[0] ?? 0) ^ 1;
+    default: return ins[0] ?? 0;
+  }
+}
+
+/** Seven-segment patterns for 0–F, DE2 style: bit i = segment a..g, 0 = lit. */
+export const SEG7_PATTERNS = [
+  0b1000000, 0b1111001, 0b0100100, 0b0110000, 0b0011001, 0b0010010, 0b0000010, 0b1111000,
+  0b0000000, 0b0010000, 0b0001000, 0b0000011, 0b1000110, 0b0100001, 0b0000110, 0b0001110,
+];
+
+/** Output values of a node for the given input values (flip-flops: current state). */
+export function computeNode(n: GateNode, ins: number[], q = 0, sourceValue = 0): number[] {
+  const [a = 0, b = 0, c = 0, d = 0, e = 0, f = 0] = ins;
+  switch (n.type) {
+    case 'IN':
+    case 'BTN':
+    case 'CLK': return [sourceValue ? 1 : 0];
+    case 'CONST0': return [0];
+    case 'CONST1': return [1];
+    case 'OUT':
+    case 'SEG7': return [];
+    case 'MUX2': return [c ? b : a];
+    case 'MUX4': return [[a, b, c, d][(f << 1) | e]];
+    case 'DEC2': {
+      const k = (b << 1) | a;
+      return [0, 1, 2, 3].map((i) => (i === k ? 1 : 0));
+    }
+    case 'HA': return [a ^ b, a & b];
+    case 'FA': return [a ^ b ^ c, (a & b) | (c & (a ^ b))];
+    case 'DFF':
+    case 'TFF':
+    case 'JKFF':
+    case 'SRFF': return [q, q ^ 1];
+    default: return [gateValue(n.type, ins)];
+  }
+}
+
+/** Flip-flop state after a rising clock edge, from the inputs just before it. */
+export function nextState(n: GateNode, ins: number[], q: number): number {
+  const [x = 0, , y = 0] = ins;
+  switch (n.type) {
+    case 'DFF': return x;
+    case 'TFF': return x ? q ^ 1 : q;
+    case 'JKFF': return x && y ? q ^ 1 : x ? 1 : y ? 0 : q;
+    // S = R = 1 is not allowed on a real SR flip-flop; here S wins.
+    case 'SRFF': return x ? 1 : y ? 0 : q;
+    default: return q;
   }
 }
 
@@ -58,131 +210,244 @@ export function driverOf(c: Circuit, nodeId: string, pin: number): string | null
   return c.wires.find((w) => w.to === nodeId && w.pin === pin)?.from ?? null;
 }
 
+/** The wire feeding an input pin, if any. */
+export function wireInto(c: Circuit, nodeId: string, pin: number): Wire | undefined {
+  return c.wires.find((w) => w.to === nodeId && w.pin === pin);
+}
+
 export interface Evaluation {
-  /** Output value of every node (OUT nodes: the value they display). */
+  /** Value of every signal (see `sig`). */
   values: Record<string, number>;
   /** Nodes on a combinational loop, if any (then values are not meaningful). */
   loop: string[];
-  /** Gate/OUT inputs with nothing connected (read as 0). */
+  /** Inputs with nothing connected (read as 0). */
   floating: Array<{ node: string; pin: number }>;
+  /** Input pin values of every node. */
+  pins: Record<string, number[]>;
 }
 
-export function evaluate(c: Circuit, inputs: Record<string, number>): Evaluation {
+/**
+ * Settles the combinational logic. `inputs` holds the value of each source
+ * node (IN, BTN, CLK) by id; `q` the stored bit of each flip-flop.
+ * Flip-flop outputs come from their state, so feedback through a flip-flop
+ * is not a loop.
+ */
+export function evaluate(c: Circuit, inputs: Record<string, number>, q: Record<string, number> = {}): Evaluation {
   const byId = new Map(c.nodes.map((n) => [n.id, n]));
-  const values: Record<string, number> = {};
-  const state: Record<string, 0 | 1 | 2> = {}; // 1 = visiting, 2 = done
+  const into = new Map<string, Wire>();
+  c.wires.forEach((w) => into.set(`${w.to}:${w.pin}`, w));
+  const outs: Record<string, number[]> = {};
+  const state: Record<string, 0 | 1 | 2> = {};
   const loop = new Set<string>();
   const floating: Array<{ node: string; pin: number }> = [];
 
-  const visit = (id: string, stack: string[]): number => {
-    const n = byId.get(id);
-    if (!n) return 0;
-    if (state[id] === 2) return values[id];
-    if (state[id] === 1) {
-      stack.slice(stack.indexOf(id)).forEach((x) => loop.add(x));
+  const readPin = (id: string, pin: number, stack: string[]): number => {
+    const w = into.get(`${id}:${pin}`);
+    if (!w || !byId.has(w.from)) {
+      floating.push({ node: id, pin });
       return 0;
     }
+    return visit(w.from, stack)[w.fromPin ?? 0] ?? 0;
+  };
+
+  const visit = (id: string, stack: string[]): number[] => {
+    const n = byId.get(id)!;
+    if (state[id] === 2) return outs[id];
+    if (state[id] === 1) {
+      stack.slice(stack.indexOf(id)).forEach((x) => loop.add(x));
+      return outputNames(n).map(() => 0);
+    }
     state[id] = 1;
-    let v = 0;
-    if (n.type === 'IN') v = inputs[id] ? 1 : 0;
+    let v: number[];
+    if (isFlipFlop(n.type)) v = computeNode(n, [], q[id] ?? 0);
     else {
-      const ins: number[] = [];
-      for (let pin = 0; pin < inputCount(n.type); pin++) {
-        const src = driverOf(c, id, pin);
-        if (src === null) {
-          floating.push({ node: id, pin });
-          ins.push(0);
-        } else ins.push(visit(src, [...stack, id]));
-      }
-      v = n.type === 'OUT' ? ins[0] : applyGate(n.type, ins[0], ins[1] ?? 0);
+      const ins = inputNames(n).map((_, pin) => readPin(id, pin, [...stack, id]));
+      v = computeNode(n, ins, 0, inputs[id]);
+      outs[`${id}@in`] = ins;
     }
     state[id] = 2;
-    values[id] = v;
+    outs[id] = v;
     return v;
   };
   c.nodes.forEach((n) => visit(n.id, []));
-  return { values, loop: [...loop], floating };
+  // Flip-flop inputs are read after the settle (they do not feed back).
+  c.nodes.filter((n) => isFlipFlop(n.type)).forEach((n) => {
+    outs[`${n.id}@in`] = inputNames(n).map((_, pin) => readPin(n.id, pin, [n.id]));
+  });
+
+  const values: Record<string, number> = {};
+  for (const n of c.nodes) {
+    const o = outs[n.id] ?? [];
+    o.forEach((v, pin) => { values[sig(n.id, pin)] = v; });
+    // OUT and SEG7 show their inputs.
+    if (n.type === 'OUT') values[n.id] = outs[`${n.id}@in`]?.[0] ?? 0;
+    if (n.type === 'SEG7') {
+      const b = outs[`${n.id}@in`] ?? [];
+      values[n.id] = (b[0] ?? 0) | ((b[1] ?? 0) << 1) | ((b[2] ?? 0) << 2) | ((b[3] ?? 0) << 3);
+    }
+  }
+  const pins: Record<string, number[]> = {};
+  for (const n of c.nodes) pins[n.id] = outs[`${n.id}@in`] ?? [];
+  return { values, loop: [...loop], floating: dedupe(floating), pins };
+}
+
+function dedupe(list: Array<{ node: string; pin: number }>): Array<{ node: string; pin: number }> {
+  const seen = new Set<string>();
+  return list.filter((f) => {
+    const k = `${f.node}:${f.pin}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+
+/* ── Sequential stepping ────────────────────────────────────────────── */
+
+export interface SeqState {
+  /** Stored bit of each flip-flop. */
+  q: Record<string, number>;
+  /** Clock pin level of each flip-flop at the last settle (edge detection). */
+  clk: Record<string, number>;
+}
+
+export const EMPTY_SEQ: SeqState = { q: {}, clk: {} };
+
+/**
+ * Applies `inputs`, then lets every flip-flop whose clock pin went 0 → 1
+ * take its next state, repeating while outputs keep clocking other
+ * flip-flops (ripple counters). Returns the settled evaluation and state.
+ */
+export function settle(c: Circuit, inputs: Record<string, number>, seq: SeqState = EMPTY_SEQ): { ev: Evaluation; seq: SeqState } {
+  const ffs = c.nodes.filter((n) => isFlipFlop(n.type));
+  let q: Record<string, number> = {};
+  ffs.forEach((f) => { q[f.id] = seq.q[f.id] ?? 0; });
+  const clk: Record<string, number> = { ...seq.clk };
+  // A flip-flop seen for the first time takes the clock level of the circuit
+  // at rest (every CLK low), so the first clock pulse after adding it counts
+  // and flip-flops clocked by other flip-flops do not fire spuriously.
+  const unknown = ffs.filter((f) => !(f.id in clk));
+  if (unknown.length) {
+    const rest = { ...inputs };
+    c.nodes.filter((n) => n.type === 'CLK').forEach((n) => { rest[n.id] = 0; });
+    const base = evaluate(c, rest, q);
+    unknown.forEach((f) => { clk[f.id] = base.pins[f.id]?.[PARTS[f.type].clock!] ?? 0; });
+  }
+  let ev = evaluate(c, inputs, q);
+  for (let iter = 0; iter < 32 && ffs.length; iter++) {
+    const pins = ev.pins;
+    const next = { ...q };
+    let changed = false;
+    for (const f of ffs) {
+      const ins = pins[f.id] ?? [];
+      const level = ins[PARTS[f.type].clock!] ?? 0;
+      const prev = clk[f.id];
+      clk[f.id] = level;
+      if (prev === 0 && level === 1) {
+        const nq = nextState(f, ins, q[f.id] ?? 0);
+        if (nq !== next[f.id]) {
+          next[f.id] = nq;
+          changed = true;
+        }
+      }
+    }
+    if (!changed) break;
+    q = next;
+    ev = evaluate(c, inputs, q);
+  }
+  // Record clock levels that the last evaluation produced.
+  const pins = ev.pins;
+  for (const f of ffs) clk[f.id] = pins[f.id]?.[PARTS[f.type].clock!] ?? 0;
+  return { ev, seq: { q, clk } };
 }
 
 /* ── Unit-delay timing simulation ───────────────────────────────────── */
 
 export interface Trace {
-  /** Value changes per node output: [time, value] pairs, first at t=0. */
+  /** Value changes per signal (see `sig`): [time, value] pairs, first at t=0. */
   changes: Record<string, Array<[number, number]>>;
   end: number;
-  /** Nodes whose output changed more than once after the stimulus (a glitch). */
+  /** Nodes with an output that changed more than once (a glitch). */
   glitches: string[];
 }
 
 /**
  * Starting from the steady state for `before`, apply `after` at t = 0 and let
- * every gate update `delay` time units after one of its inputs changes
- * (transport delay). Records each node's output over time.
+ * every part update `delay` time units after one of its inputs changes
+ * (transport delay). Flip-flops keep the state `q` (no clocking here).
  */
 export function simulateTiming(
   c: Circuit,
   before: Record<string, number>,
   after: Record<string, number>,
   maxTime = 60,
+  q: Record<string, number> = {},
 ): Trace {
-  const steady = evaluate(c, before).values;
+  const steady = evaluate(c, before, q).values;
   const value: Record<string, number> = { ...steady };
   const changes: Record<string, Array<[number, number]>> = {};
-  c.nodes.forEach((n) => { changes[n.id] = [[0, steady[n.id] ?? 0]]; });
-  const fanout = new Map<string, string[]>();
-  c.wires.forEach((w) => fanout.set(w.from, [...(fanout.get(w.from) ?? []), w.to]));
   const byId = new Map(c.nodes.map((n) => [n.id, n]));
+  for (const n of c.nodes) {
+    if (n.type === 'OUT' || n.type === 'SEG7') changes[n.id] = [[0, steady[n.id] ?? 0]];
+    outputNames(n).forEach((_, pin) => { changes[sig(n.id, pin)] = [[0, steady[sig(n.id, pin)] ?? 0]]; });
+  }
+  const fanout = new Map<string, string[]>();
+  c.wires.forEach((w) => {
+    const k = sig(w.from, w.fromPin ?? 0);
+    fanout.set(k, [...(fanout.get(k) ?? []), w.to]);
+  });
 
-  // Events: time -> set of nodes to re-evaluate.
   const queue = new Map<number, Set<string>>();
-  const schedule = (t: number, id: string) => {
+  const schedule = (t: number, nid: string) => {
     if (t > maxTime) return;
     if (!queue.has(t)) queue.set(t, new Set());
-    queue.get(t)!.add(id);
+    queue.get(t)!.add(nid);
   };
-  const set = (id: string, v: number, t: number) => {
-    if (value[id] === v) return;
-    value[id] = v;
-    changes[id].push([t, v]);
-    for (const dst of fanout.get(id) ?? []) {
+  const set = (key: string, v: number, t: number) => {
+    if (value[key] === v) return;
+    value[key] = v;
+    (changes[key] ??= [[0, v]]).push([t, v]);
+    for (const dst of fanout.get(key) ?? []) {
       const d = byId.get(dst);
       if (!d) continue;
-      schedule(t + (d.type === 'OUT' ? 0 : Math.max(1, d.delay)), dst);
+      schedule(t + (d.type === 'OUT' || d.type === 'SEG7' ? 0 : Math.max(1, d.delay)), dst);
     }
   };
+  const input = (nid: string, pin: number) => {
+    const w = wireInto(c, nid, pin);
+    return w ? value[sig(w.from, w.fromPin ?? 0)] ?? 0 : 0;
+  };
+  const update = (n: GateNode, t: number) => {
+    const ins = inputNames(n).map((_, pin) => input(n.id, pin));
+    if (n.type === 'OUT') return set(n.id, ins[0] ?? 0, t);
+    if (n.type === 'SEG7') return set(n.id, (ins[0] ?? 0) | ((ins[1] ?? 0) << 1) | ((ins[2] ?? 0) << 2) | ((ins[3] ?? 0) << 3), t);
+    if (isFlipFlop(n.type)) return;
+    computeNode(n, ins, 0, after[n.id]).forEach((v, pin) => set(sig(n.id, pin), v, t));
+  };
+
   let end = 0;
-  c.nodes.filter((n) => n.type === 'IN').forEach((n) => set(n.id, after[n.id] ? 1 : 0, 0));
-  const input = (id: string, pin: number) => {
-    const src = driverOf(c, id, pin);
-    return src === null ? 0 : value[src] ?? 0;
-  };
+  c.nodes.filter((n) => SOURCES.includes(n.type)).forEach((n) => set(n.id, after[n.id] ? 1 : 0, 0));
   for (let t = 0; t <= maxTime; t++) {
-    const due = queue.get(t);
-    if (!due) continue;
-    queue.delete(t);
-    for (const id of due) {
-      const n = byId.get(id)!;
-      const v = n.type === 'OUT' ? input(id, 0) : applyGate(n.type, input(id, 0), input(id, 1));
-      set(id, v, t);
-      end = Math.max(end, t);
-    }
-    // Zero-delay OUT nodes scheduled at the same t are handled by a second pass.
-    const again = queue.get(t);
-    if (again) {
+    for (let pass = 0; pass < 2; pass++) {
+      const due = queue.get(t);
+      if (!due) break;
       queue.delete(t);
-      for (const id of again) {
-        const n = byId.get(id)!;
-        set(id, n.type === 'OUT' ? input(id, 0) : applyGate(n.type, input(id, 0), input(id, 1)), t);
+      for (const nid of due) {
+        update(byId.get(nid)!, t);
+        end = Math.max(end, t);
       }
     }
   }
-  const glitches = c.nodes
-    .filter((n) => n.type !== 'IN' && changes[n.id].length > 2)
-    .map((n) => n.id);
-  return { changes, end: Math.max(end, 1), glitches };
+  const glitchy = new Set<string>();
+  for (const [key, list] of Object.entries(changes)) {
+    const nid = key.split('#')[0];
+    const n = byId.get(nid);
+    if (n && !SOURCES.includes(n.type) && list.length > 2) glitchy.add(nid);
+  }
+  return { changes, end: Math.max(end, 1), glitches: [...glitchy] };
 }
 
-/** Value of a node at time t from its change list. */
+/** Value of a signal at time t from its change list. */
 export function valueAt(list: Array<[number, number]>, t: number): number {
   let v = list[0]?.[1] ?? 0;
   for (const [ct, cv] of list) {
@@ -194,16 +459,25 @@ export function valueAt(list: Array<[number, number]>, t: number): number {
 
 /* ── Truth table and Verilog ────────────────────────────────────────── */
 
-export function ioNodes(c: Circuit): { ins: GateNode[]; outs: GateNode[] } {
-  const byPos = (a: GateNode, b: GateNode) => a.y - b.y || a.x - b.x;
+const byPos = (a: GateNode, b: GateNode) => a.y - b.y || a.x - b.x;
+
+/** Inputs (IN, BTN, CLK) and outputs (OUT) ordered top to bottom. */
+export function ioNodes(c: Circuit): { ins: GateNode[]; outs: GateNode[]; displays: GateNode[] } {
   return {
-    ins: c.nodes.filter((n) => n.type === 'IN').sort(byPos),
+    ins: c.nodes.filter((n) => SOURCES.includes(n.type)).sort(byPos),
     outs: c.nodes.filter((n) => n.type === 'OUT').sort(byPos),
+    displays: c.nodes.filter((n) => n.type === 'SEG7').sort(byPos),
   };
 }
 
+export function isSequential(c: Circuit): boolean {
+  return c.nodes.some((n) => isFlipFlop(n.type));
+}
+
 export function truthTable(c: Circuit, maxInputs = 6): { ins: GateNode[]; outs: GateNode[]; rows: Array<{ in: number[]; out: number[] }> } | null {
-  const { ins, outs } = ioNodes(c);
+  if (isSequential(c)) return null;
+  const { ins, outs, displays } = ioNodes(c);
+  const shown = [...outs, ...displays];
   if (ins.length === 0 || ins.length > maxInputs) return null;
   const rows = [];
   for (let combo = 0; combo < 1 << ins.length; combo++) {
@@ -214,12 +488,12 @@ export function truthTable(c: Circuit, maxInputs = 6): { ins: GateNode[]; outs: 
       return b;
     });
     const ev = evaluate(c, iv);
-    rows.push({ in: bits, out: outs.map((o) => ev.values[o.id] ?? 0) });
+    rows.push({ in: bits, out: shown.map((o) => ev.values[o.id] ?? 0) });
   }
-  return { ins, outs, rows };
+  return { ins, outs: shown, rows };
 }
 
-const VERILOG_KEYWORDS = new Set(['module', 'endmodule', 'input', 'output', 'wire', 'logic', 'reg', 'assign', 'always', 'begin', 'end', 'if', 'else', 'case', 'and', 'or', 'not', 'xor', 'nand', 'nor', 'xnor', 'buf']);
+const VERILOG_KEYWORDS = new Set(['module', 'endmodule', 'input', 'output', 'wire', 'logic', 'reg', 'assign', 'always', 'always_ff', 'always_comb', 'posedge', 'negedge', 'begin', 'end', 'if', 'else', 'case', 'endcase', 'default', 'and', 'or', 'not', 'xor', 'nand', 'nor', 'xnor', 'buf', 'initial']);
 
 export function sanitizeName(raw: string, fallback: string): string {
   let s = (raw || '').trim().replace(/[çÇğĞıİöÖşŞüÜ]/g, (ch) => ({ ç: 'c', Ç: 'C', ğ: 'g', Ğ: 'G', ı: 'i', İ: 'I', ö: 'o', Ö: 'O', ş: 's', Ş: 'S', ü: 'u', Ü: 'U' })[ch] ?? ch);
@@ -229,65 +503,196 @@ export function sanitizeName(raw: string, fallback: string): string {
   return s;
 }
 
-export function toVerilog(c: Circuit, moduleName = 'gate_design', rename: Record<string, string> = {}): string {
-  const { ins, outs } = ioNodes(c);
-  const names = new Map<string, string>();
+const NET_PREFIX: Partial<Record<GateType, string>> = {
+  MUX2: 'mux', MUX4: 'mux', DEC2: 'dec', HA: 'ha', FA: 'fa', DFF: 'dff', TFF: 'tff', JKFF: 'jk', SRFF: 'sr', CONST0: 'c0', CONST1: 'c1',
+};
+
+const OUT_SUFFIX: Partial<Record<GateType, string[]>> = {
+  MUX2: ['y'], MUX4: ['y'], DEC2: ['y0', 'y1', 'y2', 'y3'], HA: ['s', 'c'], FA: ['s', 'cout'], DFF: ['q', 'qn'], TFF: ['q', 'qn'], JKFF: ['q', 'qn'], SRFF: ['q', 'qn'],
+};
+
+type Mode = 'generic' | 'de2';
+
+interface Built {
+  code: string;
+  /** Board mapping notes (DE2 mode). */
+  notes: string[];
+}
+
+function buildVerilog(c: Circuit, moduleName: string, mode: Mode): Built {
+  const { ins, outs, displays } = ioNodes(c);
+  const names = new Map<string, string>(); // sig -> net name
   const used = new Set<string>();
   const unique = (base: string) => {
     let n = base;
     let k = 2;
-    while (used.has(n)) n = `${base}_${k++}`;
+    while (used.has(n) || VERILOG_KEYWORDS.has(n)) n = `${base}_${k++}`;
     used.add(n);
     return n;
   };
-  ins.forEach((n, i) => names.set(n.id, unique(rename[n.id] ?? sanitizeName(n.label, `in${i}`))));
-  outs.forEach((n, i) => names.set(n.id, unique(rename[n.id] ?? sanitizeName(n.label, `out${i}`))));
-  const gates = c.nodes.filter((n) => GATE_TYPES.includes(n.type)).sort((a, b) => a.x - b.x || a.y - b.y);
-  gates.forEach((g, i) => names.set(g.id, unique(`g${i + 1}`)));
+  const ports: string[] = [];
+  const body: string[] = [];
+  const notes: string[] = [];
 
-  const src = (id: string, pin: number) => {
-    const d = driverOf(c, id, pin);
-    return d ? names.get(d) ?? "1'b0" : "1'b0";
-  };
-  const expr = (g: GateNode) => {
-    const a = src(g.id, 0);
-    const b = src(g.id, 1);
-    switch (g.type) {
-      case 'AND': return `${a} & ${b}`;
-      case 'OR': return `${a} | ${b}`;
-      case 'NOT': return `~${a}`;
-      case 'NAND': return `~(${a} & ${b})`;
-      case 'NOR': return `~(${a} | ${b})`;
-      case 'XOR': return `${a} ^ ${b}`;
-      case 'XNOR': return `~(${a} ^ ${b})`;
-      default: return a;
+  // Board resources in DE2 mode.
+  let sw = 0;
+  let key = 0;
+  let led = 0;
+  let hex = 0;
+  let clockPort: string | null = null;
+
+  for (const [i, n] of ins.entries()) {
+    const fallback = n.type === 'CLK' ? 'clk' : n.type === 'BTN' ? `btn${i}` : `in${i}`;
+    const label = sanitizeName(n.label, fallback);
+    if (mode === 'de2') {
+      if (n.type === 'CLK') {
+        if (!clockPort) {
+          clockPort = unique('CLOCK_50');
+          ports.push(`    input  logic ${clockPort}`);
+          notes.push(`//   CLOCK_50 = ${label} (use Run or Clock step on the board)`);
+        }
+        names.set(n.id, clockPort);
+      } else if (n.type === 'BTN' && key < 4) {
+        const p = unique(`KEY${key}`);
+        ports.push(`    input  logic ${p}`);
+        const net = unique(label);
+        body.push(`    logic ${net};`, `    assign ${net} = ~${p};  // DE2 keys are active-low`);
+        notes.push(`//   KEY${key} = ${label} (pressed = 1)`);
+        names.set(n.id, net);
+        key++;
+      } else {
+        const p = unique(`SW${sw}`);
+        ports.push(`    input  logic ${p}`);
+        notes.push(`//   SW${sw}  = ${label}`);
+        names.set(n.id, p);
+        sw++;
+      }
+    } else {
+      const p = unique(label);
+      ports.push(`    input  logic ${p}`);
+      names.set(n.id, p);
     }
-  };
-  const mod = sanitizeName(moduleName, 'gate_design');
-  const ports = [
-    ...ins.map((n) => `    input  logic ${names.get(n.id)}`),
-    ...outs.map((n) => `    output logic ${names.get(n.id)}`),
-  ];
-  const lines = [
-    '// Generated by the Logic Lab gate editor',
-    `module ${mod} (`,
-    ports.join(',\n'),
-    ');',
-  ];
-  if (gates.length) {
-    lines.push('', `    logic ${gates.map((g) => names.get(g.id)).join(', ')};`, '');
-    gates.forEach((g) => lines.push(`    assign ${names.get(g.id)} = ${expr(g)};  // ${g.type}`));
   }
-  lines.push('');
-  outs.forEach((o) => lines.push(`    assign ${names.get(o.id)} = ${src(o.id, 0)};`));
-  lines.push('', 'endmodule', '');
-  return lines.join('\n');
+
+  const outPorts: Array<{ node: GateNode; port: string }> = [];
+  for (const [i, n] of outs.entries()) {
+    const label = sanitizeName(n.label, `out${i}`);
+    const p = unique(mode === 'de2' ? `LEDR${led++}` : label);
+    if (mode === 'de2') notes.push(`//   ${p} = ${label}`);
+    ports.push(`    output logic ${p}`);
+    outPorts.push({ node: n, port: p });
+  }
+  const segPorts: Array<{ node: GateNode; port: string }> = [];
+  for (const [i, n] of displays.entries()) {
+    const label = sanitizeName(n.label, `hex${i}`);
+    const p = unique(mode === 'de2' && hex < 8 ? `HEX${hex++}` : label);
+    if (mode === 'de2') notes.push(`//   ${p} = ${label} (7-segment)`);
+    ports.push(`    output logic [6:0] ${p}`);
+    segPorts.push({ node: n, port: p });
+  }
+
+  // Internal nets, left to right.
+  const parts = c.nodes.filter((n) => !SOURCES.includes(n.type) && n.type !== 'OUT' && n.type !== 'SEG7').sort((a, b) => a.x - b.x || a.y - b.y);
+  const counters: Record<string, number> = {};
+  for (const n of parts) {
+    const prefix = NET_PREFIX[n.type] ?? 'g';
+    counters[prefix] = (counters[prefix] ?? 0) + 1;
+    const base = `${prefix}${counters[prefix]}`;
+    const suffix = OUT_SUFFIX[n.type];
+    outputNames(n).forEach((_, pin) => names.set(sig(n.id, pin), unique(suffix ? `${base}_${suffix[pin]}` : base)));
+  }
+
+  const src = (nid: string, pin: number) => {
+    const w = wireInto(c, nid, pin);
+    return w ? names.get(sig(w.from, w.fromPin ?? 0)) ?? "1'b0" : "1'b0";
+  };
+
+  const internal = parts.flatMap((n) => outputNames(n).map((_, pin) => names.get(sig(n.id, pin))!));
+  if (internal.length) body.push(`    logic ${internal.join(', ')};`);
+  body.push('');
+
+  const ops: Partial<Record<GateType, string>> = { AND: ' & ', OR: ' | ', NAND: ' & ', NOR: ' | ', XOR: ' ^ ', XNOR: ' ^ ' };
+  for (const n of parts) {
+    const net = (pin = 0) => names.get(sig(n.id, pin))!;
+    const i = (pin: number) => src(n.id, pin);
+    switch (n.type) {
+      case 'CONST0': body.push(`    assign ${net()} = 1'b0;`); break;
+      case 'CONST1': body.push(`    assign ${net()} = 1'b1;`); break;
+      case 'NOT': body.push(`    assign ${net()} = ~${i(0)};  // NOT`); break;
+      case 'BUF': body.push(`    assign ${net()} = ${i(0)};  // buffer`); break;
+      case 'MUX2': body.push(`    assign ${net()} = ${i(2)} ? ${i(1)} : ${i(0)};  // 2:1 mux`); break;
+      case 'MUX4': body.push(`    assign ${net()} = ${i(5)} ? (${i(4)} ? ${i(3)} : ${i(2)}) : (${i(4)} ? ${i(1)} : ${i(0)});  // 4:1 mux`); break;
+      case 'DEC2':
+        body.push(`    // 2-to-4 decoder`);
+        body.push(`    assign ${net(0)} = ~${i(1)} & ~${i(0)};`, `    assign ${net(1)} = ~${i(1)} &  ${i(0)};`, `    assign ${net(2)} =  ${i(1)} & ~${i(0)};`, `    assign ${net(3)} =  ${i(1)} &  ${i(0)};`);
+        break;
+      case 'HA': body.push(`    assign ${net(0)} = ${i(0)} ^ ${i(1)};  // half adder sum`, `    assign ${net(1)} = ${i(0)} & ${i(1)};  // half adder carry`); break;
+      case 'FA':
+        body.push(`    assign ${net(0)} = ${i(0)} ^ ${i(1)} ^ ${i(2)};  // full adder sum`);
+        body.push(`    assign ${net(1)} = (${i(0)} & ${i(1)}) | (${i(2)} & (${i(0)} ^ ${i(1)}));  // full adder carry`);
+        break;
+      case 'DFF':
+      case 'TFF':
+      case 'JKFF':
+      case 'SRFF': {
+        const clk = wireInto(c, n.id, 1) ? i(1) : null;
+        const q = net(0);
+        const next =
+          n.type === 'DFF' ? i(0)
+          : n.type === 'TFF' ? `${q} ^ ${i(0)}`
+          : n.type === 'JKFF' ? `(${i(0)} & ~${q}) | (~${i(2)} & ${q})`
+          : `${i(0)} | (~${i(2)} & ${q})`;
+        if (clk) body.push(`    always_ff @(posedge ${clk}) ${q} <= ${next};  // ${n.type}`);
+        else body.push(`    // ${n.type} ${q}: clock input not connected, it keeps its value`);
+        body.push(`    assign ${net(1)} = ~${q};`);
+        break;
+      }
+      default: {
+        const list = inputNames(n).map((_, pin) => i(pin));
+        const joined = list.join(ops[n.type] ?? ' & ');
+        const inverted = n.type === 'NAND' || n.type === 'NOR' || n.type === 'XNOR';
+        body.push(`    assign ${net()} = ${inverted ? `~(${joined})` : joined};  // ${n.type}`);
+      }
+    }
+  }
+  if (parts.length) body.push('');
+  for (const { node, port } of outPorts) body.push(`    assign ${port} = ${src(node.id, 0)};`);
+  for (const { node, port } of segPorts) {
+    const v = unique(`${port}_value`);
+    body.push('', `    // 7-segment decoder, segments a..g = ${port}[0..6], active-low as on the DE2`);
+    body.push(`    logic [3:0] ${v};`);
+    body.push(`    assign ${v} = {${src(node.id, 3)}, ${src(node.id, 2)}, ${src(node.id, 1)}, ${src(node.id, 0)}};`);
+    body.push('    always_comb begin');
+    body.push(`        case (${v})`);
+    SEG7_PATTERNS.forEach((pat, k) => body.push(`            4'h${k.toString(16).toUpperCase()}: ${port} = 7'b${pat.toString(2).padStart(7, '0')};`));
+    body.push(`            default: ${port} = 7'b1111111;`);
+    body.push('        endcase');
+    body.push('    end');
+  }
+
+  const mod = sanitizeName(moduleName, 'gate_design');
+  const code = ['// Generated by the Logic Lab gate editor', `module ${mod} (`, ports.join(',\n'), ');', '', ...body, '', 'endmodule', ''].join('\n');
+  return { code: code.replace(/\n{3,}/g, '\n\n'), notes };
+}
+
+export function toVerilog(c: Circuit, moduleName = 'gate_design'): string {
+  return buildVerilog(c, moduleName, 'generic').code;
+}
+
+/**
+ * Same design for the DE2 board: inputs on SW0.., buttons on KEY0.. (active
+ * low), a clock on CLOCK_50, outputs on LEDR0.. and 7-segment displays on
+ * HEX0...
+ */
+export function toDe2Verilog(c: Circuit, moduleName = 'gate_design'): string {
+  const built = buildVerilog(c, `${sanitizeName(moduleName, 'gate_design')}_de2`, 'de2');
+  return ['// DE2 board mapping:', ...built.notes, built.code].join('\n');
 }
 
 /* ── Presets ────────────────────────────────────────────────────────── */
 
 const node = (id: string, type: GateType, x: number, y: number, label = '', delay = 1): GateNode => ({ id, type, x, y, label, delay });
-const wire = (from: string, to: string, pin = 0): Wire => ({ id: `${from}-${to}-${pin}`, from, to, pin });
+const wire = (from: string, to: string, pin = 0, fromPin = 0): Wire => ({ id: `${from}-${fromPin}-${to}-${pin}`, from, to, pin, ...(fromPin ? { fromPin } : {}) });
 
 export const PRESETS: Record<string, { title: { en: string; tr: string }; circuit: Circuit }> = {
   half_adder: {
@@ -311,14 +716,49 @@ export const PRESETS: Record<string, { title: { en: string; tr: string }; circui
       wires: [wire('b', 'g1', 0), wire('a', 'g1', 1), wire('a', 'na'), wire('na', 'g2', 0), wire('c', 'g2', 1), wire('g1', 'o', 0), wire('g2', 'o', 1), wire('o', 'y')],
     },
   },
+  full_adder: {
+    title: { en: 'Full adder from two half adders', tr: 'İki yarım toplayıcıdan tam toplayıcı' },
+    circuit: {
+      nodes: [node('a', 'IN', 40, 80, 'a'), node('b', 'IN', 40, 200, 'b'), node('ci', 'IN', 40, 340, 'cin'), node('h1', 'HA', 240, 100), node('h2', 'HA', 460, 180), node('o', 'OR', 680, 300), node('s', 'OUT', 900, 190, 'sum'), node('co', 'OUT', 900, 310, 'cout')],
+      wires: [wire('a', 'h1', 0), wire('b', 'h1', 1), wire('h1', 'h2', 0), wire('ci', 'h2', 1), wire('h2', 's'), wire('h1', 'o', 0, 1), wire('h2', 'o', 1, 1), wire('o', 'co')],
+    },
+  },
+  mux4: {
+    title: { en: '4:1 multiplexer', tr: '4:1 çoklayıcı' },
+    circuit: {
+      nodes: [node('d0', 'IN', 40, 40, 'd0'), node('d1', 'IN', 40, 120, 'd1'), node('d2', 'IN', 40, 200, 'd2'), node('d3', 'IN', 40, 280, 'd3'), node('s0', 'IN', 40, 400, 's0'), node('s1', 'IN', 40, 480, 's1'), node('m', 'MUX4', 320, 180), node('y', 'OUT', 560, 235, 'y')],
+      wires: [wire('d0', 'm', 0), wire('d1', 'm', 1), wire('d2', 'm', 2), wire('d3', 'm', 3), wire('s0', 'm', 4), wire('s1', 'm', 5), wire('m', 'y')],
+    },
+  },
+  seg7: {
+    title: { en: '7-segment display (4 switches)', tr: '7 segment gösterge (4 anahtar)' },
+    circuit: {
+      nodes: [node('b0', 'IN', 60, 60, 'b0'), node('b1', 'IN', 60, 150, 'b1'), node('b2', 'IN', 60, 240, 'b2'), node('b3', 'IN', 60, 330, 'b3'), node('h', 'SEG7', 360, 130, 'hex0')],
+      wires: [wire('b0', 'h', 0), wire('b1', 'h', 1), wire('b2', 'h', 2), wire('b3', 'h', 3)],
+    },
+  },
+  dff: {
+    title: { en: 'D flip-flop', tr: 'D flip-flop' },
+    circuit: {
+      nodes: [node('d', 'IN', 60, 100, 'd'), node('clk', 'CLK', 60, 220, 'clk'), node('f', 'DFF', 300, 130), node('q', 'OUT', 540, 130, 'q')],
+      wires: [wire('d', 'f', 0), wire('clk', 'f', 1), wire('f', 'q')],
+    },
+  },
+  counter4: {
+    title: { en: '4-bit ripple counter → 7-segment', tr: '4 bit dalgalı sayıcı → 7 segment' },
+    circuit: {
+      nodes: [
+        node('one', 'CONST1', 60, 40), node('clk', 'CLK', 60, 200, 'clk'),
+        node('t0', 'TFF', 240, 170), node('t1', 'TFF', 420, 170), node('t2', 'TFF', 600, 170), node('t3', 'TFF', 780, 170),
+        node('q0', 'OUT', 260, 330, 'q0'), node('q1', 'OUT', 440, 330, 'q1'), node('q2', 'OUT', 620, 330, 'q2'), node('q3', 'OUT', 800, 330, 'q3'),
+        node('h', 'SEG7', 960, 400, 'hex0'),
+      ],
+      wires: [
+        wire('one', 't0', 0), wire('one', 't1', 0), wire('one', 't2', 0), wire('one', 't3', 0),
+        wire('clk', 't0', 1), wire('t0', 't1', 1, 1), wire('t1', 't2', 1, 1), wire('t2', 't3', 1, 1),
+        wire('t0', 'q0'), wire('t1', 'q1'), wire('t2', 'q2'), wire('t3', 'q3'),
+        wire('t0', 'h', 0), wire('t1', 'h', 1), wire('t2', 'h', 2), wire('t3', 'h', 3),
+      ],
+    },
+  },
 };
-
-/** Same design with inputs on SW0.. and outputs on LEDR0.., ready for the DE2 board. */
-export function toDe2Verilog(c: Circuit, moduleName = 'gate_design'): string {
-  const { ins, outs } = ioNodes(c);
-  const rename: Record<string, string> = {};
-  const notes: string[] = [];
-  ins.forEach((n, i) => { rename[n.id] = `SW${i}`; notes.push(`//   SW${i}  = ${sanitizeName(n.label, `in${i}`)}`); });
-  outs.forEach((n, i) => { rename[n.id] = `LEDR${i}`; notes.push(`//   LEDR${i} = ${sanitizeName(n.label, `out${i}`)}`); });
-  return ['// DE2 board mapping:', ...notes, toVerilog(c, `${sanitizeName(moduleName, 'gate_design')}_de2`, rename)].join('\n');
-}

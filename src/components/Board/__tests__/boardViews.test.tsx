@@ -116,6 +116,7 @@ import { lintVerilog } from '../../../core/simulator/diagnostics';
 import { extractFsm } from '../../../board/fsmExtract';
 import { applyMetadata, diffOverride, normalizeMetadata } from '../../../examples/metadata';
 import { buildLabReport } from '../../../report/labReport';
+import * as Gates from '../../../gates/circuit';
 import { defaultSpec, generateTestbench, readPorts, resizeSpec, setValue } from '../../../waveform/stimulus';
 import { minimize, parseExpression, sopText, tableOf, variablesOf } from '../../../logic/boolean';
 import { ISO, project, faceTransform, sevenSegmentShapes } from '../boardGeometry';
@@ -2983,6 +2984,56 @@ useBoardStore.setState({ engine: null, pinMappings: [], simState: {} });
   assert.strictEqual(defaultSpec(readPorts('module r(input logic clk, input logic rst_n, output logic y); endmodule')!).values.rst_n.slice(0, 3).join(''), '001', 'active-low reset starts low');
   assert.strictEqual(readPorts('not verilog'), null);
   pass('stimulus editor generates a runnable testbench with clock, reset pulse and only changed assignments');
+}
+
+
+{
+  // Gate designer parts: blocks, flip-flops, 7-segment and Verilog export.
+  const P = Gates.PRESETS;
+  let seq = Gates.EMPTY_SEQ;
+  const counts: number[] = [];
+  for (let i = 0; i < 17; i++) {
+    seq = Gates.settle(P.counter4.circuit, { clk: 1 }, seq).seq;
+    const r = Gates.settle(P.counter4.circuit, { clk: 0 }, seq);
+    seq = r.seq;
+    counts.push(r.ev.values.h);
+  }
+  assert.deepStrictEqual(counts, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1], 'ripple counter of T flip-flops counts on each clock pulse');
+  const m = P.mux4.circuit;
+  assert.strictEqual([0, 1, 2, 3].map((s) => Gates.evaluate(m, { d0: 0, d1: 1, d2: 1, d3: 0, s0: s & 1, s1: s >> 1 }).values.y).join(''), '0110');
+  assert.deepStrictEqual(Gates.truthTable(P.full_adder.circuit)!.rows.map((r) => r.out.join('')), ['00', '10', '10', '01', '10', '01', '01', '11']);
+  assert.strictEqual(Gates.truthTable(P.dff.circuit), null, 'no truth table for a clocked circuit');
+  const dff = P.dff.circuit;
+  let s1 = Gates.settle(dff, { d: 1, clk: 0 }, Gates.EMPTY_SEQ);
+  assert.strictEqual(s1.ev.values.q, 0, 'D is not taken without a clock edge');
+  s1 = Gates.settle(dff, { d: 1, clk: 1 }, s1.seq);
+  assert.strictEqual(s1.ev.values.q, 1, 'D is taken on the rising edge');
+  s1 = Gates.settle(dff, { d: 0, clk: 1 }, s1.seq);
+  assert.strictEqual(s1.ev.values.q, 1, 'D is ignored while the clock stays high');
+  const and4: Gates.Circuit = { nodes: [{ id: 'g', type: 'AND', inputs: 4, x: 0, y: 0, label: '', delay: 1 }, { id: 'o', type: 'CONST1', x: 0, y: 0, label: '', delay: 1 }], wires: [0, 1, 2].map((pin) => ({ id: `w${pin}`, from: 'o', to: 'g', pin })) };
+  assert.strictEqual(Gates.evaluate(and4, {}).values.g, 0, 'an unconnected fourth input reads 0');
+  assert.strictEqual(Gates.evaluate({ ...and4, wires: [...and4.wires, { id: 'w3', from: 'o', to: 'g', pin: 3 }] }, {}).values.g, 1);
+  assert.deepStrictEqual(Gates.simulateTiming(P.hazard.circuit, { a: 1, b: 1, c: 1 }, { a: 0, b: 1, c: 1 }).glitches.sort(), ['o', 'y'], 'the hazard preset still glitches');
+
+  for (const [key, preset] of Object.entries(P)) {
+    const mod = compileVerilog(Gates.toDe2Verilog(preset.circuit, key));
+    assert.ok(!mod.transpileError, `${key} exports Verilog the DE2 engine runs`);
+  }
+  const seg = compileVerilog(Gates.toDe2Verilog(P.seg7.circuit, 'seg'));
+  let st: Record<string, number> = {};
+  st = seg.evaluate({ SW0: 1, SW1: 0, SW2: 1, SW3: 0 }, st);
+  assert.strictEqual(st.HEX0, Gates.SEG7_PATTERNS[5], '7-segment export drives HEX0 like the editor');
+  // Flip-flops clocked by another flip-flop's output (an internal net) count on the DE2 engine too.
+  const cnt = compileVerilog(Gates.toDe2Verilog(P.counter4.circuit, 'cnt'));
+  st = {};
+  const seen: number[] = [];
+  for (let i = 0; i < 6; i++) {
+    st = cnt.evaluate({ CLOCK_50: 0 }, { ...st, CLOCK_50: 0 });
+    st = cnt.evaluate({ CLOCK_50: 1 }, { ...st, CLOCK_50: 1 });
+    seen.push([0, 1, 2, 3].reduce((a, b) => a | ((st[`LEDR${b}`] ?? 0) << b), 0));
+  }
+  for (let i = 1; i < seen.length; i++) assert.strictEqual(seen[i], (seen[i - 1] + 1) & 15, `ripple counter steps by one on the DE2 engine (${seen.join(',')})`);
+  pass('gate designer blocks, flip-flops, 7-segment and ripple counters work in the editor and on the DE2 engine');
 }
 
 console.log(`--- DE2 Board Renderer Regression: PASS (${checks.length} checks) ---`);

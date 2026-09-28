@@ -103,6 +103,7 @@ export const LESSONS: Lesson[] = [
     ],
     actions: [
       { kind: 'gates', preset: 'half_adder', label: t('Half adder in the gate designer', 'Kapı tasarımcısında yarım toplayıcı') },
+      { kind: 'gates', preset: 'full_adder', label: t('Full adder from two half adders', 'İki yarım toplayıcıdan tam toplayıcı') },
       { kind: 'example', id: 'full_adder', label: t('Full adder on the DE2', "Tam toplayıcı DE2'de") },
       { kind: 'exercise', id: 'full_adder', label: t('Exercise: full adder', 'Alıştırma: tam toplayıcı') },
       { kind: 'exercise', id: 'adder4', label: t('Exercise: 4-bit adder', 'Alıştırma: 4 bitlik toplayıcı') },
@@ -128,6 +129,7 @@ export const LESSONS: Lesson[] = [
     ],
     actions: [
       { kind: 'gates', preset: 'mux2', label: t('2:1 mux in the gate designer', 'Kapı tasarımcısında 2:1 mux') },
+      { kind: 'gates', preset: 'mux4', label: t('4:1 mux block', '4:1 mux bloğu') },
       { kind: 'example', id: 'decoder_3to8', label: t('3-to-8 decoder on the DE2', "3'ten 8'e kod çözücü DE2'de") },
       { kind: 'exercise', id: 'mux4', label: t('Exercise: 4:1 mux', 'Alıştırma: 4:1 mux') },
       { kind: 'exercise', id: 'decoder2to4', label: t('Exercise: 2-to-4 decoder', "Alıştırma: 2'den 4'e kod çözücü") },
@@ -154,6 +156,8 @@ export const LESSONS: Lesson[] = [
       t('A synchronous reset is checked first inside the clocked block.', 'Senkron reset saatli bloğun içinde ilk kontrol edilir.'),
     ],
     actions: [
+      { kind: 'gates', preset: 'dff', label: t('D flip-flop in the gate designer', 'Kapı tasarımcısında D flip-flop') },
+      { kind: 'gates', preset: 'counter4', label: t('Ripple counter with T flip-flops', 'T flip-floplarla dalgalı sayıcı') },
       { kind: 'example', id: 'counter_4bit', label: t('4-bit counter on the DE2', "4 bitlik sayıcı DE2'de") },
       { kind: 'exercise', id: 'dff_en', label: t('Exercise: D flip-flop with enable', 'Alıştırma: yetkili D flip-flop') },
       { kind: 'exercise', id: 'counter4', label: t('Exercise: 4-bit counter', 'Alıştırma: 4 bitlik sayıcı') },
