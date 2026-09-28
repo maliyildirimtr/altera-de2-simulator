@@ -1,4 +1,4 @@
-import { runYosys } from '@yowasp/yosys';
+import type { YosysWorkerRequest, YosysWorkerResponse } from '../workers/yosys.worker.types';
 
 // @ts-ignore
 import { yosys2digitaljs } from 'yosys2digitaljs/core';
@@ -69,6 +69,119 @@ function textStream(write: (text: string) => void): (bytes: Uint8Array | null) =
   };
 }
 
+
+interface YosysRun {
+  outputJson: string | null;
+  stdout: string;
+  stderr: string;
+}
+
+class WorkerUnavailableError extends Error {}
+
+let yosysWorker: Worker | null = null;
+let yosysRequestId = 0;
+
+/**
+ * Runs Yosys in a dedicated worker so the page stays responsive. The worker
+ * is kept alive between runs; Yosys' WebAssembly is loaded into it once.
+ */
+function runYosysInWorker(
+  args: string[],
+  files: Record<string, string>,
+  onLoad: (done: number, total: number) => void,
+  onSynthesizing: () => void,
+): Promise<YosysRun> {
+  if (typeof Worker === 'undefined') return Promise.reject(new WorkerUnavailableError());
+  let worker: Worker;
+  try {
+    worker = yosysWorker ??= new Worker(new URL('../workers/yosys.worker.ts', import.meta.url), { type: 'module' });
+  } catch {
+    return Promise.reject(new WorkerUnavailableError());
+  }
+  const id = ++yosysRequestId;
+
+  return new Promise<YosysRun>((resolve, reject) => {
+    let started = false;
+    const cleanup = () => {
+      worker.removeEventListener('message', onMessage);
+      worker.removeEventListener('error', onError);
+    };
+    const onError = (event: ErrorEvent) => {
+      cleanup();
+      worker.terminate();
+      if (yosysWorker === worker) yosysWorker = null;
+      // Failing before any reply means the worker itself could not start.
+      if (!started) reject(new WorkerUnavailableError(event.message));
+      else reject(new InternalSchematicError(event.message || 'Yosys worker crashed.'));
+    };
+    const onMessage = (event: MessageEvent<YosysWorkerResponse>) => {
+      const msg = event.data;
+      if (msg.id !== id) return;
+      started = true;
+      switch (msg.type) {
+        case 'load-progress':
+          onLoad(msg.done, msg.total);
+          return;
+        case 'synthesizing':
+          onSynthesizing();
+          return;
+        case 'load-error':
+          // Yosys could not be loaded inside the worker; try the main thread.
+          cleanup();
+          reject(new WorkerUnavailableError(msg.message));
+          return;
+        case 'error':
+          cleanup();
+          reject(new HdlSynthesisError(
+            msg.stderr.trim() || msg.stdout.trim() || msg.message,
+            msg.stdout,
+            msg.stderr,
+          ));
+          return;
+        case 'result':
+          cleanup();
+          resolve({ outputJson: msg.outputJson, stdout: msg.stdout, stderr: msg.stderr });
+      }
+    };
+    worker.addEventListener('message', onMessage);
+    worker.addEventListener('error', onError);
+    const request: YosysWorkerRequest = { id, args, files };
+    worker.postMessage(request);
+  });
+}
+
+/** Fallback: the original main-thread path (blocks the page while it runs). */
+async function runYosysOnMainThread(
+  args: string[],
+  files: Record<string, string>,
+  onLoad: (done: number, total: number) => void,
+  onSynthesizing: () => void,
+): Promise<YosysRun> {
+  const { runYosys } = await import('@yowasp/yosys');
+  try {
+    await runYosys(undefined, undefined, {
+      fetchProgress: ({ totalLength, doneLength }) => onLoad(doneLength, totalLength),
+    });
+  } catch (loadErr: any) {
+    throw new InternalSchematicError(loadErr?.message || 'Failed to load Yosys.', loadErr);
+  }
+  onSynthesizing();
+  await nextPaint();
+  let stdout = '';
+  let stderr = '';
+  try {
+    const result = (await runYosys(args, files, {
+      stdout: textStream((text) => { stdout += text; }),
+      stderr: textStream((text) => { stderr += text; }),
+    })) as Record<string, string | Uint8Array> | undefined;
+    const raw = result?.['output.json'];
+    const outputJson = raw === undefined ? null : typeof raw === 'string' ? raw : new TextDecoder().decode(raw);
+    return { outputJson, stdout, stderr };
+  } catch (yosysErr: any) {
+    throw new HdlSynthesisError(stderr.trim() || stdout.trim() || yosysErr?.message || 'Yosys synthesis failed.', stdout, stderr);
+  }
+}
+
 // Share of the bar used by the one-time Yosys download (~54 MB, cached afterwards).
 const LOAD_END = 70;
 
@@ -91,7 +204,7 @@ export async function synthesizeVerilog(
   }
 
   // Yosys sanal dosya sistemini (VFS) oluştur
-  const files: Record<string, string | Uint8Array> = {};
+  const files: Record<string, string> = {};
   
   // Yosys'in her bir dosyayı okuması için komut dizisi
   const readCommands: string[] = [];
@@ -135,37 +248,31 @@ export async function synthesizeVerilog(
   let stderrLog = '';
 
   report(1, 'Preparing');
-
-  // Load the Yosys WebAssembly resources first. This is the only step with a
-  // real byte count; on later runs it is already cached and returns at once.
-  try {
-    await runYosys(undefined, undefined, {
-      fetchProgress: ({ totalLength, doneLength }) => {
-        if (totalLength > 0) report(1 + (LOAD_END - 1) * (doneLength / totalLength), 'Loading Yosys');
-      },
-    });
-  } catch (loadErr: any) {
-    throw new InternalSchematicError(loadErr?.message || 'Failed to load Yosys.', loadErr);
-  }
-
-  report(LOAD_END + 5, 'Synthesizing');
   await nextPaint();
 
-  let resultFiles: any;
+  const onLoad = (done: number, total: number) => {
+    if (total > 0) report(1 + (LOAD_END - 1) * (done / total), 'Loading Yosys');
+  };
+  const onSynthesizing = () => report(LOAD_END + 5, 'Synthesizing');
+
+  let run: YosysRun;
   try {
-    resultFiles = await runYosys(args, files, {
-      stdout: textStream((text) => { stdoutLog += text; }),
-      stderr: textStream((text) => { stderrLog += text; }),
-    });
-  } catch (yosysErr: any) {
-    const errorDetails = (stderrLog.trim() || stdoutLog.trim() || yosysErr?.message || 'Yosys synthesis failed.');
-    throw new HdlSynthesisError(errorDetails, stdoutLog, stderrLog);
+    run = await runYosysInWorker(args, files, onLoad, onSynthesizing);
+  } catch (workerErr) {
+    if (!(workerErr instanceof WorkerUnavailableError)) throw workerErr;
+    // No usable worker (very old browser, or the worker failed to start):
+    // fall back to running Yosys on this thread, as before.
+    run = await runYosysOnMainThread(args, files, onLoad, onSynthesizing);
   }
+  stdoutLog = run.stdout;
+  stderrLog = run.stderr;
+  const resultFiles: Record<string, string> | null =
+    run.outputJson === null ? null : { 'output.json': run.outputJson };
 
   if (resultFiles && resultFiles['output.json']) {
     try {
       const jsonRaw = resultFiles['output.json'];
-      const jsonString = typeof jsonRaw === 'string' ? jsonRaw : new TextDecoder().decode(jsonRaw as Uint8Array);
+      const jsonString = jsonRaw;
       const rawYosysJson = JSON.parse(jsonString);
 
       // Top modülü belirle. Yosys `hierarchy -auto-top` kullanıldığında ana modülün attributes objesinde `top: 1` bulunur.
