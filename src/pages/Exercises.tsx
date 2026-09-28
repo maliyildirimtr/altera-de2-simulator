@@ -4,6 +4,7 @@ import '../lib/monacoSetup';
 import { CheckCircle2, Circle, Lightbulb, Play, RotateCcw } from 'lucide-react';
 import { EXERCISES, getExercise, type Exercise } from '../exercises/exercises';
 import { expectedTable, gradeSubmission, type GradeResult, type Port, type TruthRow } from '../exercises/grader';
+import { lintVerilog, type Diagnostic } from '../core/simulator/diagnostics';
 import { OpenInSchematicButton } from '../components/Share/OpenInToolButton';
 import { useI18n } from '../i18n/I18nProvider';
 import { fmt } from '../i18n/dictionary';
@@ -167,6 +168,7 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
   const t = d.exercises;
   const [progress, setProgress] = useState<Progress>(loadProgress);
   const [result, setResult] = useState<GradeResult | null>(null);
+  const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
   const [showHint, setShowHint] = useState(false);
   const [onlyMismatches, setOnlyMismatches] = useState(false);
 
@@ -206,6 +208,7 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
   const select = (id: string) => {
     setProgress((p) => ({ ...p, active: id }));
     setResult(null);
+    setDiagnostics([]);
     setShowHint(false);
     setOnlyMismatches(false);
   };
@@ -213,6 +216,8 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
   const check = () => {
     const r = gradeSubmission(exercise.reference, code, exercise.sequential);
     setResult(r);
+    // Line-level hints only when something is wrong.
+    setDiagnostics(r.kind === 'graded' && r.passed === r.total ? [] : lintVerilog(code, r.kind === 'unsupported' ? r.message : undefined));
     setOnlyMismatches(r.kind === 'graded' && r.passed < r.total && r.total > 16);
     if (r.kind === 'graded' && r.passed === r.total) {
       setProgress((p) => ({ ...p, solved: { ...p.solved, [exercise.id]: true } }));
@@ -227,6 +232,7 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
       return { ...p, code: next };
     });
     setResult(null);
+    setDiagnostics([]);
   };
 
   const graded = result?.kind === 'graded';
@@ -373,6 +379,18 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
         </section>
 
         <section className="lg:w-[42%] min-w-0 min-h-0 flex flex-col gap-3 p-4 overflow-y-auto">
+          {result && diagnostics.length > 0 && (
+            <ul data-testid="exercise-diagnostics" className="flex flex-col gap-1 text-[12.5px] leading-snug">
+              {diagnostics.slice(0, 6).map((dgn, i) => (
+                <li key={i} className="flex gap-2" style={{ color: 'var(--text-secondary)' }}>
+                  <span className="font-mono shrink-0" style={{ color: dgn.severity === 'error' ? '#ef4444' : '#eab308' }}>
+                    {t.line} {dgn.line}
+                  </span>
+                  <span>{dgn.message[lang]}</span>
+                </li>
+              ))}
+            </ul>
+          )}
           {result ? <ResultBanner result={result} /> : (
             <p className="text-[12.5px]" style={{ color: 'var(--text-muted)' }}>{t.notChecked}</p>
           )}

@@ -4,6 +4,7 @@ import Editor from '@monaco-editor/react';
 import '../../lib/monacoSetup';
 import { useBoardStore } from '../../store/boardStore';
 import { markWorkspaceDirty } from '../../services/exampleHandoff';
+import { publishDiagnostics, subscribeDiagnostics } from '../../core/simulator/diagnostics';
 import { FileCode, Upload, BookOpen } from 'lucide-react';
 
 interface CodeEditorProps {
@@ -79,9 +80,27 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ isOpen, onOpenImport, is
           defaultLanguage="verilog"
           theme={isDarkMode ? 'vs-dark' : 'vs-light'}
           value={hdlCode}
-          onMount={(editor) => {
+          onMount={(editor, monaco) => {
+            // Compile diagnostics as squiggles; cleared as soon as the code changes.
+            let showing = false;
+            const unsubscribe = subscribeDiagnostics((list) => {
+              const m = editor.getModel();
+              if (!m) return;
+              monaco.editor.setModelMarkers(m, 'logiclab', list.map((dgn) => ({
+                severity: dgn.severity === 'error' ? monaco.MarkerSeverity.Error : dgn.severity === 'warning' ? monaco.MarkerSeverity.Warning : monaco.MarkerSeverity.Info,
+                message: dgn.message.en,
+                startLineNumber: dgn.line,
+                endLineNumber: dgn.line,
+                startColumn: m.getLineFirstNonWhitespaceColumn(dgn.line) || 1,
+                endColumn: m.getLineMaxColumn(dgn.line),
+              })));
+              showing = list.length > 0;
+            });
+            editor.onDidDispose(unsubscribe);
             editor.onDidChangeModelContent(() => {
               markWorkspaceDirty('de2');
+              const m = editor.getModel();
+              if (showing && m) publishDiagnostics([]);
             });
             const model = editor.getModel();
             if (model) {

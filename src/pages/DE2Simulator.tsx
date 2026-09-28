@@ -10,6 +10,7 @@ import { InspectorPanel } from '../components/DE2Workspace/InspectorPanel';
 import { ConsolePanel, type ConsoleMessage } from '../components/DE2Workspace/ConsolePanel';
 import { ImportDialog } from '../components/DE2Workspace/ImportDialog';
 import { CodeEditor } from '../components/Editor/CodeEditor';
+import { lintVerilog, publishDiagnostics } from '../core/simulator/diagnostics';
 import { ResizableDivider } from '../components/DE2Workspace/ResizableDivider';
 import { consumePendingHandoff, markWorkspaceOrigin, peekPendingHandoff } from '../services/exampleHandoff';
 import { loadWorkspace, restoreWorkspaceFlags, useWorkspaceAutosave } from '../services/workspaceStorage';
@@ -218,10 +219,15 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
     setIsCompiling(true);
     try {
       const module = compileVerilog(hdlCode);
+      const diagnostics = lintVerilog(hdlCode, module.transpileError);
+      publishDiagnostics(diagnostics);
+      for (const dgn of diagnostics) {
+        addLog(dgn.severity === 'error' ? 'error' : 'warn', `Line ${dgn.line}: ${dgn.message.en}`);
+      }
       setEngine(module);
       setCompiledSource(hdlCode);
       setCompileError(null);
-      if (module.transpileError) {
+      if (module.transpileError && diagnostics.length === 0) {
         // The ports were read but part of the logic uses a construct the
         // built-in simulator cannot run; outputs will not change.
         addLog('warn', `Some logic could not be simulated and is ignored: ${module.transpileError}`);
@@ -254,9 +260,15 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
       );
     } catch (err: any) {
       const rawError = err.message || 'Unknown compilation syntax error.';
+      const diagnostics = lintVerilog(hdlCode);
+      publishDiagnostics(diagnostics);
+      const firstError = diagnostics.find((dgn) => dgn.severity === 'error');
       markCompileFailed();
-      setCompileError(rawError);
-      addLog('error', `Compilation failed: ${rawError}`);
+      setCompileError(firstError ? `Line ${firstError.line}: ${firstError.message.en}` : rawError);
+      addLog('error', `Compilation failed: ${firstError ? `line ${firstError.line}: ${firstError.message.en}` : rawError}`);
+      for (const dgn of diagnostics.filter((x) => x !== firstError)) {
+        addLog(dgn.severity === 'error' ? 'error' : 'warn', `Line ${dgn.line}: ${dgn.message.en}`);
+      }
       setIsConsoleOpen(true);
     } finally {
       setIsCompiling(false);

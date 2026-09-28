@@ -112,6 +112,8 @@ import type { ParsedPort } from '../../../utils/parser/pinParser';
 import { NamedConstantError, buildConstantTable } from '../../../core/simulator/namedConstants';
 import { parseBitRef, readSignal, readVector, writeSignal } from '../../../core/simulator/vectorSignals';
 import { expandTarget, parseVirtualComponent } from '../../../board/virtualComponents';
+import { lintVerilog } from '../../../core/simulator/diagnostics';
+import { extractFsm } from '../../../board/fsmExtract';
 import { ISO, project, faceTransform, sevenSegmentShapes } from '../boardGeometry';
 
 /* ────────────────────────────────────────────────────────────────────────
@@ -2851,5 +2853,41 @@ pass('the exact 2.5D asset is undistorted and the 3D placeholder is untouched');
 
 store().resetBoard();
 useBoardStore.setState({ engine: null, pinMappings: [], simState: {} });
+
+
+/* ── Beginner diagnostics and FSM extraction ── */
+{
+  const exampleDir = path.join(process.cwd(), 'src/examples/source');
+  for (const file of fs.readdirSync(exampleDir)) {
+    const found = lintVerilog(fs.readFileSync(path.join(exampleDir, file), 'utf8'));
+    assert.deepStrictEqual(found.map((d) => `${d.line}: ${d.message.en}`), [], `no false diagnostics in ${file}`);
+  }
+  const first = (src: string) => lintVerilog(src)[0];
+  assert.match(first('module m(input logic a, output logic y);\n  assign y = a\nendmodule')!.message.en, /Missing ";"/);
+  assert.strictEqual(first('module m(input logic a, output logic y);\n  assign y = a\nendmodule')!.line, 2);
+  assert.match(first('module m(input logic abc, output logic y);\n  assign y = abd;\nendmodule')!.message.en, /"abd".*"abc"/);
+  assert.match(first('module m(input logic a, output logic y);\n  asign y = a;\nendmodule')!.message.en, /"assign"/);
+  assert.match(first('entity foo is\nport(a: in std_logic);\nend foo;')!.message.en, /VHDL is not supported/);
+  assert.match(first('module m(input logic clk, d, output logic q);\n  always_ff @(posedge clk) begin\n    q = d;\n  end\nendmodule')!.message.en, /<=/);
+  const fsm = extractFsm(`module f(input logic clk, input logic rst, input logic go, output logic y);
+    localparam A = 0, B = 1;
+    logic state;
+    always_ff @(posedge clk) begin
+      if (rst) state <= A;
+      else case (state)
+        A: if (go) state <= B;
+        B: state <= A;
+      endcase
+    end
+    assign y = state;
+  endmodule`);
+  assert.ok(fsm, 'an FSM is found');
+  assert.strictEqual(fsm!.stateVar, 'state');
+  assert.deepStrictEqual(fsm!.states.map((s) => `${s.name}=${s.value}`), ['A=0', 'B=1']);
+  assert.deepStrictEqual(fsm!.transitions.map((t) => `${t.from}->${t.to}:${t.condition}`), ['A->B:go', 'B->A:']);
+  assert.strictEqual(fsm!.initial, 'A');
+  assert.strictEqual(extractFsm('module m(input logic [1:0] s, output logic y);\n always_comb case (s) 0: y = 1; default: y = 0; endcase\nendmodule'), null, 'a mux case is not an FSM');
+  pass('beginner diagnostics have no false positives on examples, and FSM extraction reads a case(state) machine');
+}
 
 console.log(`--- DE2 Board Renderer Regression: PASS (${checks.length} checks) ---`);
