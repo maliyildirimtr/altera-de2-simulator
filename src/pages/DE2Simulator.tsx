@@ -1,3 +1,4 @@
+import { Cpu } from 'lucide-react';
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useBoardStore } from '../store/boardStore';
 import { compileVerilog } from '../core/simulator/verilogEngine';
@@ -11,6 +12,9 @@ import { ConsolePanel, type ConsoleMessage } from '../components/DE2Workspace/Co
 import { ImportDialog } from '../components/DE2Workspace/ImportDialog';
 import { CodeEditor } from '../components/Editor/CodeEditor';
 import { lintVerilog, publishDiagnostics } from '../core/simulator/diagnostics';
+import { buildQuartusProject } from '../utils/quartusProject';
+import { createZip } from '../utils/zip';
+import { downloadBlob } from '../utils/svgExport';
 import { ResizableDivider } from '../components/DE2Workspace/ResizableDivider';
 import { consumePendingHandoff, markWorkspaceOrigin, peekPendingHandoff } from '../services/exampleHandoff';
 import { loadWorkspace, restoreWorkspaceFlags, useWorkspaceAutosave } from '../services/workspaceStorage';
@@ -217,6 +221,34 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
     }
   }, [setHdlCode, setPinMappings, setEngine, resetBoard, addLog, persistLayout]);
 
+  /** Simulator → real board: a ready-to-compile Quartus II project as a .zip. */
+  const handleExportQuartus = useCallback(() => {
+    const st = useBoardStore.getState();
+    if (!st.hdlCode.trim()) {
+      addLog('warn', 'Nothing to export: write or open a design first.');
+      return;
+    }
+    let module;
+    try {
+      module = compileVerilog(st.hdlCode);
+    } catch (err: any) {
+      addLog('error', `Export failed: ${err?.message || 'the design could not be read.'}`);
+      return;
+    }
+    const top = module.topModule || 'top';
+    const project = buildQuartusProject({
+      topModule: top,
+      source: st.hdlCode,
+      mappings: st.pinMappings,
+      portWidths: module.portWidths ?? {},
+    });
+    downloadBlob(createZip(project.files.map((f) => ({ name: `${top}/${f.name}`, content: f.content }))), `${top}_quartus.zip`);
+    addLog('success', `Quartus project exported: ${top}_quartus.zip (${project.pinCount} pins, Cyclone II EP2C35F672C6). Open ${top}.qpf in Quartus II 13.0 SP1.`);
+    if (project.unresolved.length) {
+      addLog('warn', `No DE2 pin for: ${project.unresolved.join(', ')}. Map them in Pin Mapping or add them in Quartus.`);
+    }
+  }, [addLog]);
+
   // Exact existing compilation engine flow
   const handleCompile = useCallback(() => {
     if (!hdlCode || hdlCode.trim().length === 0) {
@@ -306,6 +338,17 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
             getFiles={() => [{ name: 'main.sv', content: useBoardStore.getState().hdlCode }]}
             onError={(msg) => addLog('error', msg)}
           />
+          <button
+            type="button"
+            data-testid="de2-export-quartus"
+            onClick={handleExportQuartus}
+            className="flex items-center gap-1.5 px-2.5 h-[30px] rounded-[4px] border font-medium transition-colors text-xs"
+            style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-primary)', backgroundColor: 'var(--bg-surface)' }}
+            title="Download a Quartus II project (.qpf/.qsf/.sdc + source) for the real DE2 board"
+          >
+            <Cpu size={13} />
+            <span className="hidden xl:inline">Quartus</span>
+          </button>
           <ShareButton
             className="flex items-center gap-1.5 px-2.5 h-[30px] rounded-[4px] border font-medium transition-colors text-xs"
             labelClassName="hidden xl:inline"
