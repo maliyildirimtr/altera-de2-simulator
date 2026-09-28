@@ -119,7 +119,7 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
             >
               {d.nav.explore}
             </span>
-            {EXPLORE_LINKS.slice(0, 2).map(({ to, key }) => (
+            {EXPLORE_LINKS.slice(0, 3).map(({ to, key }) => (
               <NavLink key={to} to={to} className={desktopLinkClass}>
                 {d.nav[key]}
               </NavLink>
@@ -132,14 +132,14 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
                 aria-haspopup="menu"
                 aria-expanded={moreOpen}
                 onClick={() => setMoreOpen((o) => !o)}
-                className={desktopLinkClass({ isActive: EXPLORE_LINKS.slice(2).some((l) => pathname === l.to) })}
+                className={desktopLinkClass({ isActive: EXPLORE_LINKS.slice(3).some((l) => pathname === l.to) })}
               >
                 {d.nav.more}
                 <ChevronDown size={12} />
               </button>
               {moreOpen && (
                 <div role="menu" className="absolute right-0 top-full mt-1.5 min-w-[190px] rounded-[6px] border py-1 z-50 shadow-lg" style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
-                  {EXPLORE_LINKS.slice(2).map(({ to, key, icon: Icon }) => (
+                  {EXPLORE_LINKS.slice(3).map(({ to, key, icon: Icon }) => (
                     <NavLink
                       key={to}
                       to={to}
