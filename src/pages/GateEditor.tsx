@@ -34,6 +34,8 @@ interface Saved {
   circuit: Circuit;
   inputs: Record<string, number>;
   name: string;
+  /** Open with the gate-delay view on (set by the lessons). */
+  timing?: boolean;
 }
 
 function load(): Saved {
@@ -41,7 +43,7 @@ function load(): Saved {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const s = JSON.parse(raw) as Saved;
-      if (s?.circuit?.nodes && s.circuit.wires) return { circuit: s.circuit, inputs: s.inputs ?? {}, name: s.name || 'gate_design' };
+      if (s?.circuit?.nodes && s.circuit.wires) return { circuit: s.circuit, inputs: s.inputs ?? {}, name: s.name || 'gate_design', timing: !!s.timing };
     }
   } catch {
     /* start with a preset */
@@ -102,7 +104,7 @@ export default function GateEditor() {
   const [pending, setPending] = useState<string | null>(null);
   const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null);
   const [copied, setCopied] = useState(false);
-  const [timingMode, setTimingMode] = useState(false);
+  const [timingMode, setTimingMode] = useState(!!initial.timing);
   const [trace, setTrace] = useState<Trace | null>(null);
   const [traceTime, setTraceTime] = useState(0);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -111,13 +113,13 @@ export default function GateEditor() {
   useEffect(() => {
     const t = window.setTimeout(() => {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ circuit, inputs, name }));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ circuit, inputs, name, timing: timingMode }));
       } catch {
         /* storage unavailable */
       }
     }, 300);
     return () => window.clearTimeout(t);
-  }, [circuit, inputs, name]);
+  }, [circuit, inputs, name, timingMode]);
 
   const ev = useMemo(() => evaluate(circuit, inputs), [circuit, inputs]);
   const verilog = useMemo(() => toVerilog(circuit, name), [circuit, name]);

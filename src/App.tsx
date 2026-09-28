@@ -20,6 +20,7 @@ const NotFound = lazy(() => import('./pages/NotFound'));
 const Exercises = lazy(() => import('./pages/Exercises'));
 const Classroom = lazy(() => import('./pages/Classroom'));
 const GateEditor = lazy(() => import('./pages/GateEditor'));
+const Lessons = lazy(() => import('./pages/Lessons'));
 
 migrateLegacyStorageKeys();
 
@@ -36,7 +37,8 @@ function DocumentTitle() {
       '/projects': d.nav.examples,
       '/exercises': d.nav.exercises,
       '/classroom': d.nav.classroom,
-      '/gates': d.nav.gates,
+      '/gates': d.gates.title,
+      '/lessons': d.nav.lessons,
       '/digital-logic': d.nav.digitalLogic,
       '/fpga': d.nav.fpga,
     };
@@ -95,6 +97,7 @@ export default function App() {
               <Route path="/exercises" element={<Exercises isDarkMode={isDarkMode} />} />
               <Route path="/classroom" element={<Classroom />} />
               <Route path="/gates" element={<GateEditor />} />
+              <Route path="/lessons" element={<Lessons />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>

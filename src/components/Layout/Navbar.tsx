@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { NavLink, Link } from 'react-router-dom';
-import { Cpu, Activity, GitGraph, BookOpen, Sun, Moon, Menu, X, Layers, Grid, GraduationCap, Users, Shapes } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { NavLink, Link, useLocation } from 'react-router-dom';
+import { Cpu, Activity, GitGraph, BookOpen, Sun, Moon, Menu, X, Layers, Grid, GraduationCap, Users, Shapes, BookOpenCheck, ChevronDown } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nProvider';
 import { PLATFORM_NAME } from '../../lib/platform';
 
@@ -18,6 +18,7 @@ const TOOL_LINKS = [
 ] as const;
 
 const EXPLORE_LINKS = [
+  { to: '/lessons',       key: 'lessons', icon: BookOpenCheck },
   { to: '/exercises',     key: 'exercises', icon: GraduationCap },
   { to: '/classroom',     key: 'classroom', icon: Users },
   { to: '/digital-logic', key: 'digitalLogic', icon: Layers },
@@ -27,6 +28,23 @@ const EXPLORE_LINKS = [
 export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { d, lang, setLang } = useI18n();
+  const { pathname } = useLocation();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
+  useEffect(() => setMoreOpen(false), [pathname]);
+  useEffect(() => {
+    if (!moreOpen) return;
+    const close = (e: MouseEvent) => {
+      if (!moreRef.current?.contains(e.target as Node)) setMoreOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setMoreOpen(false);
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [moreOpen]);
 
   const desktopLinkClass = ({ isActive }: { isActive: boolean }) =>
     [
@@ -100,11 +118,43 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
             >
               {d.nav.explore}
             </span>
-            {EXPLORE_LINKS.map(({ to, key }) => (
+            {EXPLORE_LINKS.slice(0, 2).map(({ to, key }) => (
               <NavLink key={to} to={to} className={desktopLinkClass}>
                 {d.nav[key]}
               </NavLink>
             ))}
+            {/* The rest of Explore sits in a small menu so the bar stays on one line. */}
+            <div className="relative" ref={moreRef}>
+              <button
+                type="button"
+                data-testid="nav-more"
+                aria-haspopup="menu"
+                aria-expanded={moreOpen}
+                onClick={() => setMoreOpen((o) => !o)}
+                className={desktopLinkClass({ isActive: EXPLORE_LINKS.slice(2).some((l) => pathname === l.to) })}
+              >
+                {d.nav.more}
+                <ChevronDown size={12} />
+              </button>
+              {moreOpen && (
+                <div role="menu" className="absolute right-0 top-full mt-1.5 min-w-[190px] rounded-[6px] border py-1 z-50 shadow-lg" style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
+                  {EXPLORE_LINKS.slice(2).map(({ to, key, icon: Icon }) => (
+                    <NavLink
+                      key={to}
+                      to={to}
+                      role="menuitem"
+                      onClick={() => setMoreOpen(false)}
+                      className={({ isActive }) =>
+                        `flex items-center gap-2 px-3 py-2 text-[12.5px] whitespace-nowrap hover:bg-[var(--bg-hover)] ${isActive ? 'text-[var(--accent-primary)] font-semibold' : 'text-[var(--text-secondary)]'}`
+                      }
+                    >
+                      <Icon size={14} />
+                      {d.nav[key]}
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
