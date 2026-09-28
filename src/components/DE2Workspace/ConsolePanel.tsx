@@ -7,8 +7,10 @@ import {
   Trash2,
   CheckCircle2,
   Activity,
+  Workflow,
 } from 'lucide-react';
 import { LogicAnalyzer } from './LogicAnalyzer';
+import { FsmView } from './FsmView';
 
 export interface ConsoleMessage {
   id: string;
@@ -24,6 +26,8 @@ interface ConsolePanelProps {
   messages: ConsoleMessage[];
   compileError: string | null;
   onClear: () => void;
+  /** Source of the last successful compile, for the FSM diagram. */
+  compiledSource?: string;
 }
 
 export const ConsolePanel: React.FC<ConsolePanelProps> = ({
@@ -33,8 +37,9 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
   messages,
   compileError,
   onClear,
+  compiledSource = '',
 }) => {
-  const [activeTab, setActiveTab] = useState<'console' | 'problems' | 'analyzer'>('console');
+  const [activeTab, setActiveTab] = useState<'console' | 'problems' | 'analyzer' | 'fsm'>('console');
 
   if (!isOpen) {
     return (
@@ -103,6 +108,18 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
           >
             <Activity size={13} />
             <span className="font-medium">Logic Analyzer</span>
+          </button>
+          <button
+            data-testid="console-tab-fsm"
+            onClick={() => {
+              setActiveTab('fsm');
+              onToggle();
+            }}
+            className="flex items-center gap-1.5 transition-colors hover:text-[var(--text-primary)]"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            <Workflow size={13} />
+            <span className="font-medium">FSM</span>
           </button>
         </div>
         <button
@@ -193,6 +210,19 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
             <Activity size={13} />
             <span>Logic Analyzer</span>
           </button>
+
+          <button
+            data-testid="console-tab-fsm"
+            onClick={() => setActiveTab('fsm')}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-[4px] transition-colors ${
+              activeTab === 'fsm'
+                ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+            }`}
+          >
+            <Workflow size={13} />
+            <span>FSM</span>
+          </button>
         </div>
 
         <div className="flex items-center gap-1">
@@ -249,6 +279,8 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
         )}
 
         {activeTab === 'analyzer' && <LogicAnalyzer />}
+
+        {activeTab === 'fsm' && <FsmView source={compiledSource} />}
 
         {activeTab === 'problems' && (
           <div>

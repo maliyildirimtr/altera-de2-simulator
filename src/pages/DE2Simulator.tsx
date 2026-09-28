@@ -131,6 +131,7 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
   // Compiler / Console state
   const [isCompiling, setIsCompiling] = useState(false);
   const [compileError, setCompileError] = useState<string | null>(null);
+  const [compiledSource, setCompiledSource] = useState('');
   const [consoleMessages, setConsoleMessages] = useState<ConsoleMessage[]>([
     {
       id: 'init',
@@ -218,6 +219,7 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
     try {
       const module = compileVerilog(hdlCode);
       setEngine(module);
+      setCompiledSource(hdlCode);
       setCompileError(null);
       if (module.transpileError) {
         // The ports were read but part of the logic uses a construct the
@@ -484,6 +486,7 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
         messages={consoleMessages}
         compileError={compileError}
         onClear={() => setConsoleMessages([])}
+        compiledSource={compiledSource}
       />
 
       {/* ── File Import Dialog ── */}
