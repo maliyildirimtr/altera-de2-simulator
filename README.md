@@ -24,8 +24,13 @@ The application is a hash-routed SPA. `#/projects` remains as a compatibility al
 - **Logic analyzer (DE2):** a *Logic Analyzer* tab in the DE2 console records every top-level port each time the design is evaluated (256-sample ring), drawn as square waves and hex-labelled buses. A trigger (rising/falling edge, any change, or value match) stops the capture 128 samples after the event; captures download as VCD or open directly in the Waveform tool.
 - **FSM diagram (DE2):** an *FSM* tab draws the state machine found in the compiled design (`case (state)` with localparam, enum or literal states) and highlights the live state and last transition.
 - **Diagnostics:** on Compile the source is checked for common mistakes (missing `;`, undeclared or misspelled names, `=` vs `<=`, missing `endmodule`, constructs the built-in engine cannot run) and each finding is reported with its line number and a suggested fix, in the console and as editor squiggles.
+- **Real board export:** the DE2 *Quartus* button downloads a ready-to-compile Quartus II 13.0 SP1 project (`.qpf`, `.qsf` with every mapped pin incl. HEX, LCD and CLOCK_50, `.sdc`, source, TR/EN programming steps) for the original DE2 (Cyclone II EP2C35F672C6).
+- **Gate designer (`#/gates`):** draw circuits from gates, simulate them live, get the Verilog and truth table, run them on the DE2 (inputs on SW, outputs on LEDR) or open them in Schematic. A gate-delay mode replays input changes with per-gate delays, draws a timing diagram and marks glitches (static-hazard preset included).
+- **Lessons (`#/lessons`):** seven guided lessons (gates → Boolean algebra → adders → mux/decoders → sequential logic → FSMs → timing and glitches) with hands-on links and quizzes.
+- **Classroom (`#/classroom`):** serverless teacher mode. An assignment (selected exercises) travels in a link; students download a result file (SHA-256 checksummed) that the teacher loads into a class table with CSV export. Nothing is uploaded.
+- **Turkish UI:** all tools (DE2, Waveform, Schematic) follow the TR/EN switch (`src/i18n/toolText.ts`).
 - **Touch:** the DE2 board supports pinch-to-zoom, two-finger pan and double-tap zoom.
-- **Language:** the navigation, home page, exercises and 404 page are available in English and Turkish (`src/i18n/`); tool workspaces keep their English engineering UI.
+- **Language:** every page and tool is available in English and Turkish (`src/i18n/`).
 - **Exports:** Schematic → SVG/PNG, Waveform → VCD (opens in GTKWave), DE2 → `.qsf` pin assignments for Quartus.
 - Tool pages are lazy-loaded route chunks. Monaco is loaded only by pages with an editor and is limited to the Verilog/SystemVerilog grammar (`src/lib/monacoSetup.ts`); jQuery and DigitalJS are loaded only by the Schematic viewport.
 
