@@ -119,6 +119,16 @@ export const BoardViewport: React.FC<BoardViewportProps> = ({ isSplitView }) => 
   const dragStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const panStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
+  // Touch: every finger on the canvas, and the two-finger pinch in progress.
+  const pointersRef = useRef(new Map<number, { x: number; y: number }>());
+  const lastTapRef = useRef<{ t: number; x: number; y: number } | null>(null);
+  const pinchRef = useRef<{
+    startDist: number;
+    startScale: number;
+    /** Board-space point that sat under the fingers' midpoint at the start. */
+    anchor: { x: number; y: number };
+  } | null>(null);
+
   /** Fit the board to the viewport and clear any manual transform. */
   const handleFitToScreen = useCallback(() => {
     if (!containerRef.current) return;
@@ -240,7 +250,11 @@ export const BoardViewport: React.FC<BoardViewportProps> = ({ isSplitView }) => 
       const mouseY = e.clientY - rect.top;
 
       const oldScale = scaleRef.current;
-      const zoomFactor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+      // Trackpad pinch arrives as ctrl+wheel with small deltas: scale smoothly
+      // with the gesture instead of a fixed step per event.
+      const zoomFactor = e.ctrlKey
+        ? Math.exp(-Math.max(-50, Math.min(50, e.deltaY)) * 0.01)
+        : e.deltaY < 0 ? 1.12 : 1 / 1.12;
       const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, +(oldScale * zoomFactor).toFixed(3)));
       if (newScale === oldScale) return;
 
@@ -329,27 +343,81 @@ export const BoardViewport: React.FC<BoardViewportProps> = ({ isSplitView }) => 
     [panBy, handleZoomStep, handleFitToScreen],
   );
 
+  const localPoint = (clientX: number, clientY: number) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    return { x: clientX - (rect?.left ?? 0), y: clientY - (rect?.top ?? 0) };
+  };
+
+  const pinchGeometry = () => {
+    const [a, b] = [...pointersRef.current.values()];
+    return {
+      dist: Math.max(1, Math.hypot(b.x - a.x, b.y - a.y)),
+      mid: localPoint((a.x + b.x) / 2, (a.y + b.y) / 2),
+    };
+  };
+
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
     if (isInteractiveTarget(e.target as Element | null)) return;
 
-    setIsDragging(true);
-    dragStartRef.current = { x: e.clientX, y: e.clientY };
-    panStartRef.current = { x: panXRef.current, y: panYRef.current };
-    setIsUserTransformed(true);
-
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
     } catch {
       // ignore
     }
+    setIsUserTransformed(true);
+
+    if (pointersRef.current.size === 2) {
+      // Second finger: switch from panning to pinch-zoom.
+      const { dist, mid } = pinchGeometry();
+      pinchRef.current = {
+        startDist: dist,
+        startScale: scaleRef.current,
+        anchor: {
+          x: (mid.x - panXRef.current) / scaleRef.current,
+          y: (mid.y - panYRef.current) / scaleRef.current,
+        },
+      };
+      setIsDragging(false);
+      return;
+    }
+    if (pointersRef.current.size > 2) return;
+
+    setIsDragging(true);
+    dragStartRef.current = { x: e.clientX, y: e.clientY };
+    panStartRef.current = { x: panXRef.current, y: panYRef.current };
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDraggingRef.current || !containerRef.current) return;
-
+    if (pointersRef.current.has(e.pointerId)) {
+      pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+    if (!containerRef.current) return;
     const { clientWidth, clientHeight } = containerRef.current;
     const { width, height } = boardSizeRef.current;
+
+    const pinch = pinchRef.current;
+    if (pinch && pointersRef.current.size >= 2) {
+      const { dist, mid } = pinchGeometry();
+      const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, +(pinch.startScale * (dist / pinch.startDist)).toFixed(3)));
+      // Keep the pinched spot under the fingers, and follow a two-finger drag.
+      const clamped = clampPan(
+        mid.x - pinch.anchor.x * newScale,
+        mid.y - pinch.anchor.y * newScale,
+        newScale,
+        clientWidth,
+        clientHeight,
+        width,
+        height,
+      );
+      setScale(newScale);
+      setPanX(clamped.panX);
+      setPanY(clamped.panY);
+      return;
+    }
+
+    if (!isDraggingRef.current) return;
     const clamped = clampPan(
       panStartRef.current.x + (e.clientX - dragStartRef.current.x),
       panStartRef.current.y + (e.clientY - dragStartRef.current.y),
@@ -364,9 +432,36 @@ export const BoardViewport: React.FC<BoardViewportProps> = ({ isSplitView }) => 
     setPanY(clamped.panY);
   };
 
+  /** Double-tap on empty canvas (touch): zoom in 2x there, or back to fit when zoomed in. */
+  const handleDoubleTap = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== 'touch' || e.type !== 'pointerup') return;
+    const moved = Math.hypot(e.clientX - dragStartRef.current.x, e.clientY - dragStartRef.current.y);
+    if (moved > 10) { lastTapRef.current = null; return; }
+    const now = performance.now();
+    const last = lastTapRef.current;
+    lastTapRef.current = { t: now, x: e.clientX, y: e.clientY };
+    if (!last || now - last.t > 320 || Math.hypot(e.clientX - last.x, e.clientY - last.y) > 30 || !containerRef.current) return;
+    lastTapRef.current = null;
+    const { clientWidth, clientHeight } = containerRef.current;
+    const { width, height } = boardSizeRef.current;
+    const fit = calculateFit(clientWidth, clientHeight, width, height);
+    if (scaleRef.current > fit.scale * 1.5) {
+      handleFitToScreen();
+      return;
+    }
+    const p = localPoint(e.clientX, e.clientY);
+    const newScale = Math.min(MAX_SCALE, +(scaleRef.current * 2).toFixed(3));
+    const ratio = newScale / scaleRef.current;
+    const clamped = clampPan(p.x - (p.x - panXRef.current) * ratio, p.y - (p.y - panYRef.current) * ratio, newScale, clientWidth, clientHeight, width, height);
+    setScale(newScale);
+    setPanX(clamped.panX);
+    setPanY(clamped.panY);
+  };
+
   const endDrag = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDraggingRef.current) return;
-    setIsDragging(false);
+    const wasSingle = pointersRef.current.size === 1 && pointersRef.current.has(e.pointerId) && !pinchRef.current;
+    pointersRef.current.delete(e.pointerId);
+    if (wasSingle) handleDoubleTap(e);
     try {
       if (e.currentTarget.hasPointerCapture(e.pointerId)) {
         e.currentTarget.releasePointerCapture(e.pointerId);
@@ -374,6 +469,19 @@ export const BoardViewport: React.FC<BoardViewportProps> = ({ isSplitView }) => 
     } catch {
       // ignore
     }
+    if (pinchRef.current && pointersRef.current.size < 2) {
+      pinchRef.current = null;
+      // One finger left: continue as a pan from where it is now.
+      const rest = [...pointersRef.current.values()][0];
+      if (rest) {
+        dragStartRef.current = { x: rest.x, y: rest.y };
+        panStartRef.current = { x: panXRef.current, y: panYRef.current };
+        setIsDragging(true);
+      }
+      return;
+    }
+    if (!isDraggingRef.current) return;
+    setIsDragging(false);
   };
 
   return (
@@ -387,6 +495,8 @@ export const BoardViewport: React.FC<BoardViewportProps> = ({ isSplitView }) => 
         backgroundColor: 'var(--bg-canvas, #0a0f18)',
         cursor: isDragging ? 'grabbing' : 'grab',
         touchAction: 'none',
+        WebkitTouchCallout: 'none',
+        WebkitTapHighlightColor: 'transparent',
       }}
       tabIndex={0}
       role="group"

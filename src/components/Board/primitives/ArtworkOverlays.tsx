@@ -202,6 +202,15 @@ export const ArtworkOverlayDefs: React.FC<{ layout?: OverlayLayout }> = ({
   </defs>
 );
 
+/** A short vibration on touch devices that support it (Android); a no-op elsewhere. */
+function haptic(): void {
+  try {
+    navigator.vibrate?.(8);
+  } catch {
+    // Some browsers throw when vibration is blocked by policy.
+  }
+}
+
 type PresentationStatusKind = 'blue' | 'green' | 'red';
 
 interface PresentationStatusLamp {
@@ -345,7 +354,10 @@ export const SwitchOverlay: React.FC<BankProps> = React.memo(({ point, index, la
   const toggleSwitch = useToggleSwitch();
   const isOn = value === 1;
 
-  const handleToggle = useCallback(() => toggleSwitch(index), [toggleSwitch, index]);
+  const handleToggle = useCallback((e?: React.MouseEvent) => {
+    toggleSwitch(index);
+    if ((e?.nativeEvent as PointerEvent | undefined)?.pointerType === 'touch') haptic();
+  }, [toggleSwitch, index]);
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<SVGGElement>) => {
       if (e.key === ' ' || e.key === 'Enter') {
@@ -478,7 +490,10 @@ export const KeyOverlay: React.FC<BankProps> = React.memo(({ point, index, layou
   const isPressed = useKeyPressed(index);
   const setKey = useSetKey();
 
-  const press = useCallback(() => setKey(index, true), [setKey, index]);
+  const press = useCallback((e?: React.PointerEvent) => {
+    setKey(index, true);
+    if (e?.pointerType === 'touch') haptic();
+  }, [setKey, index]);
   const release = useCallback(() => setKey(index, false), [setKey, index]);
 
   const handleKeyDown = useCallback(
