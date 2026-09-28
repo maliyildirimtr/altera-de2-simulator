@@ -147,6 +147,8 @@ const INITIAL_LEDR = Array(18).fill(0);
 const INITIAL_LEDG = Array(9).fill(0);
 const INITIAL_HEX = Array(8).fill(Array(7).fill(1)); // Active-low: 1 is off
 
+const WAVEFORM_HISTORY_LIMIT = 512;
+
 let simIntervalTimer: ReturnType<typeof setInterval> | null = null;
 
 const clearSimulationTimer = (): void => {
@@ -462,7 +464,12 @@ export const useBoardStore = create<BoardState>((set, get) => ({
         step: typeof newState?.step === 'number' ? newState.step : null,
       };
 
-      const newHistory = [...state.waveformHistory, { time: Date.now(), state: { ...newState, 'CLOCK_50': state.clockState } }];
+      // Bounded: appending forever made every tick copy an ever-growing array,
+      // so a board left running slowed down and grew in memory over time.
+      const newHistory = [
+        ...state.waveformHistory.slice(-(WAVEFORM_HISTORY_LIMIT - 1)),
+        { time: Date.now(), state: { ...newState, 'CLOCK_50': state.clockState } },
+      ];
       if (newHistory.length > 50) newHistory.shift();
 
       return { simState: newState, ledR: newLedR, ledG: newLedG, hex: newHex, lcd: newLcd, lcdDebug: newLcdDebug, waveformHistory: newHistory };

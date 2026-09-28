@@ -7,6 +7,7 @@
 // ============================================================
 
 import type {
+  CompilerPhase,
   CompilerInput, CompilerOutput,
   ParsedSimulationData,
 } from './compiler.worker.types';
@@ -309,6 +310,10 @@ self.onmessage = async (event: MessageEvent<CompilerInput>) => {
     // ── 4. vvp — Simülatör ────────────────────────────────────
     logs.push('[vvp] Simulating...');
     const simConsole: string[] = [];
+
+    // Lets the main thread start its run-time watchdog: compile and wasm
+    // download time must not count against the simulation limit.
+    self.postMessage({ requestId, phase: 'simulating' } satisfies CompilerPhase);
 
     const vvpMod = await loadEmscriptenModule('/vvp.js', '/', {
       print:    (s: string) => simConsole.push(s),

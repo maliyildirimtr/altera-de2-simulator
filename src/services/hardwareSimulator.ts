@@ -16,7 +16,7 @@
 //   UI thread'e SimulationData direkt gelir, vcdOutput boştur.
 // ============================================================
 
-import type { CompilerInput, CompilerOutput } from '../workers/compiler.worker.types';
+import type { CompilerInput, CompilerOutput, CompilerPhase } from '../workers/compiler.worker.types';
 import type { SimulationData } from './vcdParser';
 
 export interface ProjectFile {
@@ -41,7 +41,27 @@ let _requestCounter        = 0;
 /** Pending promise callbacks keyed by requestId. */
 const _pending = new Map<number, {
   resolve: (r: SimulationResult) => void;
+  timer?: ReturnType<typeof setTimeout>;
 }>();
+
+/**
+ * A testbench without `$finish` (or with a free-running `always #5 clk = ~clk`)
+ * makes vvp run forever. The worker is single-threaded, so every later run
+ * would queue behind it and the waveform tool would appear frozen. After this
+ * long in the simulation phase the worker is terminated and recreated.
+ */
+export const SIMULATION_TIMEOUT_MS = 20_000;
+
+function killWorker(reason: string): void {
+  const worker = _worker;
+  _worker = null;
+  worker?.terminate();
+  for (const [, { resolve, timer }] of _pending) {
+    if (timer) clearTimeout(timer);
+    resolve({ status: 'error', vcdOutput: '', logs: [reason] });
+  }
+  _pending.clear();
+}
 
 function getOrCreateWorker(): Worker {
   if (_worker) return _worker;
@@ -51,17 +71,31 @@ function getOrCreateWorker(): Worker {
     { type: 'module' },
   );
 
-  _worker.onmessage = (event: MessageEvent<CompilerOutput>) => {
+  _worker.onmessage = (event: MessageEvent<CompilerOutput | CompilerPhase>) => {
+    if ('phase' in event.data) {
+      const entry = _pending.get(event.data.requestId);
+      if (entry && !entry.timer) {
+        entry.timer = setTimeout(() => {
+          killWorker(
+            `[ERROR] Simulation did not finish within ${SIMULATION_TIMEOUT_MS / 1000} s and was stopped. ` +
+              'Make sure the testbench ends with $finish (a free-running clock never stops on its own).',
+          );
+        }, SIMULATION_TIMEOUT_MS);
+      }
+      return;
+    }
     const { requestId, status, simulationData, vcdOutput, logs } = event.data;
     const pending = _pending.get(requestId);
     if (!pending) return; // stale / already resolved
+    if (pending.timer) clearTimeout(pending.timer);
     _pending.delete(requestId);
     pending.resolve({ status, simulationData: simulationData as SimulationData | undefined, vcdOutput, logs });
   };
 
   _worker.onerror = (err) => {
     // On a fatal Worker crash, reject ALL pending requests and reset.
-    for (const [, { resolve }] of _pending) {
+    for (const [, { resolve, timer }] of _pending) {
+      if (timer) clearTimeout(timer);
       resolve({
         status: 'error',
         vcdOutput: '',

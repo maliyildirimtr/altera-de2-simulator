@@ -64,3 +64,9 @@ export interface CompilerOutput {
   vcdOutput: string;   // raw VCD text on success (for download); '' on error
   logs: string[];
 }
+
+/** Progress notice sent before vvp starts; lets the UI arm its watchdog. */
+export interface CompilerPhase {
+  requestId: number;
+  phase: 'simulating';
+}
