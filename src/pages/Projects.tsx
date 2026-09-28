@@ -153,6 +153,18 @@ export default function Projects() {
           </div>
 
           <div className="flex items-center gap-3">
+            {import.meta.env.DEV && (
+              <button
+                type="button"
+                data-testid="dev-edit-examples"
+                onClick={() => navigate('/dev/examples')}
+                className="text-xs font-semibold px-3 py-1.5 rounded-md border border-dashed"
+                style={{ borderColor: 'var(--accent-border)', color: 'var(--accent-primary)' }}
+                title="Local dev server only"
+              >
+                ✎ Edit sources (local)
+              </button>
+            )}
             <span
               data-testid="examples-count"
               className="text-xs font-mono px-3 py-1.5 rounded-md border"

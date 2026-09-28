@@ -21,6 +21,8 @@ const Exercises = lazy(() => import('./pages/Exercises'));
 const Classroom = lazy(() => import('./pages/Classroom'));
 const GateEditor = lazy(() => import('./pages/GateEditor'));
 const Lessons = lazy(() => import('./pages/Lessons'));
+// Dev server only: local editor for src/examples/source (see vite/exampleEditorPlugin.ts).
+const DevExamples = import.meta.env.DEV ? lazy(() => import('./pages/DevExamples')) : null;
 
 migrateLegacyStorageKeys();
 
@@ -98,6 +100,7 @@ export default function App() {
               <Route path="/classroom" element={<Classroom />} />
               <Route path="/gates" element={<GateEditor />} />
               <Route path="/lessons" element={<Lessons />} />
+              {DevExamples && <Route path="/dev/examples" element={<DevExamples />} />}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>

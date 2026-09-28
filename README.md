@@ -29,6 +29,7 @@ The application is a hash-routed SPA. `#/projects` remains as a compatibility al
 - **Lessons (`#/lessons`):** seven guided lessons (gates → Boolean algebra → adders → mux/decoders → sequential logic → FSMs → timing and glitches) with hands-on links and quizzes.
 - **Classroom (`#/classroom`):** serverless teacher mode. An assignment (selected exercises) travels in a link; students download a result file (SHA-256 checksummed) that the teacher loads into a class table with CSV export. Nothing is uploaded.
 - **Turkish UI:** all tools (DE2, Waveform, Schematic) follow the TR/EN switch (`src/i18n/toolText.ts`).
+- **Editing examples locally:** with `npm run dev`, *Examples → Edit sources (local)* (`#/dev/examples`) opens every file in `src/examples/source` in an editor with live checks. *Save* (or Cmd/Ctrl+S) writes the file through a dev-server-only API (`vite/exampleEditorPlugin.ts`) and Vite reloads it; commit and push to publish. New files need an entry in `src/examples/registry.ts` to appear in the gallery. The API and page do not exist in production builds.
 - **Touch:** the DE2 board supports pinch-to-zoom, two-finger pan and double-tap zoom.
 - **Language:** every page and tool is available in English and Turkish (`src/i18n/`).
 - **Exports:** Schematic → SVG/PNG, Waveform → VCD (opens in GTKWave), DE2 → `.qsf` pin assignments for Quartus.

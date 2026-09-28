@@ -2,12 +2,15 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'node:path';
+import { exampleEditorPlugin } from './vite/exampleEditorPlugin';
 
 export default defineConfig({
   base: '/',
   plugins: [
     react(),
     tailwindcss(),
+    // Dev server only: lets #/dev/examples save example sources to disk.
+    exampleEditorPlugin(__dirname),
     {
       name: 'yosys2digitaljs-topsort-vite-plugin',
       transform(code, id) {
