@@ -1,4 +1,6 @@
 import type { LearningExample } from './types';
+import { applyMetadata, normalizeMetadata, type ExampleMetadata } from './metadata';
+import metadataText from './metadata.json?raw';
 
 // DE2 board demos. These have no separate testbench: what they exercise is
 // the interactive board, not a waveform.
@@ -55,7 +57,8 @@ import priorityEncoder4to2Tb from './source/priority_encoder_4to2_tb.sv?raw';
 import alu2bitSrc from './source/alu_2bit.sv?raw';
 import alu2bitTb from './source/alu_2bit_tb.sv?raw';
 
-export const EXAMPLES_LIST: LearningExample[] = [
+/** The examples as written in this file, before metadata.json is applied. */
+export const BASE_EXAMPLES: LearningExample[] = [
   {
     id: 'basic_gates',
     title: 'Basic Logic Gates',
@@ -569,6 +572,27 @@ export const EXAMPLES_LIST: LearningExample[] = [
     },
   },
 ];
+
+function parseMetadata(text: string): ExampleMetadata {
+  try {
+    return normalizeMetadata(JSON.parse(text));
+  } catch {
+    return normalizeMetadata(null);
+  }
+}
+
+/** Edited from the local dev editor (#/dev/examples); see metadata.ts. */
+export const EXAMPLE_METADATA = parseMetadata(metadataText);
+
+// Every file in ./source, so examples added through metadata.json need no
+// import line here.
+const SOURCE_FILES: Record<string, string> = Object.fromEntries(
+  Object.entries(import.meta.glob('./source/*.{sv,v}', { query: '?raw', import: 'default', eager: true }) as Record<string, string>).map(
+    ([p, text]) => [p.slice(p.lastIndexOf('/') + 1), text],
+  ),
+);
+
+export const EXAMPLES_LIST: LearningExample[] = applyMetadata(BASE_EXAMPLES, EXAMPLE_METADATA, SOURCE_FILES);
 
 export function getExampleById(id: string): LearningExample | undefined {
   return EXAMPLES_LIST.find((ex) => ex.id === id);

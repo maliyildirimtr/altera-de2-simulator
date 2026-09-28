@@ -9,6 +9,7 @@ import { compileVerilog } from '../core/simulator/verilogEngine';
 import { useBoardStore } from '../store/boardStore';
 import { markWorkspaceDirty, markWorkspaceUser } from '../services/exampleHandoff';
 import { useI18n } from '../i18n/I18nProvider';
+import ExampleMetaEditor from './dev/ExampleMetaEditor';
 
 const API = '/__logiclab/examples';
 const HEADERS = { 'X-LogicLab-Dev': '1' };
@@ -20,7 +21,9 @@ const TEXT = {
     devOnly: 'This editor only works with the local dev server (npm run dev).',
     files: 'Files',
     usedBy: 'Used by',
-    unused: 'Not referenced in src/examples/registry.ts yet',
+    unused: 'Not used by any example yet (add one in the Examples tab)',
+    tabFiles: 'Source files',
+    tabMeta: 'Examples (title, description…)',
     save: 'Save',
     saved: 'Saved to',
     revert: 'Revert',
@@ -28,7 +31,7 @@ const TEXT = {
     tryDe2: 'Try on DE2',
     newFile: 'New file',
     newPrompt: 'New file name (e.g. my_design.sv):',
-    newHint: 'New files appear in the gallery after you add them to src/examples/registry.ts.',
+    newHint: 'To show the new file in the gallery, add an example for it in the Examples tab.',
     confirmLeave: 'Discard unsaved changes?',
     checks: 'Checks',
     noIssues: 'No issues found.',
@@ -41,7 +44,9 @@ const TEXT = {
     devOnly: 'Bu editör yalnızca yerel geliştirme sunucusuyla (npm run dev) çalışır.',
     files: 'Dosyalar',
     usedBy: 'Kullanan örnekler',
-    unused: 'Henüz src/examples/registry.ts içinde kullanılmıyor',
+    unused: 'Henüz hiçbir örnekte kullanılmıyor (Örnekler sekmesinden ekle)',
+    tabFiles: 'Kaynak dosyalar',
+    tabMeta: 'Örnekler (başlık, açıklama…)',
     save: 'Kaydet',
     saved: 'Kaydedildi:',
     revert: 'Geri al',
@@ -49,7 +54,7 @@ const TEXT = {
     tryDe2: "DE2'de dene",
     newFile: 'Yeni dosya',
     newPrompt: 'Yeni dosya adı (örn. tasarimim.sv):',
-    newHint: 'Yeni dosyalar src/examples/registry.ts içine eklendikten sonra galeride görünür.',
+    newHint: 'Yeni dosyanın galeride görünmesi için Örnekler sekmesinden ona bir örnek ekle.',
     confirmLeave: 'Kaydedilmemiş değişiklikler silinsin mi?',
     checks: 'Kontroller',
     noIssues: 'Sorun bulunmadı.',
@@ -79,6 +84,7 @@ export default function DevExamples() {
   const [code, setCode] = useState('');
   const [status, setStatus] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [tab, setTab] = useState<'files' | 'meta'>('files');
   const dirty = code !== original;
   const dirtyRef = useRef(dirty);
   dirtyRef.current = dirty;
@@ -193,7 +199,16 @@ export default function DevExamples() {
   const btnStyle = { borderColor: 'var(--border-subtle)', color: 'var(--text-primary)', backgroundColor: 'var(--bg-surface)' };
 
   return (
-    <div data-testid="dev-examples" className="absolute inset-0 flex flex-col md:flex-row overflow-hidden" style={{ backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)' }}>
+    <div data-testid="dev-examples" className="absolute inset-0 flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)' }}>
+      <div role="tablist" className="flex gap-1 px-3 pt-2 border-b shrink-0" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
+        {(['files', 'meta'] as const).map((k) => (
+          <button key={k} type="button" role="tab" aria-selected={tab === k} data-testid={`dev-tab-${k}`} onClick={() => setTab(k)} className="px-3 py-1.5 text-[12.5px] font-semibold border-b-2 -mb-px" style={{ borderColor: tab === k ? 'var(--accent-primary)' : 'transparent', color: tab === k ? 'var(--accent-primary)' : 'var(--text-secondary)' }}>
+            {k === 'files' ? t.tabFiles : t.tabMeta}
+          </button>
+        ))}
+      </div>
+      {tab === 'meta' ? <ExampleMetaEditor lang={lang} files={files.map((f) => f.name)} /> : (
+      <div className="flex-1 min-h-0 flex flex-col md:flex-row">
       <aside className="md:w-[270px] shrink-0 border-b md:border-b-0 md:border-r flex flex-col min-h-0" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
         <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
           <h1 className="text-[15px] font-bold">{t.title}</h1>
@@ -239,6 +254,8 @@ export default function DevExamples() {
           {!checks.compile && checks.list.length === 0 && <p style={{ color: '#16a34a' }}>{t.noIssues}</p>}
         </div>
       </main>
+      </div>
+      )}
     </div>
   );
 }

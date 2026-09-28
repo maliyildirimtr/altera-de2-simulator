@@ -18,6 +18,7 @@ import type { Plugin } from 'vite';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 const PREFIX = '/__logiclab/examples';
+const META_PATH = '/__logiclab/metadata';
 const MAX_BYTES = 256 * 1024;
 const NAME_RE = /^[A-Za-z0-9_-]+\.(sv|v)$/;
 
@@ -46,11 +47,45 @@ function readBody(req: IncomingMessage): Promise<string> {
   });
 }
 
-export function createExampleEditorHandler(dir: string) {
+/**
+ * GET / PUT src/examples/metadata.json. The body must be {overrides:{}, added:[]};
+ * the app validates every entry again when it loads the file.
+ */
+async function handleMetadata(req: IncomingMessage, res: ServerResponse, file: string): Promise<void> {
+  if (req.method === 'GET') {
+    const text = await fs.readFile(file, 'utf8').catch(() => '{"overrides":{},"added":[]}');
+    return send(res, 200, JSON.parse(text));
+  }
+  if (req.method !== 'PUT') return send(res, 405, { error: 'Method not allowed' });
+  let data: unknown;
+  try {
+    data = JSON.parse(await readBody(req));
+  } catch {
+    return send(res, 400, { error: 'Body is not valid JSON' });
+  }
+  const d = data as { overrides?: unknown; added?: unknown };
+  if (!d || typeof d !== 'object' || Array.isArray(d) || !d.overrides || typeof d.overrides !== 'object' || Array.isArray(d.overrides) || !Array.isArray(d.added)) {
+    return send(res, 400, { error: 'Expected {"overrides": {...}, "added": [...]}' });
+  }
+  const tmp = `${file}.${process.pid}.tmp`;
+  await fs.writeFile(tmp, `${JSON.stringify({ overrides: d.overrides, added: d.added }, null, 2)}\n`, 'utf8');
+  await fs.rename(tmp, file);
+  return send(res, 200, { saved: true });
+}
+
+export function createExampleEditorHandler(dir: string, metadataFile = path.join(dir, '..', 'metadata.json')) {
   return async (req: IncomingMessage, res: ServerResponse, next: () => void): Promise<void> => {
     const url = new URL(req.url ?? '/', 'http://localhost');
-    if (!url.pathname.startsWith(PREFIX)) return next();
+    const isMeta = url.pathname === META_PATH;
+    if (!isMeta && !url.pathname.startsWith(PREFIX)) return next();
     if (req.headers['x-logiclab-dev'] !== '1') return send(res, 403, { error: 'Missing X-LogicLab-Dev header' });
+    if (isMeta) {
+      try {
+        return await handleMetadata(req, res, metadataFile);
+      } catch (err) {
+        return send(res, 500, { error: (err as Error).message });
+      }
+    }
 
     const rest = decodeURIComponent(url.pathname.slice(PREFIX.length).replace(/^\/+/, ''));
     try {
