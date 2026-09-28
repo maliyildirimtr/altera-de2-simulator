@@ -12,7 +12,7 @@ Browser-based learning tools for digital logic and Electrical & Electronics Engi
 | `#/waveform` | Waveform | Compiles source and a testbench with local Icarus Verilog WebAssembly in a worker, parses VCD output, and renders interactive timing diagrams. |
 | `#/schematic` | Schematic | Synthesizes HDL with local Yosys WebAssembly and renders an interactive DigitalJS circuit in `SchematicViewport`. |
 | `#/examples` | Examples | Provides 16 curated examples, from single gates to board-level I/O and the LCD. |
-| `#/exercises` | Exercises | 11 auto-graded combinational exercises. The student's module and a hidden reference are both run on the DE2 engine for every input combination; mismatching truth-table rows are highlighted. Progress and code are saved locally. |
+| `#/exercises` | Exercises | 16 auto-graded exercises: 11 combinational (checked against every input combination) and 5 clocked (flip-flop, counter, shift register, edge detector, FSM; checked cycle by cycle). The student's module and a hidden reference both run on the DE2 engine; mismatching rows are highlighted and failed checks show line-level hints. Progress and code are saved locally. |
 | `#/` | Home | Platform overview and tool entry points. |
 
 The application is a hash-routed SPA. `#/projects` remains as a compatibility alias for `#/examples`; unknown routes show a 404 page.
@@ -21,7 +21,10 @@ The application is a hash-routed SPA. `#/projects` remains as a compatibility al
 
 - Each tool autosaves its HDL project to `localStorage` (`logiclab_<tool>_workspace_v1`), so a refresh or closed tab does not lose work. Only source text is stored, never simulation or synthesis output.
 - **Share links:** each tool's *Share* button copies a link that carries the project itself (deflate-compressed JSON in the `?p=` parameter; nothing is uploaded). *Schematic* buttons in DE2 and Waveform open the current HDL in the Schematic tool the same way.
-- **Logic analyzer (DE2):** a *Logic Analyzer* tab in the DE2 console records every top-level port each time the design is evaluated (256-sample ring), drawn as square waves and hex-labelled buses.
+- **Logic analyzer (DE2):** a *Logic Analyzer* tab in the DE2 console records every top-level port each time the design is evaluated (256-sample ring), drawn as square waves and hex-labelled buses. A trigger (rising/falling edge, any change, or value match) stops the capture 128 samples after the event; captures download as VCD or open directly in the Waveform tool.
+- **FSM diagram (DE2):** an *FSM* tab draws the state machine found in the compiled design (`case (state)` with localparam, enum or literal states) and highlights the live state and last transition.
+- **Diagnostics:** on Compile the source is checked for common mistakes (missing `;`, undeclared or misspelled names, `=` vs `<=`, missing `endmodule`, constructs the built-in engine cannot run) and each finding is reported with its line number and a suggested fix, in the console and as editor squiggles.
+- **Touch:** the DE2 board supports pinch-to-zoom, two-finger pan and double-tap zoom.
 - **Language:** the navigation, home page, exercises and 404 page are available in English and Turkish (`src/i18n/`); tool workspaces keep their English engineering UI.
 - **Exports:** Schematic → SVG/PNG, Waveform → VCD (opens in GTKWave), DE2 → `.qsf` pin assignments for Quartus.
 - Tool pages are lazy-loaded route chunks. Monaco is loaded only by pages with an editor and is limited to the Verilog/SystemVerilog grammar (`src/lib/monacoSetup.ts`); jQuery and DigitalJS are loaded only by the Schematic viewport.
@@ -30,7 +33,7 @@ The application is a hash-routed SPA. `#/projects` remains as a compatibility al
 
 - **DE2:** `src/core/simulator/verilogEngine.ts` and `graphEvaluator.ts` parse and evaluate a deliberately limited HDL subset. Expressions use a closed AST evaluator; dynamic JavaScript execution is not used.
 - **Waveform:** `src/services/hardwareSimulator.ts` talks to the active `src/workers/compiler.worker.ts`. The worker loads Icarus assets from `public/`, compiles and simulates the current Monaco editor contents, and returns parsed VCD data. There is no approximate `testbenchParser` fallback.
-- **Schematic:** `src/services/synthesizer.ts` runs `@yowasp/yosys`, converts the netlist with `yosys2digitaljs`, and `src/components/SchematicWorkspace/SchematicViewport.tsx` hosts the DigitalJS circuit.
+- **Schematic:** `src/services/synthesizer.ts` runs `@yowasp/yosys` in a Web Worker (`src/workers/yosys.worker.ts`, main-thread fallback), converts the netlist with `yosys2digitaljs`, and `src/components/SchematicWorkspace/SchematicViewport.tsx` hosts the DigitalJS circuit.
 
 ### DE2 board rendering
 
