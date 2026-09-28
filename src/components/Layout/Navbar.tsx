@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, Link } from 'react-router-dom';
-import { Cpu, Activity, GitGraph, BookOpen, Sun, Moon, Menu, X, Layers, Grid, GraduationCap, Users } from 'lucide-react';
+import { Cpu, Activity, GitGraph, BookOpen, Sun, Moon, Menu, X, Layers, Grid, GraduationCap, Users, Shapes } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nProvider';
 import { PLATFORM_NAME } from '../../lib/platform';
 
@@ -13,6 +13,7 @@ const TOOL_LINKS = [
   { to: '/de2-simulator', key: 'de2', icon: Cpu },
   { to: '/waveform',      key: 'waveform', icon: Activity },
   { to: '/schematic',     key: 'schematic', icon: GitGraph },
+  { to: '/gates',         key: 'gates', icon: Shapes },
   { to: '/examples',      key: 'examples', icon: BookOpen },
 ] as const;
 
