@@ -67,6 +67,8 @@ export default function Lessons() {
         /* the editor opens with its last design */
       }
       navigate('/gates');
+    } else if (a.kind === 'kmap') {
+      navigate(`/kmap?expr=${encodeURIComponent(a.expr)}`);
     } else if (a.kind === 'example') {
       const ex = getExampleById(a.id);
       if (ex?.de2?.supported) {
@@ -92,7 +94,7 @@ export default function Lessons() {
     if (score === lesson.quiz.length) setProgress((p) => ({ ...p, done: { ...p.done, [lesson.id]: true } }));
   };
 
-  const actionIcon = (a: LessonAction) => (a.kind === 'gates' ? <Shapes size={14} /> : a.kind === 'example' ? <Cpu size={14} /> : <GraduationCap size={14} />);
+  const actionIcon = (a: LessonAction) => (a.kind === 'gates' || a.kind === 'kmap' ? <Shapes size={14} /> : a.kind === 'example' ? <Cpu size={14} /> : <GraduationCap size={14} />);
 
   return (
     <div data-testid="lessons-page" className="absolute inset-0 flex flex-col md:flex-row overflow-hidden" style={{ backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)' }}>

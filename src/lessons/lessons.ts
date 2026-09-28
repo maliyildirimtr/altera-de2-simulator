@@ -8,7 +8,8 @@ export type L = { en: string; tr: string };
 export type LessonAction =
   | { kind: 'gates'; preset: string; label: L }
   | { kind: 'example'; id: string; label: L }
-  | { kind: 'exercise'; id: string; label: L };
+  | { kind: 'exercise'; id: string; label: L }
+  | { kind: 'kmap'; expr: string; label: L };
 
 export interface QuizQuestion {
   q: L;
@@ -76,6 +77,7 @@ export const LESSONS: Lesson[] = [
       t('Check your design against the table: the exercises do exactly that.', 'Tasarımını tabloyla karşılaştır: alıştırmalar tam olarak bunu yapar.'),
     ],
     actions: [
+      { kind: 'kmap', expr: "ab + a'c + bc", label: t('Simplify with a Karnaugh map', 'Karnaugh haritasıyla sadeleştir') },
       { kind: 'exercise', id: 'majority3', label: t('Exercise: majority of three', 'Alıştırma: üçün çoğunluğu') },
       { kind: 'exercise', id: 'parity4', label: t('Exercise: parity bit', 'Alıştırma: eşlik biti') },
     ],
