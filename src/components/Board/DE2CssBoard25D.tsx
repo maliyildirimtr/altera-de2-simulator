@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { DE2_REFERENCE_25D } from '../../board/de2ReferenceAssets';
 import { useArtworkReady } from '../../board/useArtworkReady';
 import { ArtworkLoadingPlaceholder, artworkRevealStyle } from './primitives/ArtworkLoading';
+import { ProjectiveLayerHost } from './primitives/ProjectiveLayer';
 import type { InputOverlayCalibrationSet } from '../../board/de2ReferenceAssets';
 import {
   HEX_CX,
@@ -61,6 +62,11 @@ export const DE2CssBoard25D: React.FC = React.memo(() => {
   const artworkReady = useArtworkReady(DE2_REFERENCE_25D.src);
 
   return (
+    <ProjectiveLayerHost
+      width={DE2_REFERENCE_25D.width}
+      height={DE2_REFERENCE_25D.height}
+      style={artworkRevealStyle(artworkReady)}
+    >
     <svg
     data-testid="de2-board-2-5d"
     data-board-view="2.5d"
@@ -166,6 +172,7 @@ export const DE2CssBoard25D: React.FC = React.memo(() => {
     />
     </g>
     </svg>
+    </ProjectiveLayerHost>
   );
 });
 DE2CssBoard25D.displayName = 'DE2CssBoard25D';

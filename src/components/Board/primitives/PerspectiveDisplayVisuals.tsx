@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { polygonPoints, projectiveWarpFrame } from '../../../board/de2InputCalibration';
 import type { ArtworkPoint } from '../../../board/de2ReferenceAssets';
+import { ProjectiveFrame } from './ProjectiveLayer';
 import { isSegmentLit } from '../../../board/useBoardSelectors';
 import { sevenSegmentShapes, SEGMENT_SLANT_DEG } from '../boardGeometry';
 import {
@@ -50,24 +51,9 @@ const PerspectivePlane: React.FC<PerspectivePlaneProps> = ({
         points={quad}
         fill={maskFill}
       />
-      <foreignObject
-        x={frame.x}
-        y={frame.y}
-        width={frame.width}
-        height={frame.height}
-        overflow="visible"
-        pointerEvents="none"
-      >
-        <div className="de2-projective-frame">
-          <div
-            className={`de2-projective-part de2-projective-${kind}`}
-            data-projective-matrix={frame.matrix}
-            style={{ transform: frame.matrix }}
-          >
-            {children}
-          </div>
-        </div>
-      </foreignObject>
+      <ProjectiveFrame frame={frame} kind={kind}>
+        {children}
+      </ProjectiveFrame>
     </g>
   );
 };
