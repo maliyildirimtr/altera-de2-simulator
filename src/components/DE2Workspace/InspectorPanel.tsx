@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useBoardStore } from '../../store/boardStore';
+import { SIM_FREQUENCIES, useBoardStore } from '../../store/boardStore';
 import { markWorkspaceDirty } from '../../services/exampleHandoff';
 import {
   ChevronRight,
@@ -81,6 +81,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
     startAutoSimulation,
     stopAutoSimulation,
     setSimFrequency,
+    fastForward,
     resetBoard,
     switches,
     keys,
@@ -495,13 +496,32 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                   </div>
                   <input
                     type="range"
-                    min="1"
-                    max="20"
+                    data-testid="sim-frequency"
+                    min="0"
+                    max={SIM_FREQUENCIES.length - 1}
                     step="1"
-                    value={simFrequency}
-                    onChange={e => setSimFrequency(parseInt(e.target.value, 10))}
+                    value={Math.max(0, SIM_FREQUENCIES.findIndex((f) => f >= simFrequency))}
+                    onChange={e => setSimFrequency(SIM_FREQUENCIES[parseInt(e.target.value, 10)])}
                     className="w-full accent-[var(--accent-primary)] cursor-pointer"
                   />
+                </div>
+
+                {/* Fast forward: many cycles at once, for long sequences (LCD, counters). */}
+                <div className="flex items-center gap-1.5 pt-1">
+                  <span className="text-[var(--text-secondary)] font-medium mr-auto">{t("Fast forward")}</span>
+                  {[10, 100, 1000].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      data-testid={`fast-forward-${n}`}
+                      onClick={() => fastForward(n)}
+                      disabled={!canSimulate}
+                      title={`${n} ${t("clock cycles")}`}
+                      className="px-2 py-1 rounded-[0.25rem] border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] text-xs font-mono transition-colors disabled:opacity-40"
+                    >
+                      +{n}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>

@@ -3512,4 +3512,22 @@ endmodule`);
   pass('gate designer Tidy up: columns by depth, no overlapping parts, logic unchanged');
 }
 
+{
+  // Fast forward: many full clock cycles at once, each transition evaluated.
+  const src = fs.readFileSync(path.join(process.cwd(), 'src/examples/source/de2_lcd_custom.sv'), 'utf8');
+  const eng = compileVerilog(src);
+  const maps: ParsedPort[] = [...(eng.inputs ?? []), ...(eng.outputs ?? [])].map((portName) => ({ portName, physicalPin: null, virtualComponent: autoMapPort(portName) }));
+  store().resetBoard();
+  useBoardStore.setState({ engine: eng, pinMappings: maps, simState: {} });
+  store().toggleSwitch(0);
+  const t0 = Date.now();
+  store().fastForward(100);
+  const ms = Date.now() - t0;
+  assert.strictEqual(lcdLines(store().lcd)[0].trimEnd(), 'SW=0x00001', 'after 100 cycles the LCD shows the switches');
+  assert.ok(ms < 3000, `100 cycles run quickly (${ms} ms)`);
+  store().resetBoard();
+  useBoardStore.setState({ engine: null, pinMappings: [], simState: {} });
+  pass('DE2 fast forward runs whole clock cycles at once');
+}
+
 console.log(`--- DE2 Board Renderer Regression: PASS (${checks.length} checks) ---`);

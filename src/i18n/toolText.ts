@@ -57,6 +57,8 @@ export const TOOL_TR: Record<string, string> = {
   'Compile Code': 'Kodu derle',
   'Manual Clock Pulse (tickClock)': 'Elle saat darbesi',
   'Step Clock': 'Saat adımı',
+  'Fast forward': 'Hızlı ileri',
+  'clock cycles': 'saat çevrimi',
   'Reset Board State (Switches, Keys, LEDs, HEX, Clock)': 'Kart durumunu sıfırla (anahtarlar, KEY, LED, HEX, saat)',
   'Reset Board': 'Kartı sıfırla',
   'Toggle Console': 'Konsolu aç/kapat',

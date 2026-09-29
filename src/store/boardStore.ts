@@ -126,6 +126,8 @@ interface BoardState {
   
   // Actions
   toggleSwitch: (index: number) => void;
+  /** Runs `cycles` full clock cycles at once (every transition evaluated). */
+  fastForward: (cycles: number) => void;
   setKey: (index: number, pressed: boolean) => void;
   setLedR: (index: number, value: number) => void;
   setLedG: (index: number, value: number) => void;
@@ -150,6 +152,9 @@ const INITIAL_HEX = Array(8).fill(Array(7).fill(1)); // Active-low: 1 is off
 const WAVEFORM_HISTORY_LIMIT = 512;
 
 let simIntervalTimer: ReturnType<typeof setInterval> | null = null;
+
+/** Clock speeds offered on the board (Hz). */
+export const SIM_FREQUENCIES = [1, 2, 5, 10, 20, 50, 100, 250, 500, 1000] as const;
 
 const clearSimulationTimer = (): void => {
   if (simIntervalTimer) {
@@ -249,6 +254,9 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     clearSimulationTimer();
     const freq = get().simFrequency || 5;
     const intervalMs = Math.max(20, Math.floor(1000 / (freq * 2)));
+    // Above 25 Hz the timer cannot fire once per half period, so each tick
+    // runs several clock transitions — every one of them still evaluated.
+    const perTick = Math.max(1, Math.round((freq * 2 * intervalMs) / 1000));
 
     // First Run after Compile: settle the outputs for the current inputs at
     // once. From then on switch and key changes are evaluated immediately.
@@ -257,13 +265,20 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     if (!wasLive) get().runSimulationCycle();
 
     simIntervalTimer = setInterval(() => {
-      get().tickClock();
+      for (let i = 0; i < perTick; i++) get().tickClock();
     }, intervalMs);
   },
 
   stopAutoSimulation: () => {
     clearSimulationTimer();
     set({ isSimRunning: false });
+  },
+
+  fastForward: (cycles: number) => {
+    if (!get().engine) return;
+    // Two transitions per cycle; each is evaluated exactly as a normal tick.
+    const n = Math.max(0, Math.min(100_000, Math.round(cycles))) * 2;
+    for (let i = 0; i < n; i++) get().tickClock();
   },
 
   setSimFrequency: (freq: number) => {
