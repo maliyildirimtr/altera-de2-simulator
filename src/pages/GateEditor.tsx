@@ -147,25 +147,38 @@ type LocalPin = { x: number; y: number; side: Side };
 const pinKey = (dir: 'i' | 'o', k: number) => `${dir}${k}`;
 
 /** Sides and positions of a block's pins (inputs left, outputs right unless moved). */
-function blockFrame(n: GateNode): { w: number; h: number; pins: Record<string, LocalPin> } {
+function blockFrame(n: GateNode): { w: number; h: number; pins: Record<string, LocalPin>; title: { x: number; y: number } } {
   const keys = [...inputNames(n).map((_, k) => pinKey('i', k)), ...outputNames(n).map((_, k) => pinKey('o', k))];
   const sideOf = (key: string): Side => n.pinLayout?.[key]?.side ?? (key[0] === 'i' ? 'L' : 'R');
   const bySide: Record<Side, string[]> = { L: [], R: [], T: [], B: [] };
   keys.forEach((k) => bySide[sideOf(k)].push(k));
-  const h = Math.max(bySide.L.length, bySide.R.length, 1) * 22 + 22;
-  const w = Math.max(100, Math.max(bySide.T.length, bySide.B.length) * 30 + 24);
+  // Room for the pin names: a band along each side that has pins, and the
+  // title in the middle of what is left.
+  const nameOf = (key: string) => (key[0] === 'i' ? inputNames(n) : outputNames(n))[Number(key.slice(1))] ?? '';
+  const textW = (list: string[]) => Math.max(0, ...list.map((k) => nameOf(k).length * 5.6)) + 12;
+  const top = bySide.T.length ? 20 : 4;
+  const bottom = bySide.B.length ? 20 : 4;
+  const left = bySide.L.length ? textW(bySide.L) : 6;
+  const right = bySide.R.length ? textW(bySide.R) : 6;
+  const titleW = (n.label || 'BLOCK').length * 7 + 12;
+  const h = Math.max(bySide.L.length, bySide.R.length, 1) * 22 + 10 + top + bottom;
+  const w = Math.max(100, Math.max(bySide.T.length, bySide.B.length) * 30 + 24, left + titleW + right);
+  const title = { x: left + (w - left - right) / 2, y: top + (h - top - bottom) / 2 + 4 };
   const pins: Record<string, LocalPin> = {};
   (Object.keys(bySide) as Side[]).forEach((side) => {
     const list = bySide[side];
+    const vertical = side === 'L' || side === 'R';
     list.forEach((key, i) => {
-      const pos = n.pinLayout?.[key]?.pos ?? (i + 1) / (list.length + 1);
+      // Default spacing keeps side pins clear of the top and bottom name bands.
+      const even = vertical ? (top + ((i + 1) * (h - top - bottom)) / (list.length + 1)) / h : (i + 1) / (list.length + 1);
+      const pos = n.pinLayout?.[key]?.pos ?? even;
       if (side === 'L') pins[key] = { x: 0, y: pos * h, side };
       else if (side === 'R') pins[key] = { x: w, y: pos * h, side };
       else if (side === 'T') pins[key] = { x: pos * w, y: 0, side };
       else pins[key] = { x: pos * w, y: h, side };
     });
   });
-  return { w, h, pins };
+  return { w, h, pins, title };
 }
 
 function localSize(n: GateNode): { w: number; h: number } {
@@ -332,14 +345,29 @@ function PartIcon({ type }: { type: GateType }) {
   }
 }
 
-/** A pin name drawn inside the frame next to a pin on the top, bottom or right side. */
-function PinLabel({ p, text, upright }: { p: LocalPin; text: string; upright: (x: number, y: number) => string | undefined }) {
-  const at =
-    p.side === 'T' ? { x: p.x, y: p.y + 16, a: 'middle' as const }
-    : p.side === 'B' ? { x: p.x, y: p.y - 8, a: 'middle' as const }
-    : p.side === 'R' ? { x: p.x - 9, y: p.y + 3.5, a: 'end' as const }
-    : { x: p.x + 9, y: p.y + 3.5, a: 'start' as const };
-  return <text x={at.x} y={at.y} textAnchor={at.a} fontSize={9} fill="var(--text-secondary)" pointerEvents="none" transform={upright(at.x, at.y)}>{text}</text>;
+const SIDES: Side[] = ['T', 'R', 'B', 'L'];
+
+/** The side a pin faces after the part is rotated (clockwise). */
+function turnedSide(side: Side, rot: number): Side {
+  return SIDES[(SIDES.indexOf(side) + Math.round(rot / 90)) % 4];
+}
+
+/**
+ * A pin name drawn inside the frame next to its pin. The offset is worked
+ * out on the side the pin faces after rotation, then mapped back into the
+ * part's frame, so the name always sits inside the frame and reads upright.
+ */
+function PinLabel({ n, p, text }: { n: GateNode; p: LocalPin; text: string }) {
+  const rot = rotOf(n);
+  const side = turnedSide(p.side, rot);
+  const pin = turn(n, p);
+  const on =
+    side === 'T' ? { x: pin.x, y: pin.y + 16, a: 'middle' as const }
+    : side === 'B' ? { x: pin.x, y: pin.y - 8, a: 'middle' as const }
+    : side === 'R' ? { x: pin.x - 9, y: pin.y + 3.5, a: 'end' as const }
+    : { x: pin.x + 9, y: pin.y + 3.5, a: 'start' as const };
+  const at = turn(n, on, true);
+  return <text x={at.x} y={at.y} textAnchor={on.a} fontSize={9} fill="var(--text-secondary)" pointerEvents="none" transform={rot ? `rotate(${-rot} ${at.x} ${at.y})` : undefined}>{text}</text>;
 }
 
 let idCounter = 0;
@@ -1031,6 +1059,7 @@ export default function GateEditor() {
     const rot = rotOf(n);
     const upright = (x: number, y: number) => (rot ? `rotate(${-rot} ${x} ${y})` : undefined);
     const editing = pinEdit === n.id;
+    const titleAt = n.type === 'BLOCK' ? blockFrame(n).title : { x: w / 2, y: 13 };
     const v = shown(n.id);
     const isSel = (selected?.kind === 'node' && selected.id === n.id) || multi.includes(n.id);
     const glitch = trace?.glitches.includes(n.id);
@@ -1053,7 +1082,7 @@ export default function GateEditor() {
       body = (
         <>
           <rect x={0} y={0} width={w} height={h} rx={4} fill="var(--bg-surface)" stroke={stroke} strokeWidth={isSel ? 2.2 : 1.5} />
-          <text x={w / 2} y={13} transform={upright(w / 2, 13)} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--text-primary)" pointerEvents="none">{n.type === 'BLOCK' ? (n.label || (n.ref && library[n.ref]?.name) || 'BLOCK') + (n.ref && !library[n.ref] ? ` (${g.blockMissing})` : '') : n.type === 'SHIFT' ? (n.dir === 'right' ? '>>' : '<<') : BLOCK_TITLE[n.type]}{ARITH.includes(n.type) ? ` ${bitWidth(n)}b` : ''}</text>
+          <text x={titleAt.x} y={titleAt.y} transform={upright(titleAt.x, titleAt.y)} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--text-primary)" pointerEvents="none">{n.type === 'BLOCK' ? (n.label || (n.ref && library[n.ref]?.name) || 'BLOCK') + (n.ref && !library[n.ref] ? ` (${g.blockMissing})` : '') : n.type === 'SHIFT' ? (n.dir === 'right' ? '>>' : '<<') : BLOCK_TITLE[n.type]}{ARITH.includes(n.type) ? ` ${bitWidth(n)}b` : ''}</text>
           {isFlipFlop(n.type) && (
             <text x={w / 2} y={h - 6} transform={upright(w / 2, h - 6)} textAnchor="middle" fontSize={11} fontWeight={700} fill={v ? on : 'var(--text-muted)'} pointerEvents="none">Q={v}</text>
           )}
@@ -1136,15 +1165,12 @@ export default function GateEditor() {
         {isBlock(n.type) && inNames.map((nm, pin) => {
           const lp = localPin(n, 'i', pin);
           const y = lp.y;
-          if (lp.side !== 'L') return <PinLabel key={`l${pin}`} p={lp} text={nm} upright={upright} />;
-          if (pin === clockPin) return <path key={`l${pin}`} d={`M7,${y - 5} L14,${y} L7,${y + 5}`} fill="none" stroke="var(--text-secondary)" strokeWidth={1.3} pointerEvents="none" />;
-          return <text key={`l${pin}`} x={9} y={y + 3.5} transform={upright(9, y + 3.5)} fontSize={9} fill="var(--text-secondary)" pointerEvents="none">{nm}</text>;
+          if (pin === clockPin && lp.side === 'L') return <path key={`l${pin}`} d={`M7,${y - 5} L14,${y} L7,${y + 5}`} fill="none" stroke="var(--text-secondary)" strokeWidth={1.3} pointerEvents="none" />;
+          return <PinLabel key={`l${pin}`} n={n} p={lp} text={nm} />;
         })}
         {isBlock(n.type) && (outNames.length > 1 || n.type === 'BLOCK') && outNames.map((nm, pin) => {
           const lp = localPin(n, 'o', pin);
-          const y = lp.y;
-          if (lp.side !== 'R') return <PinLabel key={`o${pin}`} p={lp} text={nm} upright={upright} />;
-          return <text key={`o${pin}`} x={w - 9} y={y + 3.5} transform={upright(w - 9, y + 3.5)} textAnchor="end" fontSize={9} fill="var(--text-secondary)" pointerEvents="none">{nm}</text>;
+          return <PinLabel key={`o${pin}`} n={n} p={lp} text={nm} />;
         })}
         {/* Ports */}
         {inNames.map((_, pin) => {
