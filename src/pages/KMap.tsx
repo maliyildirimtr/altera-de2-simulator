@@ -101,7 +101,7 @@ export default function KMap() {
 
   const openInGates = () => {
     try {
-      localStorage.setItem(GATES_KEY, JSON.stringify({ circuit: circuitOf(), inputs: {}, name: 'kmap_design' }));
+      localStorage.setItem(GATES_KEY, JSON.stringify({ circuit: circuitOf(), inputs: {}, name: 'kmap_design', tidy: true }));
     } catch {
       /* the editor opens with its last design */
     }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Copy, Cpu, FileDown, FileUp, Link2, Plus, Redo2, RotateCcw, Trash2, Undo2, X, Zap, ArrowLeftRight, FilePlus2, FolderOpen } from 'lucide-react';
+import { Copy, Cpu, FileDown, FileUp, Link2, Plus, Redo2, RotateCcw, Trash2, Undo2, X, Zap, ArrowLeftRight, FilePlus2, FolderOpen, Shapes } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 import { fmt } from '../i18n/dictionary';
 import { useBoardStore } from '../store/boardStore';
@@ -17,6 +17,7 @@ import {
   codeText,
   comboText,
   emptyDesign,
+  fsmToCircuit,
   isDesign,
   stateBits,
   stateCodes,
@@ -357,6 +358,16 @@ export default function FsmDesigner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search]);
 
+  const gateCircuit = useMemo(() => fsmToCircuit(design), [design]);
+  const openInGates = () => {
+    if ('error' in gateCircuit) return;
+    try {
+      localStorage.setItem('logiclab_gates_v1', JSON.stringify({ circuit: gateCircuit.circuit, inputs: {}, name: design.name || 'fsm', tidy: true }));
+    } catch {
+      /* the editor opens with its last design */
+    }
+    navigate('/gates');
+  };
   const openInDe2 = () => {
     const st = useBoardStore.getState();
     st.setHdlCode(toVerilog(design, { de2: true, clock }));
@@ -670,6 +681,20 @@ export default function FsmDesigner() {
                 </tbody>
               </table>
             </div>
+          </Section>
+
+          <Section title={t.gates}>
+            <p className="text-[0.6875rem]" style={{ color: 'var(--text-muted)' }}>{t.gatesLead}</p>
+            {'error' in gateCircuit ? (
+              <p className="text-[0.7188rem]" style={{ color: '#d97706' }}>{t.tooManyVars}</p>
+            ) : (
+              <>
+                <ul data-testid="fsm-equations" className="text-[0.7188rem] font-mono flex flex-col gap-0.5">
+                  {gateCircuit.equations.map((e) => <li key={e}>{e}</li>)}
+                </ul>
+                <button type="button" className={btn} style={btnStyle} data-testid="fsm-to-gates" disabled={Object.keys(checks.errors).length > 0} onClick={openInGates}><Shapes size={13} /> {t.toGates}</button>
+              </>
+            )}
           </Section>
 
           <Section title={t.verilog}>

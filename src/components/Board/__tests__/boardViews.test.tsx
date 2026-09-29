@@ -3530,4 +3530,35 @@ endmodule`);
   pass('DE2 fast forward runs whole clock cycles at once');
 }
 
+{
+  // FSM → flip-flops and gates: the circuit follows the machine in every encoding.
+  for (const [key, preset] of Object.entries(Fsm.FSM_PRESETS)) for (const encoding of ['binary', 'gray', 'onehot'] as Fsm.Encoding[]) {
+    const d = { ...preset.design, encoding };
+    const r = Fsm.fsmToCircuit(d);
+    assert.ok(!('error' in r), `${key}/${encoding} builds`);
+    if ('error' in r) continue;
+    const c = r.circuit;
+    const id = (l: string) => c.nodes.find((n) => n.label === l)!.id;
+    const [clk, rst] = [id('clk'), id('reset')];
+    const ins = (env: Record<string, number>) => Object.fromEntries(d.inputs.map((x) => [id(x), env[x]]));
+    let seq = Gates.settle(c, { [clk]: 0, [rst]: 1 }).seq;
+    seq = Gates.settle(c, { [clk]: 1, [rst]: 1 }, seq).seq;
+    let state = d.initial;
+    let rnd = 5;
+    for (let t = 0; t < 60; t += 1) {
+      const env: Record<string, number> = {};
+      d.inputs.forEach((x) => { rnd = (rnd * 1103515245 + 12345) & 0x7fffffff; env[x] = (rnd >> 9) & 1; });
+      const low = Gates.settle(c, { ...ins(env), [clk]: 0, [rst]: 0 }, seq);
+      seq = low.seq;
+      const want = Fsm.step(d, state, env);
+      assert.deepStrictEqual(d.outputs.map((o) => low.ev.values[id(o)]), d.outputs.map((o) => want.outputs[o]), `${key}/${encoding} outputs at ${t}`);
+      const code = Array.from({ length: Fsm.stateBits(d) }, (_, b) => low.ev.values[id(`state${b}`)] ?? 0).reduce((a, v, b) => a | (v << b), 0);
+      assert.strictEqual(code, Fsm.stateCodes(d)[state], `${key}/${encoding} state at ${t}`);
+      seq = Gates.settle(c, { ...ins(env), [clk]: 1, [rst]: 0 }, seq).seq;
+      state = want.next;
+    }
+  }
+  pass('FSM to gates: D flip-flops with minimised next-state and output logic follow the machine (binary, Gray, one-hot)');
+}
+
 console.log(`--- DE2 Board Renderer Regression: PASS (${checks.length} checks) ---`);

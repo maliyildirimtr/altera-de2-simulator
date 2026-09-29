@@ -122,7 +122,9 @@ function load(): Saved {
     if (raw) {
       const s = JSON.parse(raw) as Saved;
       if (s?.circuit?.nodes && s.circuit.wires) {
-        return { circuit: s.circuit, inputs: s.inputs ?? {}, name: s.name || 'gate_design', timing: !!s.timing, seq: s.seq?.q ? s.seq : EMPTY_SEQ, tests: typeof s.tests === 'string' ? s.tests : '' };
+        // Other tools (Karnaugh, FSM) hand over a circuit with `tidy` set: lay it out here, with the editor's real part sizes.
+        const circuit = (s as Saved & { tidy?: boolean }).tidy ? autoLayout(s.circuit, { width: CANVAS_W, height: CANVAS_H, size: localSize, ports: { out: outPort, in: inPort } }) : s.circuit;
+        return { circuit, inputs: s.inputs ?? {}, name: s.name || 'gate_design', timing: !!s.timing, seq: s.seq?.q ? s.seq : EMPTY_SEQ, tests: typeof s.tests === 'string' ? s.tests : '' };
       }
     }
   } catch {

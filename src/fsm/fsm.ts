@@ -4,7 +4,8 @@
  * over the inputs. Pure functions (no React): validation, stepping, the state
  * table, state encodings and Verilog for the DE2 board.
  */
-import { SEG7_PATTERNS, sanitizeName } from '../gates/circuit';
+import { SEG7_PATTERNS, sanitizeName, type Circuit, type GateNode, type Wire } from '../gates/circuit';
+import { minimize, type Implicant } from '../logic/boolean';
 
 export type FsmKind = 'moore' | 'mealy';
 export type Encoding = 'binary' | 'gray' | 'onehot';
@@ -492,4 +493,191 @@ export function emptyDesign(): FsmDesign {
 export function isDesign(v: unknown): v is FsmDesign {
   const d = v as FsmDesign;
   return !!d && typeof d === 'object' && (d.kind === 'moore' || d.kind === 'mealy') && Array.isArray(d.inputs) && Array.isArray(d.outputs) && Array.isArray(d.states) && Array.isArray(d.edges) && typeof d.initial === 'string';
+}
+
+/* ── To a gate-level circuit ────────────────────────────────────────── */
+
+
+/** A signal in the circuit being built: node id and output pin. */
+type Src = { id: string; pin: number };
+
+export interface FsmCircuit {
+  circuit: Circuit;
+  /** Next-state and output equations, as text (for the side panel). */
+  equations: string[];
+}
+
+/**
+ * The machine as flip-flops and gates: one D flip-flop per state bit, each
+ * next-state and output function as a minimal sum of products (Karnaugh /
+ * Quine–McCluskey, unused codes as don't-cares). One-hot machines use the
+ * usual one-hot form instead: D_j = Σ Q_s · (condition to go from s to j).
+ * A synchronous reset (reset = 1 at a clock edge) loads the initial state
+ * through a 2:1 multiplexer per flip-flop; flip-flops start at 0, so give
+ * one reset pulse first when the initial state's code is not all zeros.
+ */
+export function fsmToCircuit(d: FsmDesign): FsmCircuit | { error: 'too-many' } {
+  const bits = stateBits(d);
+  const codes = stateCodes(d);
+  const nIn = d.inputs.length;
+  const onehot = d.encoding === 'onehot';
+  if (!onehot && bits + nIn > 8) return { error: 'too-many' };
+
+  const nodes: GateNode[] = [];
+  const wires: Wire[] = [];
+  let seq = 0;
+  const node = (type: GateNode['type'], label = '', extra: Partial<GateNode> = {}): string => {
+    const id = `f${seq++}`;
+    nodes.push({ id, type, x: 0, y: 0, label, delay: 1, ...extra });
+    return id;
+  };
+  const wire = (from: Src, to: string, pin: number) => wires.push({ id: `w${seq++}`, from: from.id, to, pin, ...(from.pin ? { fromPin: from.pin } : {}) });
+  const gate = (type: 'AND' | 'OR', srcs: Src[]): Src => {
+    if (srcs.length === 1) return srcs[0];
+    if (srcs.length > 4) {
+      const groups: Src[] = [];
+      for (let i = 0; i < srcs.length; i += 4) groups.push(gate(type, srcs.slice(i, i + 4)));
+      return gate(type, groups);
+    }
+    const id = node(type, '', srcs.length > 2 ? { inputs: srcs.length } : {});
+    srcs.forEach((s, pin) => wire(s, id, pin));
+    return { id, pin: 0 };
+  };
+  let zero: Src | null = null;
+  let one: Src | null = null;
+  const constant = (v: 0 | 1): Src => {
+    if (v) return (one ??= { id: node('CONST1'), pin: 0 });
+    return (zero ??= { id: node('CONST0'), pin: 0 });
+  };
+
+  const clk = node('CLK', 'clk');
+  const reset = node('IN', 'reset');
+  const ins = d.inputs.map((x) => node('IN', x));
+  const inverted: Record<number, Src> = {};
+  const inputLit = (k: number, positive: boolean): Src => {
+    if (positive) return { id: ins[k], pin: 0 };
+    if (!inverted[k]) {
+      inverted[k] = { id: node('NOT'), pin: 0 };
+      wire({ id: ins[k], pin: 0 }, inverted[k].id, 0);
+    }
+    return inverted[k];
+  };
+  const ffs = Array.from({ length: bits }, () => node('DFF'));
+  const q = (i: number, positive: boolean): Src => ({ id: ffs[i], pin: positive ? 0 : 1 });
+
+  /** SOP of a cover over variables [state bits high→low, inputs]; literals come from `lit`. */
+  const sop = (cover: Implicant[], n: number, lit: (k: number, positive: boolean) => Src): Src => {
+    if (cover.length === 0) return constant(0);
+    const terms = cover.map((imp) => {
+      const lits: Src[] = [];
+      for (let k = 0; k < n; k++) {
+        const bit = 1 << (n - 1 - k);
+        if (!(imp.mask & bit)) lits.push(lit(k, !!(imp.bits & bit)));
+      }
+      return lits.length ? gate('AND', lits) : constant(1);
+    });
+    return gate('OR', terms);
+  };
+  const termText = (cover: Implicant[], names: string[]): string =>
+    cover.length === 0
+      ? '0'
+      : cover
+          .map((imp) => {
+            const parts: string[] = [];
+            names.forEach((v, k) => {
+              const bit = 1 << (names.length - 1 - k);
+              if (!(imp.mask & bit)) parts.push(imp.bits & bit ? v : `${v}'`);
+            });
+            return parts.join('') || '1';
+          })
+          .join(' + ');
+
+  const equations: string[] = [];
+  const nextFns: Src[] = [];
+  const outFns: Src[] = [];
+  const qNames = Array.from({ length: bits }, (_, i) => `Q${bits - 1 - i}`); // high bit first
+  const envOf = (m: number) => Object.fromEntries(d.inputs.map((x, i) => [x, (m >> (nIn - 1 - i)) & 1]));
+
+  if (!onehot) {
+    // Variables: state bits (Q_{k-1} … Q0) then inputs; minterm = code << nIn | inputs.
+    const n = bits + nIn;
+    const used = new Set(d.states.map((s) => codes[s.id]));
+    const dcs: number[] = [];
+    for (let code = 0; code < 1 << bits; code++) if (!used.has(code)) for (let m = 0; m < 1 << nIn; m++) dcs.push((code << nIn) | m);
+    const lit = (k: number, positive: boolean) => (k < bits ? q(bits - 1 - k, positive) : inputLit(k - bits, positive));
+    const names = [...qNames, ...d.inputs];
+    for (let b = bits - 1; b >= 0; b--) {
+      const ones: number[] = [];
+      for (const s of d.states) for (let m = 0; m < 1 << nIn; m++) {
+        if ((codes[step(d, s.id, envOf(m)).next] >> b) & 1) ones.push((codes[s.id] << nIn) | m);
+      }
+      const cover = minimize(n, ones, dcs);
+      equations.push(`D${b} = ${termText(cover, names)}`);
+      nextFns[b] = sop(cover, n, lit);
+    }
+    d.outputs.forEach((o, oi) => {
+      const ones: number[] = [];
+      for (const s of d.states) for (let m = 0; m < 1 << nIn; m++) if (step(d, s.id, envOf(m)).outputs[o]) ones.push((codes[s.id] << nIn) | m);
+      // Moore outputs do not depend on the inputs: minimise over the state bits only.
+      if (d.kind === 'moore') {
+        const sOnes = [...new Set(ones.map((m) => m >> nIn))];
+        const sDcs: number[] = [];
+        for (let code = 0; code < 1 << bits; code++) if (!used.has(code)) sDcs.push(code);
+        const cover = minimize(bits, sOnes, sDcs);
+        equations.push(`${o} = ${termText(cover, qNames)}`);
+        outFns[oi] = sop(cover, bits, (k, pos) => q(bits - 1 - k, pos));
+      } else {
+        const cover = minimize(n, ones, dcs);
+        equations.push(`${o} = ${termText(cover, names)}`);
+        outFns[oi] = sop(cover, n, lit);
+      }
+    });
+  } else {
+    // One-hot: flip-flop j is state j. D_j = Σ_s Q_s · f_{s→j}(inputs).
+    const idx = new Map(d.states.map((s, i) => [s.id, i]));
+    const byState = (pick: (s: FsmStateNode, env: Record<string, number>) => boolean, label: string): Src => {
+      const terms: Src[] = [];
+      const text: string[] = [];
+      d.states.forEach((s) => {
+        const ones: number[] = [];
+        for (let m = 0; m < 1 << nIn; m++) if (pick(s, envOf(m))) ones.push(m);
+        if (!ones.length) return;
+        const cover = minimize(nIn, ones, []);
+        const qs = q(idx.get(s.id)!, true);
+        const f = cover.length === 1 && cover[0].mask === (1 << nIn) - 1 ? null : sop(cover, nIn, inputLit);
+        terms.push(f ? gate('AND', [qs, f]) : qs);
+        const ft = termText(cover, d.inputs);
+        text.push(ft === '1' ? `Q${idx.get(s.id)}` : `Q${idx.get(s.id)}(${ft})`);
+      });
+      equations.push(`${label} = ${text.join(' + ') || '0'}`);
+      return terms.length ? gate('OR', terms) : constant(0);
+    };
+    d.states.forEach((t, j) => {
+      nextFns[j] = byState((s, env) => step(d, s.id, env).next === t.id, `D${j}`);
+    });
+    d.outputs.forEach((o, oi) => {
+      outFns[oi] = byState((s, env) => !!step(d, s.id, env).outputs[o], o);
+    });
+  }
+
+  // Reset: a 2:1 multiplexer per flip-flop picks the initial state's code.
+  const initCode = codes[d.initial] ?? 0;
+  ffs.forEach((ff, b) => {
+    const mux = node('MUX2');
+    wire(nextFns[b], mux, 0);
+    wire(constant(((initCode >> b) & 1) as 0 | 1), mux, 1);
+    wire({ id: reset, pin: 0 }, mux, 2);
+    wire({ id: mux, pin: 0 }, ff, 0);
+    wire({ id: clk, pin: 0 }, ff, 1);
+  });
+  d.outputs.forEach((o, oi) => wire(outFns[oi], node('OUT', o), 0));
+  // The state code on outputs too, so it can be watched.
+  const taken = new Set([...d.inputs, ...d.outputs, 'clk', 'reset']);
+  const stateName = (b: number) => {
+    let name = `state${b}`;
+    while (taken.has(name)) name = `_${name}`;
+    return name;
+  };
+  for (let b = bits - 1; b >= 0; b--) wire(q(b, true), node('OUT', stateName(b)), 0);
+  return { circuit: { nodes, wires }, equations };
 }
