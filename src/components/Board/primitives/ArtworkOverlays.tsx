@@ -884,7 +884,7 @@ export const LcdOverlay: React.FC<{
   layout = DE2_REFERENCE_2D.layout,
   calibration,
 }) => {
-  const { line1, line2, visible, backlight, cursor, initialised } = useLcdView();
+  const { line1, line2, visible, backlight, cursor, initialised, custom } = useLcdView();
   const dbg = useLcdDebug();
 
   const art = layout.lcd;
@@ -942,6 +942,7 @@ export const LcdOverlay: React.FC<{
           visible={visible}
           backlight={backlight}
           cursor={cursor}
+          custom={custom}
         />
       ) : (
         <>
@@ -965,7 +966,7 @@ export const LcdOverlay: React.FC<{
           overflow="visible"
           data-lcd-renderer="5x8-dot-matrix"
         >
-          <LcdDotRows rows={rows} cursor={cursor} />
+          <LcdDotRows rows={rows} cursor={cursor} custom={custom} />
         </svg>
       )}
 

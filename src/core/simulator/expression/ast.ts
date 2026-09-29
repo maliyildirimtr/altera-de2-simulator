@@ -7,7 +7,8 @@ export type Expr =
   | ConditionalExpr
   | ConcatExpr;
 
-export interface LiteralExpr { type: 'Literal'; value: number; }
+/** `width` is set for sized literals (4'b0000) so concatenation can place them. */
+export interface LiteralExpr { type: 'Literal'; value: number; width?: number; }
 export interface IdentifierExpr { type: 'Identifier'; name: string; }
 export interface BitSelectExpr { type: 'BitSelect'; name: string; high: Expr; low?: Expr; }
 export interface UnaryExpr { type: 'Unary'; operator: string; right: Expr; }

@@ -6,6 +6,7 @@ import metadataText from './metadata.json?raw';
 // the interactive board, not a waveform.
 import de2InteractiveIoSrc from './source/de2_interactive_io.sv?raw';
 import de2LcdHelloSrc from './source/de2_lcd_hello.sv?raw';
+import de2LcdCustomSrc from './source/de2_lcd_custom.sv?raw';
 
 // Raw SystemVerilog Source Imports
 import basicGatesSrc from './source/basic_gates.sv?raw';
@@ -564,6 +565,37 @@ export const BASE_EXAMPLES: LearningExample[] = [
       filename: 'de2_lcd_hello.sv',
       source: de2LcdHelloSrc,
       topModule: 'de2_lcd_hello',
+    },
+    tools: {
+      schematic: false,
+      waveform: false,
+      de2: true,
+    },
+  },
+  {
+    id: 'de2_lcd_custom',
+    title: 'DE2 LCD Custom Characters',
+    description:
+      'Defines two custom glyphs in CGRAM, shows SW17..SW0 live in hexadecimal on the LCD and scrolls the display with KEY1/KEY2 (KEY3 returns home). Raise the clock frequency in the Inspector for a quicker start.',
+    difficulty: 'intermediate',
+    category: 'fpga',
+    topics: ['DE2 Board', 'LCD', 'HD44780', 'CGRAM', 'Sequencer'],
+    learningObjectives: [
+      'Define custom 5x8 characters by writing CGRAM rows after command 0x40',
+      'Refresh part of the display continuously from live inputs',
+      'Scroll both lines with the cursor/display shift command (0x18 / 0x1C)',
+    ],
+    topModule: 'de2_lcd_custom',
+    source: {
+      filename: 'de2_lcd_custom.sv',
+      language: 'systemverilog',
+      code: de2LcdCustomSrc,
+    },
+    de2: {
+      supported: true,
+      filename: 'de2_lcd_custom.sv',
+      source: de2LcdCustomSrc,
+      topModule: 'de2_lcd_custom',
     },
     tools: {
       schematic: false,

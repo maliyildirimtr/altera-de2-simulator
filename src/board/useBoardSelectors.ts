@@ -11,8 +11,9 @@
  * does not re-render the display.
  */
 
+import { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { lcdCursor, lcdIsVisible, lcdLines } from '../core/peripherals/lcdController';
+import { lcdCursor, lcdCustomGlyphs, lcdIsVisible, lcdLines } from '../core/peripherals/lcdController';
 import { useBoardStore } from '../store/boardStore';
 import type { LcdDebug } from '../store/boardStore';
 
@@ -90,8 +91,13 @@ export interface LcdView {
   /** Powered AND display-on: whether the panel shows anything at all. */
   visible: boolean;
   backlight: boolean;
-  /** Block cursor position, or null when the design did not enable one. */
-  cursor: { row: number; col: number } | null;
+  /**
+   * Cursor position, or null when the design did not enable one. `underline`
+   * is the C bit (bottom row lit), `blink` the B bit (whole cell flashing).
+   */
+  cursor: { row: number; col: number; underline: boolean; blink: boolean } | null;
+  /** The eight CGRAM glyphs (rows of '0'/'1'), for codes 0-7. */
+  custom: string[][];
 }
 
 /**
@@ -121,8 +127,16 @@ export function useLcdView(): LcdView {
         initialised: s.lcd.initialised,
         cursorRow: cursor?.row ?? -1,
         cursorCol: cursor?.col ?? -1,
+        underline: s.lcd.cursorOn,
+        blink: s.lcd.blinkOn,
+        cgKey: s.lcd.cgram.join(','),
       };
     }),
+  );
+  // Rebuilt only when the glyph RAM itself changes, not on every tick.
+  const custom = useMemo(
+    () => lcdCustomGlyphs(flat.cgKey.split(',').map(Number)),
+    [flat.cgKey],
   );
 
   return {
@@ -131,7 +145,11 @@ export function useLcdView(): LcdView {
     visible: flat.visible,
     backlight: flat.backlight,
     initialised: flat.initialised,
-    cursor: flat.cursorRow >= 0 ? { row: flat.cursorRow, col: flat.cursorCol } : null,
+    cursor:
+      flat.cursorRow >= 0
+        ? { row: flat.cursorRow, col: flat.cursorCol, underline: flat.underline, blink: flat.blink }
+        : null,
+    custom,
   };
 }
 

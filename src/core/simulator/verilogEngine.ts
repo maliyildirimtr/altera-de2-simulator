@@ -210,6 +210,7 @@ export function elaborateEngine(modules: Record<string, any>, topModule: string)
    * why they are merged by name rather than per instance.
    */
   const combinedConstants: Record<string, number> = {};
+  const combinedWidths: Record<string, number> = {};
 
   const submoduleMirrors: { internal: string; external: string }[] = [];
 
@@ -273,6 +274,11 @@ export function elaborateEngine(modules: Record<string, any>, topModule: string)
       return res;
     }
 
+    for (const [name, w] of Object.entries((mod.netWidths ?? {}) as Record<string, number>)) {
+      const flat = dict[name] ?? name;
+      if (!(flat in combinedWidths)) combinedWidths[flat] = w;
+    }
+
     const modConstants: Record<string, number> = mod.constants ?? {};
     for (const [name, value] of Object.entries(modConstants)) {
       if (!(name in combinedConstants)) combinedConstants[name] = value;
@@ -329,7 +335,7 @@ export function elaborateEngine(modules: Record<string, any>, topModule: string)
         state[i] = inputs[i] !== undefined ? inputs[i] : (state[i] ?? 0);
       }
 
-      const ctx: EvalContext = { state, nextState: Object.create(null) };
+      const ctx: EvalContext = { state, nextState: Object.create(null), widths: combinedWidths };
 
       // 1. Sequential Logic (executes exactly once per clock edge)
       for (const block of moduleAST.alwaysBlocks) {
@@ -536,6 +542,8 @@ export interface InternalModuleDef {
   wires: string[];
   regs: string[];
   portWidths?: Record<string, number>;
+  /** Declared widths of every port and internal net (for concat and vector NOT). */
+  netWidths?: Record<string, number>;
   /**
    * Resolved `localparam` / `parameter` values for this module, as numbers.
    * Seeded into the evaluation state so identifier resolution finds them by
@@ -632,14 +640,24 @@ export function compileVerilog(code: string): VerilogModule {
       const bitWidth = m[1] && m[2] ? Math.abs(parseInt(m[1]) - parseInt(m[2])) + 1 : 1;
       m[3].split(',').forEach(p => { const name = p.trim(); if (name) { outputs.push(name); portWidths[name] = bitWidth; } });
     }
-    while ((m = wireRegex.exec(bodyStr)) !== null) { m[3].split(',').forEach(p => wires.push(p.trim())); }
-    while ((m = regRegex.exec(bodyStr)) !== null) { m[3].split(',').forEach(p => regs.push(p.trim())); }
+    const netWidths: Record<string, number> = {};
+    while ((m = wireRegex.exec(bodyStr)) !== null) {
+      const bitWidth = m[1] && m[2] ? Math.abs(parseInt(m[1]) - parseInt(m[2])) + 1 : 1;
+      m[3].split(',').forEach(p => { const name = p.trim(); wires.push(name); if (/^[A-Za-z_]\w*$/.test(name)) netWidths[name] = bitWidth; });
+    }
+    while ((m = regRegex.exec(bodyStr)) !== null) {
+      const bitWidth = m[1] && m[2] ? Math.abs(parseInt(m[1]) - parseInt(m[2])) + 1 : 1;
+      m[3].split(',').forEach(p => { const name = p.trim(); regs.push(name); if (/^[A-Za-z_]\w*$/.test(name)) netWidths[name] = bitWidth; });
+    }
+    for (const [name, w] of Object.entries(portWidths)) if (!(name in netWidths)) netWidths[name] = w;
 
     // Assigns
-    const assignRegex = /assign\s+([a-zA-Z0-9_]+(?:\s*\[\s*\d+\s*(?::\s*\d+\s*)?\])?)\s*=\s*(.*?);/g;
+    // The right-hand side may span several lines (a chained ?: is usually
+    // written that way); it runs to the first semicolon.
+    const assignRegex = /assign\s+([a-zA-Z0-9_]+(?:\s*\[\s*\d+\s*(?::\s*\d+\s*)?\])?)\s*=\s*([\s\S]*?);/g;
     while ((m = assignRegex.exec(bodyStr)) !== null) {
       const lhs = m[1].replace(/\s+/g, '');
-      const rhs = m[2];
+      const rhs = m[2].replace(/\s+/g, ' ').trim();
       const bitMatch = lhs.match(/^([a-zA-Z0-9_]+)\[(\d+)\]$/);
       if (bitMatch) {
         const net = bitMatch[1];
@@ -714,7 +732,8 @@ export function compileVerilog(code: string): VerilogModule {
         const connStr = m[3];
 
         // Exclude keywords
-        if (['module', 'if', 'while', 'always', 'always_comb', 'always_ff', 'initial', 'assign', 'wire', 'reg', 'input', 'output'].includes(type)) continue;
+        // `begin if (...) ...;` inside an always block has the same shape as an instance.
+        if (['module', 'if', 'else', 'begin', 'end', 'case', 'default', 'while', 'always', 'always_comb', 'always_ff', 'initial', 'assign', 'wire', 'reg', 'input', 'output'].includes(type)) continue;
 
         const connections: Record<string, string> = {};
         const sliceConnections: Record<string, { parentNet: string; high: number; low: number }> = {};
@@ -806,6 +825,7 @@ export function compileVerilog(code: string): VerilogModule {
       wires: uniqueWires, 
       regs: uniqueRegs, 
       portWidths,
+      netWidths,
       constants,
       assignLogic, 
       rawAssignLogic, 

@@ -102,10 +102,13 @@ import {
   LCD_COLS,
   LCD_ROW_BASE,
   createLcdState,
+  lcdCursor,
+  lcdCustomGlyphs,
   lcdLines,
   lcdStep,
   type LcdBusSignals,
 } from '../../../core/peripherals/lcdController';
+import { LcdDotRows } from '../primitives/PerspectiveDisplayVisuals';
 import { collectLcdBus, normaliseLcdSignal } from '../../../core/peripherals/lcdSignals';
 import { autoMapPort, parseQsf } from '../../../utils/parser/pinParser';
 import type { ParsedPort } from '../../../utils/parser/pinParser';
@@ -3194,6 +3197,109 @@ useBoardStore.setState({ engine: null, pinMappings: [], simState: {} });
   assert.strictEqual(Num.group('101101', 4), '10 1101');
   assert.strictEqual(Num.toBase(255n, 16), 'FF');
   pass('number systems: parsing, two\'s complement and the working steps are correct');
+}
+
+{
+  // LCD: CGRAM custom characters, display/cursor shift and shift-on-write.
+  let l = createLcdState();
+  for (const b of [0x38, 0x0c, 0x06, 0x01]) l = cmd(l, b);
+  l = cmd(l, 0x40 | 8); // CGRAM glyph 1
+  const rows = [0b00000, 0b01010, 0b11111, 0b11111, 0b01110, 0b00100, 0b00000, 0b00000];
+  for (const r of rows) l = bus(l, 1, r);
+  assert.strictEqual(l.target, 'cg', 'data after 0x40 goes to CGRAM');
+  assert.strictEqual(l.address, 0, 'CGRAM writes leave the DDRAM address alone');
+  l = cmd(l, 0x80);
+  l = bus(l, 1, 1); // glyph 1
+  l = chr(l, 'a');
+  const [row0] = lcdLines(l);
+  assert.strictEqual(row0.charCodeAt(0), 0xe001, 'code 1 shows CGRAM glyph 1');
+  assert.strictEqual(row0[1], 'a', 'lower case is kept (A00 ROM has it)');
+  assert.deepStrictEqual(lcdCustomGlyphs(l.cgram)[1].slice(0, 3), ['00000', '01010', '11111'], 'glyph rows read back');
+  // The dot matrix draws the design's own glyph for that cell.
+  const dots = renderToStaticMarkup(React.createElement('svg', null, React.createElement(LcdDotRows, { rows: lcdLines(l), cursor: null, custom: lcdCustomGlyphs(l.cgram) })));
+  const cell = dots.match(/data-lcd-cell="0:0"[\s\S]*?<\/g>/)![0];
+  assert.strictEqual((cell.match(/data-lcd-dot="on"/g) ?? []).length, 2 + 5 + 5 + 3 + 1, 'custom glyph pixels are lit');
+  assert.ok(cell.includes('data-lcd-custom="1"'));
+
+  // Display shift left twice: column 0 now shows DDRAM 0x02.
+  l = cmd(l, 0x01);
+  for (const ch of 'ABCDEFGHIJKLMNOPQR') l = chr(l, ch);
+  l = cmd(l, 0x18); l = cmd(l, 0x18);
+  assert.strictEqual(lcdLines(l)[0], 'CDEFGHIJKLMNOPQR', 'display shift left scrolls the window');
+  l = cmd(l, 0x1c);
+  assert.strictEqual(lcdLines(l)[0][0], 'B', 'display shift right scrolls back');
+  l = cmd(l, 0x02);
+  assert.strictEqual(lcdLines(l)[0][0], 'A', 'return home unshifts');
+  // Shifting right from home wraps the 40-character line.
+  l = cmd(l, 0x1c);
+  assert.strictEqual(lcdLines(l)[0].slice(0, 2), ' A', 'line wraps at 40 characters');
+  l = cmd(l, 0x02);
+  // Cursor shift moves the address, not the text.
+  l = cmd(l, 0x0e); // cursor on
+  l = cmd(l, 0x80 | 3); l = cmd(l, 0x14); l = cmd(l, 0x14); l = cmd(l, 0x10);
+  assert.strictEqual(l.address, 4, 'cursor shift right/left moves the address counter');
+  assert.deepStrictEqual(lcdCursor(l), { row: 0, col: 4 });
+  // Entry mode with shift: the text scrolls as it is written, the cursor stays put.
+  l = cmd(l, 0x01); l = cmd(l, 0x07); l = cmd(l, 0x80 | 16);
+  for (const ch of 'XY') l = chr(l, ch);
+  assert.strictEqual(l.shift, 2);
+  assert.strictEqual(lcdLines(l)[0].slice(14), 'XY', 'shift-on-write keeps the newest characters in view');
+  l = cmd(l, 0x0d); // display on, cursor off, blink on
+  l = cmd(l, 0x02);
+  assert.ok(lcdCursor(l), 'a blinking cursor is still a cursor');
+  pass('LCD custom characters (CGRAM), display/cursor shift, entry-mode shift and blink work');
+}
+
+{
+  // The custom-character example through the real simulator: glyphs, live SW hex, scrolling keys.
+  const src = fs.readFileSync(path.join(process.cwd(), 'src/examples/source/de2_lcd_custom.sv'), 'utf8');
+  const eng = compileVerilog(src);
+  assert.ok(eng, 'de2_lcd_custom compiles');
+  const maps: ParsedPort[] = [...(eng.inputs ?? []), ...(eng.outputs ?? [])].map((portName) => ({ portName, physicalPin: null, virtualComponent: autoMapPort(portName) }));
+  store().resetBoard();
+  useBoardStore.setState({ engine: eng, pinMappings: maps, simState: {} });
+  for (const i of [0, 4, 5, 7, 17]) store().toggleSwitch(i); // 0b10_0000_0000_1011_0001 = 0x200B1
+  const run = (n: number) => { for (let i = 0; i < n; i += 1) { store().tickClock(); store().runSimulationCycle(); } };
+  run(400);
+  let [a, b] = lcdLines(store().lcd);
+  assert.strictEqual(a.trimEnd(), 'SW=0x200B1', 'line 1 shows SW in hex');
+  assert.strictEqual(b.charCodeAt(0), 0xe000, 'line 2 starts with custom glyph 0');
+  assert.strictEqual(b.slice(1, 12), ' LOGIC LAB ');
+  assert.strictEqual(b.charCodeAt(12), 0xe001, 'line 2 ends with custom glyph 1');
+  assert.deepStrictEqual(lcdCustomGlyphs(store().lcd.cgram)[0], ['00000', '01010', '11111', '11111', '11111', '01110', '00100', '00000'], 'heart glyph is in CGRAM');
+  store().toggleSwitch(17); store().toggleSwitch(1);
+  run(60);
+  [a] = lcdLines(store().lcd);
+  assert.strictEqual(a.trimEnd(), 'SW=0x000B3', 'line 1 follows the switches');
+  store().setKey(1, true); run(40); store().setKey(1, false); run(4);
+  assert.ok(store().lcd.shift > 0, 'KEY1 scrolls the display');
+  [a] = lcdLines(store().lcd);
+  assert.ok(!a.startsWith('SW='), 'scrolled text moved left');
+  store().setKey(3, true); run(40); store().setKey(3, false); run(4);
+  assert.strictEqual(store().lcd.shift, 0, 'KEY3 returns home');
+  store().resetBoard();
+  useBoardStore.setState({ engine: null, pinMappings: [], simState: {} });
+  pass('the LCD custom-character example shows glyphs, live switches and scrolls with the keys');
+}
+
+{
+  // Engine: multi-line assigns, width-aware concatenation and vector NOT.
+  const src = (f: string) => fs.readFileSync(path.join(process.cwd(), 'src/examples/source', f), 'utf8');
+  const mux = compileVerilog(src('mux_4to1.sv'));
+  for (let sel = 0; sel < 4; sel += 1) for (let v = 0; v < 16; v += 1)
+    assert.strictEqual(mux.evaluate({ sel, d0: v & 1, d1: (v >> 1) & 1, d2: (v >> 2) & 1, d3: (v >> 3) & 1 }, {}).y, (v >> sel) & 1, 'a ?: chain split over lines is compiled');
+  const alu = compileVerilog(src('alu_2bit.sv'));
+  assert.deepStrictEqual([alu.evaluate({ a: 3, b: 2, op: 0 }, {}).result, alu.evaluate({ a: 3, b: 2, op: 0 }, {}).carry], [1, 1]);
+  const cat = compileVerilog(`module c(input logic [3:0] n, input logic b, output logic [7:0] y, output logic [3:0] z, output logic [9:0] w);
+  assign y = 8'h30 + {4'b0000, n};
+  assign z = ~n;
+  assign w = {b, n[2:1], n, 3'b101};
+endmodule`);
+  const r = cat.evaluate({ n: 0b1011, b: 1 }, {});
+  assert.strictEqual(r.y, 0x3b, '{4\'b0000, n} keeps all four bits of n');
+  assert.strictEqual(r.z, 0b0100, '~ of a declared vector inverts every bit');
+  assert.strictEqual(r.w, 0b1_01_1011_101, 'concat places each part at its own width');
+  pass('Verilog engine: multi-line assigns, sized concatenation and vector NOT');
 }
 
 console.log(`--- DE2 Board Renderer Regression: PASS (${checks.length} checks) ---`);

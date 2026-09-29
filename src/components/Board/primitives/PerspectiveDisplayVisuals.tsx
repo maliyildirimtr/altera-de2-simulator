@@ -126,10 +126,14 @@ export const PerspectiveHexVisual: React.FC<{
  * 2.5D board render text through this one component so the two views show
  * identical glyphs.
  */
+export type LcdCursorView = { row: number; col: number; underline?: boolean; blink?: boolean };
+
 export const LcdDotRows: React.FC<{
   rows: readonly string[];
-  cursor: { row: number; col: number } | null;
-}> = ({ rows, cursor }) => {
+  cursor: LcdCursorView | null;
+  /** CGRAM glyphs for codes 0-7 (rows of '0'/'1'). */
+  custom?: readonly (readonly string[])[];
+}> = ({ rows, cursor, custom }) => {
   const displayRows = rows.map((row) => row.padEnd(LCD_DOT_COLUMNS).slice(0, LCD_DOT_COLUMNS));
   const dotPitchX = LCD_DOT_SIZE + LCD_DOT_GAP_X;
   const dotPitchY = LCD_DOT_SIZE + LCD_DOT_GAP_Y;
@@ -143,7 +147,8 @@ export const LcdDotRows: React.FC<{
         <g key={row} data-lcd-row={row}>
           {Array.from({ length: LCD_DOT_COLUMNS }, (_, col) => {
             const character = text[col] ?? ' ';
-            const characterGlyph = lcdDotGlyph(character);
+            const characterGlyph = lcdDotGlyph(character, custom);
+            const cursorHere = cursor?.row === row && cursor.col === col;
             const cellX = LCD_DOT_GRID_X + col * LCD_DOT_CELL_WIDTH;
             const cellY = LCD_DOT_GRID_Y + row * LCD_DOT_CELL_HEIGHT;
             return (
@@ -151,11 +156,12 @@ export const LcdDotRows: React.FC<{
                 key={col}
                 data-lcd-cell={`${row}:${col}`}
                 data-lcd-char={character}
+                data-lcd-custom={character.charCodeAt(0) >= 0xe000 && character.charCodeAt(0) < 0xe008 ? character.charCodeAt(0) - 0xe000 : undefined}
                 transform={`translate(${cellX + glyphInsetX} ${cellY + glyphInsetY})`}
               >
                 {characterGlyph.flatMap((pixelRow, pixelY) =>
                   Array.from({ length: 5 }, (_, pixelX) => {
-                    const cursorPixel = cursor?.row === row && cursor.col === col && pixelY === 7;
+                    const cursorPixel = cursorHere && cursor.underline !== false && pixelY === 7;
                     const lit = pixelRow[pixelX] === '1' || cursorPixel;
                     return (
                       <rect
@@ -173,6 +179,21 @@ export const LcdDotRows: React.FC<{
                     );
                   }),
                 )}
+                {cursorHere && cursor.blink && (
+                  /* B bit: the whole cell flashes solid, as on the module. */
+                  <g data-lcd-blink="on">
+                    <rect
+                      x={0}
+                      y={0}
+                      width={glyphWidth}
+                      height={glyphHeight}
+                      fill="#20321F"
+                      opacity={0}
+                    >
+                      <animate attributeName="opacity" values="0.92;0" dur="1s" calcMode="discrete" repeatCount="indefinite" />
+                    </rect>
+                  </g>
+                )}
               </g>
             );
           })}
@@ -187,8 +208,9 @@ export const PerspectiveLcdVisual: React.FC<{
   rows: readonly [string, string];
   visible: boolean;
   backlight: boolean;
-  cursor: { row: number; col: number } | null;
-}> = ({ corners, rows, visible, backlight, cursor }) => {
+  cursor: LcdCursorView | null;
+  custom?: readonly (readonly string[])[];
+}> = ({ corners, rows, visible, backlight, cursor, custom }) => {
   return (
     <PerspectivePlane
       corners={corners}
@@ -261,7 +283,7 @@ export const PerspectiveLcdVisual: React.FC<{
             opacity="0.16"
           />
 
-          {visible && <LcdDotRows rows={rows} cursor={cursor} />}
+          {visible && <LcdDotRows rows={rows} cursor={cursor} custom={custom} />}
 
           {!backlight && (
             <rect

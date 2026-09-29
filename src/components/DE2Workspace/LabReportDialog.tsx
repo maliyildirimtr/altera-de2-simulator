@@ -105,7 +105,8 @@ export function LabReportDialog({ open, onClose, defaultTitle, onMessage }: { op
         ledR: st.ledR,
         ledG: st.ledG,
         hex: st.hex,
-        lcd: st.lcdDebug.busSeen ? lcdLines(st.lcd) : null,
+        // Custom (CGRAM) glyphs have no text form; the report shows them as a block.
+        lcd: st.lcdDebug.busSeen ? (lcdLines(st.lcd).map((l) => l.replace(/[\ue000-\ue007]/g, '\u25a0')) as [string, string]) : null,
       },
       capture: getCapture(),
       title,

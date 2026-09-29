@@ -24,8 +24,12 @@
  * EN high across several ticks writes one character, not several.
  *
  *   RS=0 RW=0   instruction write
- *   RS=1 RW=0   data write to DDRAM (or CGRAM, see the limitation below)
+ *   RS=1 RW=0   data write to DDRAM or CGRAM (whichever was addressed last)
  *   RW=1        read — NOT IMPLEMENTED, see `lcdStep`
+ *
+ * Custom characters (CGRAM, codes 0-7), display and cursor shift and the
+ * entry mode's shift-on-write are modelled, so scrolling text and
+ * user-defined glyphs look the way they do on the board.
  */
 
 /** The DE2 module is 16 x 2. Not configurable — it is a physical part. */
@@ -41,6 +45,28 @@ export const LCD_ROW_BASE = [0x00, 0x40] as const;
 
 /** DDRAM is 80 bytes; a 16 x 2 module shows a 16-byte window of each row. */
 const DDRAM_SIZE = 0x80;
+
+/** In two-line mode each line holds 40 characters; display shift rotates within them. */
+export const LCD_LINE_LENGTH = 40;
+
+/** CGRAM: eight 5 x 8 user glyphs, one byte per pixel row (low 5 bits used). */
+export const CGRAM_SIZE = 64;
+
+/** Private-use code points `lcdLines` returns for CGRAM characters 0-7. */
+export const LCD_CUSTOM_BASE = 0xe000;
+
+/**
+ * The few characters above 0x7e the HD44780 A00 ROM has that classroom
+ * designs actually use. Everything else outside ASCII still renders as a space.
+ */
+const ROM_EXTRAS: Readonly<Record<number, string>> = {
+  0x7f: '\u2190', // left arrow
+  0xdf: '\u00b0', // degree
+  0xe4: '\u00b5', // micro
+  0xf4: '\u03a9', // ohm
+  0xf7: '\u03c0', // pi
+  0xff: '\u2588', // full block
+};
 
 export interface LcdBusSignals {
   /** Register select: 0 = instruction, 1 = data. */
@@ -62,6 +88,14 @@ export interface LcdState {
   ddram: readonly number[];
   /** Address counter — where the next data write lands. */
   address: number;
+  /** User glyph RAM; see CGRAM_SIZE. */
+  cgram: readonly number[];
+  /** CGRAM address counter, used while `target` is 'cg'. */
+  cgAddress: number;
+  /** Which RAM data writes go to: the last "set address" command decides. */
+  target: 'dd' | 'cg';
+  /** Display shift in characters (0..39): how far the visible window has scrolled left. */
+  shift: number;
   /** Set by "display on/off control": 0 blanks the characters, keeps the RAM. */
   displayOn: boolean;
   cursorOn: boolean;
@@ -94,6 +128,10 @@ export function createLcdState(): LcdState {
   return {
     ddram: new Array(DDRAM_SIZE).fill(0x20),
     address: 0,
+    cgram: new Array(CGRAM_SIZE).fill(0),
+    cgAddress: 0,
+    target: 'dd',
+    shift: 0,
     displayOn: false,
     cursorOn: false,
     blinkOn: false,
@@ -118,10 +156,23 @@ export function resetLcdState(): LcdState {
  * DDRAM rather than running off the end.
  */
 function advance(state: LcdState, address: number): number {
-  const next = state.increment ? address + 1 : address - 1;
+  return step(address, state.increment);
+}
+
+function step(address: number, forward: boolean): number {
+  const next = forward ? address + 1 : address - 1;
   if (next < 0) return DDRAM_SIZE - 1;
   if (next >= DDRAM_SIZE) return 0;
   return next;
+}
+
+function shiftBy(shift: number, by: number): number {
+  return (((shift + by) % LCD_LINE_LENGTH) + LCD_LINE_LENGTH) % LCD_LINE_LENGTH;
+}
+
+/** DDRAM address shown at a visible row/column, taking the display shift into account. */
+export function lcdCellAddress(state: LcdState, row: number, col: number): number {
+  return LCD_ROW_BASE[row] + ((col + state.shift) % LCD_LINE_LENGTH);
 }
 
 /**
@@ -134,19 +185,21 @@ function applyInstruction(state: LcdState, byte: number): LcdState {
   const touched = { ...state, initialised: true };
 
   // Set DDRAM address — 1aaa aaaa
-  if (byte & 0x80) return { ...touched, address: byte & 0x7f };
+  if (byte & 0x80) return { ...touched, address: byte & 0x7f, target: 'dd' };
 
-  // Set CGRAM address — 01aa aaaa. Accepted so a design that defines custom
-  // glyphs does not desync, but custom glyphs are not rendered; see the
-  // limitation note on `lcdStep`.
-  if (byte & 0x40) return touched;
+  // Set CGRAM address — 01aa aaaa. Following data writes define glyph rows.
+  if (byte & 0x40) return { ...touched, cgAddress: byte & 0x3f, target: 'cg' };
 
   // Function set — 001D NF**. N selects two-line mode.
   if (byte & 0x20) return { ...touched, twoLine: (byte & 0x08) !== 0 };
 
-  // Cursor or display shift — 0001 SR**. Accepted; shifting the visible
-  // window is not modelled, which only affects designs that scroll.
-  if (byte & 0x10) return touched;
+  // Cursor or display shift — 0001 SR**. S=1 scrolls the whole display,
+  // S=0 moves only the cursor; R picks the direction.
+  if (byte & 0x10) {
+    const right = (byte & 0x04) !== 0;
+    if (byte & 0x08) return { ...touched, shift: shiftBy(touched.shift, right ? -1 : 1) };
+    return { ...touched, target: 'dd', address: step(touched.address, right) };
+  }
 
   // Display on/off control — 0000 1DCB
   if (byte & 0x08) {
@@ -167,8 +220,8 @@ function applyInstruction(state: LcdState, byte: number): LcdState {
     };
   }
 
-  // Return home — 0000 001*. Cursor to 0; DDRAM contents untouched.
-  if (byte & 0x02) return { ...touched, address: 0 };
+  // Return home — 0000 001*. Cursor to 0 and the display unshifted; DDRAM untouched.
+  if (byte & 0x02) return { ...touched, address: 0, shift: 0, target: 'dd' };
 
   // Clear display — 0000 0001. DDRAM to spaces AND cursor home, and entry
   // mode back to increment: a design that clears and then writes without
@@ -178,6 +231,8 @@ function applyInstruction(state: LcdState, byte: number): LcdState {
       ...touched,
       ddram: new Array(DDRAM_SIZE).fill(0x20),
       address: 0,
+      shift: 0,
+      target: 'dd',
       increment: true,
     };
   }
@@ -222,31 +277,55 @@ export function lcdStep(state: LcdState, bus: LcdBusSignals): LcdState {
 
   if (bus.rs === 0) return applyInstruction(levels, byte);
 
-  // Data write: store the character and step the address counter.
+  if (levels.target === 'cg') {
+    const cgram = [...levels.cgram];
+    cgram[levels.cgAddress & 0x3f] = byte & 0x1f;
+    const next = levels.increment ? levels.cgAddress + 1 : levels.cgAddress - 1;
+    return { ...levels, cgram, cgAddress: (next + CGRAM_SIZE) % CGRAM_SIZE, initialised: true };
+  }
+
+  // Data write: store the character and step the address counter; with
+  // shift-on-write the display follows the cursor instead.
   const ddram = [...levels.ddram];
   ddram[levels.address & 0x7f] = byte;
   return {
     ...levels,
     ddram,
     address: advance(levels, levels.address & 0x7f),
+    shift: levels.shiftOnWrite ? shiftBy(levels.shift, levels.increment ? 1 : -1) : levels.shift,
     initialised: true,
   };
+}
+
+/** Character a DDRAM byte shows as: ASCII, a CGRAM private-use code, a ROM extra, or a space. */
+export function lcdCharFor(byte: number): string {
+  if (byte < 0x10) return String.fromCharCode(LCD_CUSTOM_BASE + (byte & 0x07));
+  if (byte >= 0x20 && byte <= 0x7e) return String.fromCharCode(byte);
+  return ROM_EXTRAS[byte] ?? ' ';
+}
+
+/** The eight CGRAM glyphs as rows of '0'/'1' strings (5 wide, 8 tall). */
+export function lcdCustomGlyphs(cgram: readonly number[]): string[][] {
+  return Array.from({ length: 8 }, (_, g) =>
+    Array.from({ length: 8 }, (_, r) => (cgram[g * 8 + r] ?? 0).toString(2).padStart(5, '0').slice(-5)),
+  );
 }
 
 /**
  * The two visible lines, each exactly 16 characters.
  *
- * Bytes outside printable ASCII render as spaces rather than as mojibake: the
- * HD44780 character ROM is not ASCII above 0x7f, and inventing glyphs for it
- * would be showing the user something the hardware would not show.
+ * Codes 0-15 are the CGRAM glyphs, returned as private-use characters
+ * (LCD_CUSTOM_BASE + n) that the dot-matrix renderer draws from CGRAM. A few
+ * ROM symbols above 0x7e are mapped (see ROM_EXTRAS); the rest render as
+ * spaces rather than mojibake.
  */
 export function lcdLines(state: LcdState): [string, string] {
   const line = (row: number): string => {
     if (!state.displayOn) return ' '.repeat(LCD_COLS);
     let out = '';
     for (let col = 0; col < LCD_COLS; col += 1) {
-      const byte = state.ddram[(LCD_ROW_BASE[row] + col) & 0x7f] ?? 0x20;
-      out += byte >= 0x20 && byte <= 0x7e ? String.fromCharCode(byte) : ' ';
+      const byte = state.ddram[lcdCellAddress(state, row, col) & 0x7f] ?? 0x20;
+      out += lcdCharFor(byte);
     }
     return out;
   };
@@ -255,11 +334,14 @@ export function lcdLines(state: LcdState): [string, string] {
 
 /** Cursor position as {row, col}, or null when it is off-screen or disabled. */
 export function lcdCursor(state: LcdState): { row: number; col: number } | null {
-  if (!state.displayOn || !state.cursorOn) return null;
+  if (!state.displayOn || (!state.cursorOn && !state.blinkOn)) return null;
+  if (state.target === 'cg') return null;
   const addr = state.address & 0x7f;
   for (let row = 0; row < LCD_ROWS; row += 1) {
     const base = LCD_ROW_BASE[row];
-    if (addr >= base && addr < base + LCD_COLS) return { row, col: addr - base };
+    if (addr < base || addr >= base + LCD_LINE_LENGTH) continue;
+    const col = (addr - base - state.shift + LCD_LINE_LENGTH) % LCD_LINE_LENGTH;
+    if (col < LCD_COLS) return { row, col };
   }
   return null;
 }

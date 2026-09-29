@@ -3,7 +3,38 @@ import type { Expr, Stmt, LValue, AlwaysBlock } from './ast';
 export interface EvalContext {
   state: Record<string, number>;
   nextState: Record<string, number>;
+  /**
+   * Declared bit widths of nets (`logic [3:0] n` -> 4). Used where Verilog
+   * semantics depend on width: concatenation and bitwise NOT of a vector.
+   * A net missing here is treated as 1 bit, the engine's historic default.
+   */
+  widths?: Record<string, number>;
 }
+
+/** Self-determined width of an expression, when it is known; null otherwise. */
+export function exprWidth(expr: Expr, ctx: EvalContext): number | null {
+  switch (expr.type) {
+    case 'Literal':
+      return expr.width ?? null;
+    case 'Identifier':
+      return ctx.widths?.[expr.name] ?? null;
+    case 'BitSelect': {
+      if (expr.high.type !== 'Literal' || (expr.low && expr.low.type !== 'Literal')) return 1;
+      return expr.low ? Math.abs(expr.high.value - expr.low.value) + 1 : 1;
+    }
+    case 'Concat': {
+      let total = 0;
+      for (const e of expr.expressions) total += exprWidth(e, ctx) ?? 1;
+      return total;
+    }
+    case 'Unary':
+      return expr.operator === '!' ? 1 : exprWidth(expr.right, ctx);
+    default:
+      return null;
+  }
+}
+
+const maskOf = (width: number) => (width >= 32 ? 0xffffffff : (1 << width) - 1);
 
 export function createSafeState(initialValues: Record<string, number> = {}): Record<string, number> {
   const state = Object.create(null);
@@ -34,11 +65,15 @@ export function evaluateExpr(expr: Expr, ctx: EvalContext): number {
     case 'Unary': {
       const right = evaluateExpr(expr.right, ctx);
       switch (expr.operator) {
-        case '~': 
+        case '~': {
+          // A declared vector inverts all of its bits, e.g. ~4'b0101 = 4'b1010.
+          const w = exprWidth(expr.right, ctx);
+          if (w !== null && w > 1) return (~right & maskOf(w)) >>> 0;
           if (right !== 0 && right !== 1) {
             throw new Error(`Vector bitwise NOT is unsupported without width metadata. Value was: ${right}`);
           }
           return (~right) & 1;
+        }
         case '!': return (!right) ? 1 : 0;
         case '-': return -right;
         case '+': return right;
@@ -82,11 +117,14 @@ export function evaluateExpr(expr: Expr, ctx: EvalContext): number {
       // e.g. {a, b, c} where we assume 1-bit for each unless otherwise known, 
       // but without width typing, standard concat in simple simulators assumes 1-bit or explicit widths.
       // For DE2 Phase 7, standard {a,b} without types mapped to shifts: (a << 1) | b
+      // Each part takes its declared width ({4'b0000, nibble} is 8 bits);
+      // parts of unknown width count as one bit, the engine's old behaviour.
       let res = 0;
       for (let i = 0; i < expr.expressions.length; i++) {
-        const val = evaluateExpr(expr.expressions[i], ctx);
-        // Assuming 1 bit width for each element in {a, b} to match old behavior
-        res = (res << 1) | (val & 1);
+        const part = expr.expressions[i];
+        const val = evaluateExpr(part, ctx);
+        const w = Math.min(32, exprWidth(part, ctx) ?? 1);
+        res = w >= 32 ? val : ((res * (1 << w)) + (val & maskOf(w))) >>> 0;
       }
       return res;
     }

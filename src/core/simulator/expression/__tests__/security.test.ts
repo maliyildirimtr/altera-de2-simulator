@@ -166,13 +166,21 @@ module not_vec(input logic [3:0] a, output logic [3:0] y);
 endmodule
   `;
   const notVecEngine = compileVerilog(notVectorHDL);
+  // A declared vector now inverts all of its bits.
+  assert.strictEqual(notVecEngine.evaluate({ a: 2 }, {})['y'], 13, "~4'b0010 is 4'b1101");
+  // An expression of unknown width still fails closed rather than guessing.
+  const notExprEngine = compileVerilog(`
+module not_expr(input logic [3:0] a, input logic [3:0] b, output logic [3:0] y);
+  assign y = ~(a + b);
+endmodule
+  `);
   try {
-    notVecEngine.evaluate({ a: 2 }, {}); // 4'b0010
-    assert.fail("Should throw for vector ~");
+    notExprEngine.evaluate({ a: 2, b: 1 }, {});
+    assert.fail("Should throw for ~ of an expression of unknown width");
   } catch (e: any) {
     assert.match(e.message, /Vector bitwise NOT is unsupported/);
   }
-  console.log("  PASS: Bitwise NOT correctly handles 1-bit and fails closed for vectors.");
+  console.log("  PASS: Bitwise NOT handles 1-bit and declared vectors, and fails closed for unknown widths.");
 
   // 8. Edge Transition (posedge/negedge) and Level stability
   const edgeHDL = `

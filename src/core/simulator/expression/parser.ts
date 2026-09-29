@@ -148,7 +148,11 @@ export class Parser {
 
   private primary(): Expr {
     if (this.match('Number')) {
-      return { type: 'Literal', value: parseVerilogLiteralVal(this.previous().value) };
+      const text = this.previous().value;
+      const sized = text.trim().match(/^(\d+)'/);
+      return sized
+        ? { type: 'Literal', value: parseVerilogLiteralVal(text), width: parseInt(sized[1], 10) }
+        : { type: 'Literal', value: parseVerilogLiteralVal(text) };
     }
 
     if (this.match('Identifier')) {
