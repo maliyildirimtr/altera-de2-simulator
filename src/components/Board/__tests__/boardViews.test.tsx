@@ -3036,4 +3036,43 @@ useBoardStore.setState({ engine: null, pinMappings: [], simState: {} });
   pass('gate designer blocks, flip-flops, 7-segment and ripple counters work in the editor and on the DE2 engine');
 }
 
+
+{
+  // Plexers and LED: the editor and the exported Verilog agree on every input combination.
+  const expect: Record<string, (x: number[]) => number[]> = {
+    DEMUX2: ([d, s]) => [s ? 0 : d, s ? d : 0],
+    DEMUX4: ([d, s0, s1]) => [0, 1, 2, 3].map((k) => (k === s0 + 2 * s1 ? d : 0)),
+    DEC3: ([a0, a1, a2]) => [0, 1, 2, 3, 4, 5, 6, 7].map((k) => (k === a0 + 2 * a1 + 4 * a2 ? 1 : 0)),
+    BITSEL: (x) => [x[x[8] + 2 * x[9] + 4 * x[10]]],
+    PENC4: ([i0, i1, i2, i3]) => { const k = i3 ? 3 : i2 ? 2 : i1 ? 1 : 0; const v = i0 | i1 | i2 | i3; return [v ? k & 1 : 0, v ? k >> 1 : 0, v]; },
+  };
+  for (const [type, want] of Object.entries(expect)) {
+    const t = type as Gates.GateType;
+    const ins = Gates.inputNames({ type: t }).length;
+    const outs = Gates.outputNames({ type: t }).length;
+    const c: Gates.Circuit = { nodes: [{ id: 'p', type: t, x: 300, y: 0, label: '', delay: 1 }], wires: [] };
+    for (let i = 0; i < ins; i++) { c.nodes.push({ id: `i${i}`, type: 'IN', x: 0, y: i * 10, label: `i${i}`, delay: 1 }); c.wires.push({ id: `wi${i}`, from: `i${i}`, to: 'p', pin: i }); }
+    for (let o = 0; o < outs; o++) { c.nodes.push({ id: `o${o}`, type: o === 0 ? 'LED' : 'OUT', x: 600, y: o * 10, label: `o${o}`, delay: 1 }); c.wires.push({ id: `wo${o}`, from: 'p', fromPin: o, to: `o${o}`, pin: 0 }); }
+    const mod = compileVerilog(Gates.toVerilog(c, `t_${type.toLowerCase()}`));
+    assert.ok(!mod.transpileError, `${type} Verilog runs on the engine`);
+    for (let combo = 0; combo < 1 << ins; combo++) {
+      const bits = Array.from({ length: ins }, (_, i) => (combo >> i) & 1);
+      const iv: Record<string, number> = {};
+      bits.forEach((b, i) => { iv[`i${i}`] = b; });
+      const ev = Gates.evaluate(c, iv);
+      const got = Array.from({ length: outs }, (_, o) => ev.values[`o${o}`]);
+      assert.deepStrictEqual(got, want(bits), `${type} editor, inputs ${bits.join('')}`);
+      let st: Record<string, number> = {};
+      st = mod.evaluate(iv, st);
+      st = mod.evaluate(iv, st);
+      assert.deepStrictEqual(Array.from({ length: outs }, (_, o) => st[`o${o}`] ?? 0), want(bits), `${type} Verilog, inputs ${bits.join('')}`);
+    }
+  }
+  const led: Gates.Circuit = { nodes: [{ id: 'a', type: 'IN', x: 0, y: 0, label: 'a', delay: 1 }, { id: 'l', type: 'LED', x: 100, y: 0, label: 'lamp', delay: 1 }, { id: 'y', type: 'OUT', x: 100, y: 50, label: 'y', delay: 1 }], wires: [{ id: '1', from: 'a', to: 'l', pin: 0 }, { id: '2', from: 'a', to: 'y', pin: 0 }] };
+  const de2 = Gates.toDe2Verilog(led, 'led');
+  assert.match(de2, /output logic LEDG0/, 'an LED part goes to a green LED on the DE2');
+  assert.match(de2, /output logic LEDR0/, 'an output goes to a red LED on the DE2');
+  pass('demultiplexers, 3-to-8 decoder, bit selector, priority encoder and LED match their Verilog on every input');
+}
+
 console.log(`--- DE2 Board Renderer Regression: PASS (${checks.length} checks) ---`);

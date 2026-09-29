@@ -7,6 +7,7 @@ import {
   PALETTE,
   PRESETS,
   SEG7_PATTERNS,
+  SINKS,
   SOURCES,
   evaluate,
   inputNames,
@@ -67,7 +68,10 @@ function load(): Saved {
 
 /* ── Geometry ──────────────────────────────────────────────────────── */
 
-const BLOCK_TITLE: Partial<Record<GateType, string>> = { MUX2: 'MUX', MUX4: 'MUX', DEC2: 'DEC', HA: 'HA', FA: 'FA', DFF: 'D', TFF: 'T', JKFF: 'JK', SRFF: 'SR' };
+const BLOCK_TITLE: Partial<Record<GateType, string>> = { MUX2: 'MUX', MUX4: 'MUX', DEMUX2: 'DEMUX', DEMUX4: 'DEMUX', DEC2: 'DEC', DEC3: 'DEC', BITSEL: 'BIT', PENC4: 'PRI', HA: 'HA', FA: 'FA', DFF: 'D', TFF: 'T', JKFF: 'JK', SRFF: 'SR' };
+
+/** Plexers drawn as a trapezoid (wide side = the side with more signals). */
+const TRAPEZOID: GateType[] = ['MUX2', 'MUX4', 'BITSEL', 'DEMUX2', 'DEMUX4'];
 
 function isBlock(t: GateType): boolean {
   return t in BLOCK_TITLE;
@@ -79,7 +83,7 @@ function nodeSize(n: Pick<GateNode, 'type' | 'inputs'>): { w: number; h: number 
   if (n.type === 'CONST0' || n.type === 'CONST1') return { w: 44, h: 36 };
   if (isBlock(n.type)) {
     const pins = Math.max(inputNames(n).length, outputNames(n).length);
-    return { w: n.type === 'MUX2' || n.type === 'MUX4' ? 56 : 76, h: pins * 22 + 18 };
+    return { w: 76, h: pins * 22 + 18 };
   }
   return { w: W, h: H };
 }
@@ -160,8 +164,12 @@ function PartIcon({ type }: { type: GateType }) {
     case 'CONST0': return box('0');
     case 'CONST1': return box('1');
     case 'SEG7': return box('8.');
+    case 'LED': return <svg width="26" height="18" viewBox="0 0 26 18" aria-hidden="true"><circle cx="13" cy="9" r="6" fill="#ef4444" /></svg>;
     case 'MUX2':
-    case 'MUX4': return <svg width="26" height="18" viewBox="0 0 26 18" aria-hidden="true"><path d="M6,1 L20,5 V13 L6,17 Z" fill="none" stroke={s} strokeWidth="1.3" /></svg>;
+    case 'MUX4':
+    case 'BITSEL': return <svg width="26" height="18" viewBox="0 0 26 18" aria-hidden="true"><path d="M6,1 L20,5 V13 L6,17 Z" fill="none" stroke={s} strokeWidth="1.3" /></svg>;
+    case 'DEMUX2':
+    case 'DEMUX4': return <svg width="26" height="18" viewBox="0 0 26 18" aria-hidden="true"><path d="M6,5 L20,1 V17 L6,13 Z" fill="none" stroke={s} strokeWidth="1.3" /></svg>;
     default: return box(BLOCK_TITLE[type] ?? type);
   }
 }
@@ -240,7 +248,7 @@ export default function GateEditor() {
     const sample: Sample = {};
     for (const n of cur.circuit.nodes) {
       if (SOURCES.includes(n.type)) sample[n.id] = next[n.id] ? 1 : 0;
-      else if (n.type === 'OUT' || n.type === 'SEG7') sample[n.id] = r.ev.values[n.id] ?? 0;
+      else if (SINKS.includes(n.type) || n.type === 'SEG7') sample[n.id] = r.ev.values[n.id] ?? 0;
       else if (isFlipFlop(n.type)) sample[n.id] = r.seq.q[n.id] ?? 0;
     }
     setHistory((h) => [...h, sample].slice(-HISTORY_LIMIT));
@@ -318,13 +326,14 @@ export default function GateEditor() {
     const count = circuit.nodes.filter((n) => n.type === type).length;
     const size = nodeSize({ type });
     const leftCol = type === 'IN' || type === 'BTN' || type === 'CLK' || type === 'CONST0' || type === 'CONST1';
-    const rightCol = type === 'OUT' || type === 'SEG7';
+    const rightCol = type === 'OUT' || type === 'LED' || type === 'SEG7';
     const x = leftCol ? 40 : rightCol ? CANVAS_W - 140 : 260 + (circuit.nodes.length % 5) * 120;
     const y = 40 + ((count * 90 + (leftCol || rightCol ? 0 : circuit.nodes.length * 17)) % Math.max(60, CANVAS_H - size.h - 60));
     const inCount = circuit.nodes.filter((n) => n.type === 'IN').length;
     const label =
       type === 'IN' ? String.fromCharCode(97 + (inCount % 26))
       : type === 'OUT' ? (outs.length ? `y${outs.length}` : 'y')
+      : type === 'LED' ? `led${count}`
       : type === 'CLK' ? (count ? `clk${count}` : 'clk')
       : type === 'BTN' ? `btn${count}`
       : type === 'SEG7' ? `hex${count}`
@@ -451,7 +460,7 @@ export default function GateEditor() {
   const btn = 'h-8 px-2.5 rounded-[0.25rem] border text-[0.75rem] font-medium flex items-center gap-1.5 transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-40';
   const btnStyle = { borderColor: 'var(--border-subtle)', color: 'var(--text-primary)', backgroundColor: 'var(--bg-surface)' };
   const loopSet = new Set(ev.loop);
-  const labelled = (t: GateType) => SOURCES.includes(t) || t === 'OUT' || t === 'SEG7';
+  const labelled = (t: GateType) => SOURCES.includes(t) || SINKS.includes(t) || t === 'SEG7';
 
   const renderNode = (n: GateNode) => {
     const { w, h } = nodeSize(n);
@@ -464,11 +473,13 @@ export default function GateEditor() {
     const clockPin = isFlipFlop(n.type) ? 1 : -1;
     let body: React.ReactNode;
     if (isGate(n.type)) body = <GateShape type={n.type} fill="var(--bg-surface)" stroke={stroke} h={h} />;
-    else if (n.type === 'MUX2' || n.type === 'MUX4') {
+    else if (TRAPEZOID.includes(n.type)) {
+      const demux = n.type === 'DEMUX2' || n.type === 'DEMUX4';
+      const d = demux ? `M0,${h * 0.18} L${w},0 L${w},${h} L0,${h * 0.82} Z` : `M0,0 L${w},${h * 0.18} L${w},${h * 0.82} L0,${h} Z`;
       body = (
         <>
-          <path d={`M0,0 L${w},${h * 0.18} L${w},${h * 0.82} L0,${h} Z`} fill="var(--bg-surface)" stroke={stroke} strokeWidth={isSel ? 2.2 : 1.5} />
-          <text x={w / 2 + 4} y={h / 2 + 4} textAnchor="middle" fontSize={9.5} fontWeight={700} fill="var(--text-secondary)" pointerEvents="none">MUX</text>
+          <path d={d} fill="var(--bg-surface)" stroke={stroke} strokeWidth={isSel ? 2.2 : 1.5} />
+          <text x={demux ? w / 2 + 7 : w / 2} y={h / 2 + 3} textAnchor="middle" fontSize={9} fontWeight={700} fill="var(--text-secondary)" pointerEvents="none">{BLOCK_TITLE[n.type]}</text>
         </>
       );
     } else if (isBlock(n.type)) {
@@ -527,6 +538,9 @@ export default function GateEditor() {
             <rect x={10} y={14} width={24} height={24} rx={5} fill="var(--bg-panel)" stroke="var(--text-secondary)" />
             <circle cx={22} cy={26} r={v ? 6.5 : 8} fill={v ? '#2563eb' : '#334155'} />
           </g>
+        )}
+        {n.type === 'LED' && (
+          <circle data-testid={`gate-led-${n.label || n.id}`} cx={22} cy={H / 2} r={10} fill={v ? '#ef4444' : 'var(--bg-panel)'} stroke="var(--text-secondary)" style={{ filter: v ? 'drop-shadow(0 0 6px rgba(239,68,68,0.9))' : undefined }} />
         )}
         {n.type === 'OUT' && (
           <g data-testid={`gate-output-${n.label || n.id}`}>
@@ -850,7 +864,7 @@ function DataGraph({ history, rows }: { history: Sample[]; rows: GateNode[] }) {
 
 function TimingDiagram({ trace, nodes, time }: { trace: Trace; nodes: GateNode[]; time: number }) {
   const rows = nodes.flatMap((n) => {
-    if (n.type === 'OUT') return trace.changes[n.id] ? [{ key: n.id, node: n, label: n.label || n.type }] : [];
+    if (SINKS.includes(n.type)) return trace.changes[n.id] ? [{ key: n.id, node: n, label: n.label || n.type }] : [];
     if (n.type === 'SEG7' || isFlipFlop(n.type)) return [];
     const names = outputNames(n);
     return names

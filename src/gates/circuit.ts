@@ -10,11 +10,11 @@
 
 export type GateType =
   // sources and sinks
-  | 'IN' | 'OUT' | 'BTN' | 'CLK' | 'CONST0' | 'CONST1' | 'SEG7'
+  | 'IN' | 'OUT' | 'LED' | 'BTN' | 'CLK' | 'CONST0' | 'CONST1' | 'SEG7'
   // gates
   | 'AND' | 'OR' | 'NOT' | 'NAND' | 'NOR' | 'XOR' | 'XNOR' | 'BUF'
   // plexers
-  | 'MUX2' | 'MUX4' | 'DEC2'
+  | 'MUX2' | 'MUX4' | 'DEMUX2' | 'DEMUX4' | 'DEC2' | 'DEC3' | 'BITSEL' | 'PENC4'
   // arithmetic
   | 'HA' | 'FA'
   // flip-flops (rising edge)
@@ -62,6 +62,7 @@ const FF_OUTS = ['Q', 'Q̅'];
 export const PARTS: Record<GateType, PartSpec> = {
   IN: { category: 'io', ins: [], outs: [''] },
   OUT: { category: 'io', ins: [''], outs: [] },
+  LED: { category: 'io', ins: [''], outs: [] },
   BTN: { category: 'io', ins: [], outs: [''] },
   CLK: { category: 'io', ins: [], outs: [''] },
   CONST0: { category: 'io', ins: [], outs: [''] },
@@ -77,7 +78,12 @@ export const PARTS: Record<GateType, PartSpec> = {
   BUF: { category: 'logic', ins: [''], outs: [''] },
   MUX2: { category: 'plexers', ins: ['D0', 'D1', 'S'], outs: ['Y'] },
   MUX4: { category: 'plexers', ins: ['D0', 'D1', 'D2', 'D3', 'S0', 'S1'], outs: ['Y'] },
+  DEMUX2: { category: 'plexers', ins: ['D', 'S'], outs: ['Y0', 'Y1'] },
+  DEMUX4: { category: 'plexers', ins: ['D', 'S0', 'S1'], outs: ['Y0', 'Y1', 'Y2', 'Y3'] },
   DEC2: { category: 'plexers', ins: ['A0', 'A1'], outs: ['Y0', 'Y1', 'Y2', 'Y3'] },
+  DEC3: { category: 'plexers', ins: ['A0', 'A1', 'A2'], outs: ['Y0', 'Y1', 'Y2', 'Y3', 'Y4', 'Y5', 'Y6', 'Y7'] },
+  BITSEL: { category: 'plexers', ins: ['D0', 'D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'S0', 'S1', 'S2'], outs: ['Y'] },
+  PENC4: { category: 'plexers', ins: ['I0', 'I1', 'I2', 'I3'], outs: ['Q0', 'Q1', 'V'] },
   HA: { category: 'arithmetic', ins: ['A', 'B'], outs: ['S', 'C'] },
   FA: { category: 'arithmetic', ins: ['A', 'B', 'Cin'], outs: ['S', 'Cout'] },
   DFF: { category: 'flipflops', ins: ['D', 'C'], outs: FF_OUTS, clock: 1 },
@@ -92,11 +98,13 @@ export const GATE_TYPES: GateType[] = ['AND', 'OR', 'NOT', 'NAND', 'NOR', 'XOR',
 export const FLIP_FLOPS: GateType[] = ['DFF', 'TFF', 'JKFF', 'SRFF'];
 /** Nodes whose value the user sets (inputs of the circuit). */
 export const SOURCES: GateType[] = ['IN', 'BTN', 'CLK'];
+/** Nodes that show a result (outputs of the circuit). */
+export const SINKS: GateType[] = ['OUT', 'LED'];
 
 export const PALETTE: Array<{ category: PartCategory; types: GateType[] }> = [
   { category: 'logic', types: GATE_TYPES },
-  { category: 'io', types: ['IN', 'OUT', 'BTN', 'CLK', 'CONST0', 'CONST1', 'SEG7'] },
-  { category: 'plexers', types: ['MUX2', 'MUX4', 'DEC2'] },
+  { category: 'io', types: ['OUT', 'LED', 'IN', 'CLK', 'BTN', 'CONST0', 'CONST1', 'SEG7'] },
+  { category: 'plexers', types: ['MUX2', 'MUX4', 'DEMUX2', 'DEMUX4', 'DEC2', 'DEC3', 'BITSEL', 'PENC4'] },
   { category: 'arithmetic', types: ['HA', 'FA'] },
   { category: 'flipflops', types: FLIP_FLOPS },
 ];
@@ -176,12 +184,29 @@ export function computeNode(n: GateNode, ins: number[], q = 0, sourceValue = 0):
     case 'CONST0': return [0];
     case 'CONST1': return [1];
     case 'OUT':
+    case 'LED':
     case 'SEG7': return [];
     case 'MUX2': return [c ? b : a];
     case 'MUX4': return [[a, b, c, d][(f << 1) | e]];
+    case 'DEMUX2': return [b ? 0 : a, b ? a : 0];
+    case 'DEMUX4': {
+      const k = (c << 1) | b;
+      return [0, 1, 2, 3].map((i) => (i === k ? a : 0));
+    }
     case 'DEC2': {
       const k = (b << 1) | a;
       return [0, 1, 2, 3].map((i) => (i === k ? 1 : 0));
+    }
+    case 'DEC3': {
+      const k = (c << 2) | (b << 1) | a;
+      return [0, 1, 2, 3, 4, 5, 6, 7].map((i) => (i === k ? 1 : 0));
+    }
+    case 'BITSEL': return [ins[((ins[10] ?? 0) << 2) | ((ins[9] ?? 0) << 1) | (ins[8] ?? 0)] ?? 0];
+    case 'PENC4': {
+      // Highest set input wins; V = any input set.
+      const k = d ? 3 : c ? 2 : b ? 1 : 0;
+      const any = a | b | c | d;
+      return [any ? k & 1 : 0, any ? k >> 1 : 0, any];
     }
     case 'HA': return [a ^ b, a & b];
     case 'FA': return [a ^ b ^ c, (a & b) | (c & (a ^ b))];
@@ -280,7 +305,7 @@ export function evaluate(c: Circuit, inputs: Record<string, number>, q: Record<s
     const o = outs[n.id] ?? [];
     o.forEach((v, pin) => { values[sig(n.id, pin)] = v; });
     // OUT and SEG7 show their inputs.
-    if (n.type === 'OUT') values[n.id] = outs[`${n.id}@in`]?.[0] ?? 0;
+    if (SINKS.includes(n.type)) values[n.id] = outs[`${n.id}@in`]?.[0] ?? 0;
     if (n.type === 'SEG7') {
       const b = outs[`${n.id}@in`] ?? [];
       values[n.id] = (b[0] ?? 0) | ((b[1] ?? 0) << 1) | ((b[2] ?? 0) << 2) | ((b[3] ?? 0) << 3);
@@ -388,7 +413,7 @@ export function simulateTiming(
   const changes: Record<string, Array<[number, number]>> = {};
   const byId = new Map(c.nodes.map((n) => [n.id, n]));
   for (const n of c.nodes) {
-    if (n.type === 'OUT' || n.type === 'SEG7') changes[n.id] = [[0, steady[n.id] ?? 0]];
+    if (SINKS.includes(n.type) || n.type === 'SEG7') changes[n.id] = [[0, steady[n.id] ?? 0]];
     outputNames(n).forEach((_, pin) => { changes[sig(n.id, pin)] = [[0, steady[sig(n.id, pin)] ?? 0]]; });
   }
   const fanout = new Map<string, string[]>();
@@ -410,7 +435,7 @@ export function simulateTiming(
     for (const dst of fanout.get(key) ?? []) {
       const d = byId.get(dst);
       if (!d) continue;
-      schedule(t + (d.type === 'OUT' || d.type === 'SEG7' ? 0 : Math.max(1, d.delay)), dst);
+      schedule(t + (SINKS.includes(d.type) || d.type === 'SEG7' ? 0 : Math.max(1, d.delay)), dst);
     }
   };
   const input = (nid: string, pin: number) => {
@@ -419,7 +444,7 @@ export function simulateTiming(
   };
   const update = (n: GateNode, t: number) => {
     const ins = inputNames(n).map((_, pin) => input(n.id, pin));
-    if (n.type === 'OUT') return set(n.id, ins[0] ?? 0, t);
+    if (SINKS.includes(n.type)) return set(n.id, ins[0] ?? 0, t);
     if (n.type === 'SEG7') return set(n.id, (ins[0] ?? 0) | ((ins[1] ?? 0) << 1) | ((ins[2] ?? 0) << 2) | ((ins[3] ?? 0) << 3), t);
     if (isFlipFlop(n.type)) return;
     computeNode(n, ins, 0, after[n.id]).forEach((v, pin) => set(sig(n.id, pin), v, t));
@@ -465,7 +490,7 @@ const byPos = (a: GateNode, b: GateNode) => a.y - b.y || a.x - b.x;
 export function ioNodes(c: Circuit): { ins: GateNode[]; outs: GateNode[]; displays: GateNode[] } {
   return {
     ins: c.nodes.filter((n) => SOURCES.includes(n.type)).sort(byPos),
-    outs: c.nodes.filter((n) => n.type === 'OUT').sort(byPos),
+    outs: c.nodes.filter((n) => SINKS.includes(n.type)).sort(byPos),
     displays: c.nodes.filter((n) => n.type === 'SEG7').sort(byPos),
   };
 }
@@ -504,11 +529,11 @@ export function sanitizeName(raw: string, fallback: string): string {
 }
 
 const NET_PREFIX: Partial<Record<GateType, string>> = {
-  MUX2: 'mux', MUX4: 'mux', DEC2: 'dec', HA: 'ha', FA: 'fa', DFF: 'dff', TFF: 'tff', JKFF: 'jk', SRFF: 'sr', CONST0: 'c0', CONST1: 'c1',
+  MUX2: 'mux', MUX4: 'mux', DEMUX2: 'demux', DEMUX4: 'demux', DEC2: 'dec', DEC3: 'dec', BITSEL: 'bitsel', PENC4: 'penc', HA: 'ha', FA: 'fa', DFF: 'dff', TFF: 'tff', JKFF: 'jk', SRFF: 'sr', CONST0: 'c0', CONST1: 'c1',
 };
 
 const OUT_SUFFIX: Partial<Record<GateType, string[]>> = {
-  MUX2: ['y'], MUX4: ['y'], DEC2: ['y0', 'y1', 'y2', 'y3'], HA: ['s', 'c'], FA: ['s', 'cout'], DFF: ['q', 'qn'], TFF: ['q', 'qn'], JKFF: ['q', 'qn'], SRFF: ['q', 'qn'],
+  MUX2: ['y'], MUX4: ['y'], DEMUX2: ['y0', 'y1'], DEMUX4: ['y0', 'y1', 'y2', 'y3'], DEC2: ['y0', 'y1', 'y2', 'y3'], DEC3: ['y0', 'y1', 'y2', 'y3', 'y4', 'y5', 'y6', 'y7'], BITSEL: ['y'], PENC4: ['q0', 'q1', 'v'], HA: ['s', 'c'], FA: ['s', 'cout'], DFF: ['q', 'qn'], TFF: ['q', 'qn'], JKFF: ['q', 'qn'], SRFF: ['q', 'qn'],
 };
 
 type Mode = 'generic' | 'de2';
@@ -538,6 +563,7 @@ function buildVerilog(c: Circuit, moduleName: string, mode: Mode): Built {
   let sw = 0;
   let key = 0;
   let led = 0;
+  let ledg = 0;
   let hex = 0;
   let clockPort: string | null = null;
 
@@ -577,7 +603,8 @@ function buildVerilog(c: Circuit, moduleName: string, mode: Mode): Built {
   const outPorts: Array<{ node: GateNode; port: string }> = [];
   for (const [i, n] of outs.entries()) {
     const label = sanitizeName(n.label, `out${i}`);
-    const p = unique(mode === 'de2' ? `LEDR${led++}` : label);
+    // DE2: outputs on the red LEDs, LED parts on the green ones (LEDG0..8).
+    const p = unique(mode === 'de2' ? (n.type === 'LED' && ledg < 9 ? `LEDG${ledg++}` : `LEDR${led++}`) : label);
     if (mode === 'de2') notes.push(`//   ${p} = ${label}`);
     ports.push(`    output logic ${p}`);
     outPorts.push({ node: n, port: p });
@@ -592,7 +619,7 @@ function buildVerilog(c: Circuit, moduleName: string, mode: Mode): Built {
   }
 
   // Internal nets, left to right.
-  const parts = c.nodes.filter((n) => !SOURCES.includes(n.type) && n.type !== 'OUT' && n.type !== 'SEG7').sort((a, b) => a.x - b.x || a.y - b.y);
+  const parts = c.nodes.filter((n) => !SOURCES.includes(n.type) && !SINKS.includes(n.type) && n.type !== 'SEG7').sort((a, b) => a.x - b.x || a.y - b.y);
   const counters: Record<string, number> = {};
   for (const n of parts) {
     const prefix = NET_PREFIX[n.type] ?? 'g';
@@ -622,6 +649,28 @@ function buildVerilog(c: Circuit, moduleName: string, mode: Mode): Built {
       case 'BUF': body.push(`    assign ${net()} = ${i(0)};  // buffer`); break;
       case 'MUX2': body.push(`    assign ${net()} = ${i(2)} ? ${i(1)} : ${i(0)};  // 2:1 mux`); break;
       case 'MUX4': body.push(`    assign ${net()} = ${i(5)} ? (${i(4)} ? ${i(3)} : ${i(2)}) : (${i(4)} ? ${i(1)} : ${i(0)});  // 4:1 mux`); break;
+      case 'DEMUX2':
+        body.push(`    // 1-to-2 demultiplexer`, `    assign ${net(0)} = ${i(0)} & ~${i(1)};`, `    assign ${net(1)} = ${i(0)} &  ${i(1)};`);
+        break;
+      case 'DEMUX4':
+        body.push(`    // 1-to-4 demultiplexer`);
+        [0, 1, 2, 3].forEach((k) => body.push(`    assign ${net(k)} = ${i(0)} & ${k & 2 ? ' ' : '~'}${i(2)} & ${k & 1 ? ' ' : '~'}${i(1)};`));
+        break;
+      case 'DEC3':
+        body.push(`    // 3-to-8 decoder`);
+        [0, 1, 2, 3, 4, 5, 6, 7].forEach((k) => body.push(`    assign ${net(k)} = ${k & 4 ? ' ' : '~'}${i(2)} & ${k & 2 ? ' ' : '~'}${i(1)} & ${k & 1 ? ' ' : '~'}${i(0)};`));
+        break;
+      case 'BITSEL': {
+        // 8-to-1 bit selector: pick D[S] from an 8-bit input.
+        const pick = (lo: number, bits: number[]): string =>
+          bits.length === 0 ? i(lo) : `${i(8 + bits.length - 1)} ? (${pick(lo + (1 << (bits.length - 1)), bits.slice(1))}) : (${pick(lo, bits.slice(1))})`;
+        body.push(`    assign ${net()} = ${pick(0, [2, 1, 0])};  // bit selector`);
+        break;
+      }
+      case 'PENC4':
+        body.push(`    // 4-to-2 priority encoder (highest input wins), v = any input set`);
+        body.push(`    assign ${net(0)} = ${i(3)} | (~${i(2)} & ${i(1)});`, `    assign ${net(1)} = ${i(3)} | ${i(2)};`, `    assign ${net(2)} = ${i(0)} | ${i(1)} | ${i(2)} | ${i(3)};`);
+        break;
       case 'DEC2':
         body.push(`    // 2-to-4 decoder`);
         body.push(`    assign ${net(0)} = ~${i(1)} & ~${i(0)};`, `    assign ${net(1)} = ~${i(1)} &  ${i(0)};`, `    assign ${net(2)} =  ${i(1)} & ~${i(0)};`, `    assign ${net(3)} =  ${i(1)} &  ${i(0)};`);
