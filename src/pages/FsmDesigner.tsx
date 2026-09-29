@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Copy, Cpu, FileDown, FileUp, Link2, Plus, Redo2, RotateCcw, Trash2, Undo2, X, Zap, ArrowLeftRight, FilePlus2, FolderOpen, Shapes } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
+import { doubleTap, handledByTap } from '../lib/doubleTap';
 import { fmt } from '../i18n/dictionary';
 import { useBoardStore } from '../store/boardStore';
 import { markWorkspaceDirty, markWorkspaceUser } from '../services/exampleHandoff';
@@ -477,8 +478,8 @@ export default function FsmDesigner() {
               style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-canvas, var(--bg-app))', touchAction: 'none' }}
               onPointerMove={onMove}
               onPointerUp={onUp}
-              onPointerDown={() => setSel(null)}
-              onDoubleClick={(e) => { if (!stateAt(toPoint(e))) addState(toPoint(e)); }}
+              onPointerDown={(e) => { setSel(null); if (doubleTap(e, 'canvas') && !stateAt(toPoint(e))) addState(toPoint(e)); }}
+              onDoubleClick={(e) => { if (!handledByTap() && !stateAt(toPoint(e))) addState(toPoint(e)); }}
             >
               <defs>
                 <marker id="fsm-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">

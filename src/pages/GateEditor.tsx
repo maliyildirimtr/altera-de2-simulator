@@ -50,6 +50,7 @@ import {
   type Trace,
 } from '../gates/circuit';
 import { useI18n } from '../i18n/I18nProvider';
+import { doubleTap, handledByTap } from '../lib/doubleTap';
 import { fmt } from '../i18n/dictionary';
 import { OpenInSchematicButton } from '../components/Share/OpenInToolButton';
 import { useBoardStore } from '../store/boardStore';
@@ -1575,7 +1576,7 @@ export default function GateEditor() {
                       const cursor = sg.index < 0 ? 'pointer' : vertical ? 'ew-resize' : 'ns-resize';
                       return (
                         <line key={k} data-wire-seg={`${w.id}:${k}`} x1={sg.p0.x} y1={sg.p0.y} x2={sg.p1.x} y2={sg.p1.y} stroke="transparent" strokeWidth={12}
-                          onPointerDown={(e) => startDrag(e, sg.index)} onDoubleClick={(e) => addBend(e, k)} style={{ cursor: isSel ? cursor : 'pointer' }} />
+                          onPointerDown={(e) => { if (doubleTap(e, `${w.id}:${k}`)) return addBend(e, k); startDrag(e, sg.index); }} onDoubleClick={(e) => { if (!handledByTap()) addBend(e, k); }} style={{ cursor: isSel ? cursor : 'pointer' }} />
                       );
                     })}
                     <path d={dpath} fill="none" stroke={bad ? '#ef4444' : isSel ? '#3b82f6' : v ? on : off} strokeWidth={bw > 1 ? (isSel ? 5 : 4.2) : isSel ? 3 : 2.2} strokeDasharray={bad ? '7 4' : undefined} strokeLinejoin="round" pointerEvents="none" />

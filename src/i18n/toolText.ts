@@ -59,6 +59,7 @@ export const TOOL_TR: Record<string, string> = {
   'Step Clock': 'Saat adımı',
   'Fast forward': 'Hızlı ileri',
   'Cursors: click = A, Shift+click = B': 'İmleçler: tıkla = A, Shift+tıkla = B',
+  'Cursor to place': 'Yerleştirilecek imleç',
   samples: 'örnek',
   'rising edges': 'yükselen kenar',
   changes: 'değişim',

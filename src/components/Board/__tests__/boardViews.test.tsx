@@ -123,6 +123,7 @@ import * as Gates from '../../../gates/circuit';
 import * as Num from '../../../logic/numbers';
 import * as Fsm from '../../../fsm/fsm';
 import * as QuizGen from '../../../quiz/quiz';
+import { doubleTap } from '../../../lib/doubleTap';
 import * as Bool from '../../../logic/boolean';
 import { autoLayout } from '../../../gates/layout';
 import { verilogToCircuit } from '../../../gates/fromVerilog';
@@ -3682,6 +3683,16 @@ endmodule`, det.sequential);
   const dec: QuizGen.Question = { ...bin, format: 'dec', answer: '-17' };
   assert.ok(QuizGen.checkAnswer(dec, ' -17 ') && !QuizGen.checkAnswer(dec, '17'));
   pass('quiz: generated questions check their own answers, offer one correct choice and repeat by seed');
+}
+
+{
+  const tap = (t: number, x = 10, type = 'touch') => ({ pointerType: type, clientX: x, clientY: 10, timeStamp: t });
+  assert.ok(!doubleTap(tap(1000), 'k') && doubleTap(tap(1200), 'k'), 'two quick taps are a double tap');
+  assert.ok(!doubleTap(tap(2000), 'k') && !doubleTap(tap(2600), 'k'), 'slow taps are not');
+  assert.ok(!doubleTap(tap(3000), 'k') && !doubleTap(tap(3100, 80), 'k'), 'taps far apart are not');
+  assert.ok(!doubleTap(tap(4000), 'a') && !doubleTap(tap(4100), 'b'), 'taps on different targets are not');
+  assert.ok(!doubleTap(tap(5000, 10, 'mouse'), 'k') && !doubleTap(tap(5100, 10, 'mouse'), 'k'), 'the mouse keeps its own dblclick');
+  pass('touch: double tap adds bends and states where dblclick does not fire');
 }
 
 console.log(`--- DE2 Board Renderer Regression: PASS (${checks.length} checks) ---`);

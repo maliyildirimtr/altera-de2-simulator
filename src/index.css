@@ -1138,3 +1138,12 @@ circle[stroke="#a855f7"],
 @media (prefers-reduced-motion: reduce) {
   [data-wire-front], [data-node-front] { animation: none !important; }
 }
+
+/* Touch screens: bigger targets for pins and handles, and no double-tap zoom
+   or text selection on the drawing canvases. */
+@media (pointer: coarse) {
+  svg [data-port] { r: 10px; }
+  svg [data-handle] { r: 11px; }
+  [data-testid="analyzer-plot"], [data-testid="quiz-page"] button { touch-action: manipulation; }
+  svg { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+}

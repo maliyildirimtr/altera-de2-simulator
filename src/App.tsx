@@ -7,6 +7,7 @@ import { migrateLegacyStorageKeys, THEME_STORAGE_KEY } from './lib/storageKeys';
 import Home from './pages/Home';
 import { I18nProvider, useI18n } from './i18n/I18nProvider';
 import './index.css';
+import { PwaStatus } from './pwa/PwaStatus';
 
 // Tool pages are split into their own chunks so the home page does not
 // download Monaco, DigitalJS or the simulators.
@@ -92,6 +93,7 @@ export default function App() {
         }}
       >
         <Navbar isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
+        <PwaStatus />
         {/* Full-height route container so schematic can use all remaining vertical space */}
         <div className="flex-1 flex flex-col overflow-hidden w-full relative">
           <Suspense fallback={<RouteLoading />}>

@@ -66,6 +66,8 @@ export function LogicAnalyzer() {
   const [trigValue, setTrigValue] = useState('0');
   // Measurement cursors, as sample numbers (click = A, Shift+click = B).
   const [cursors, setCursors] = useState<{ a: number | null; b: number | null }>({ a: null, b: null });
+  // Which cursor a plain click or tap places (Shift+click always places B), so B can be set on touch screens.
+  const [cursorMode, setCursorMode] = useState<'a' | 'b'>('a');
 
   useLayoutEffect(() => {
     const el = wrapRef.current;
@@ -122,7 +124,7 @@ export function LogicAnalyzer() {
     if (x < x0 || samples.length === 0) return;
     const i = Math.max(0, Math.min(samples.length - 1, Math.floor((x - x0) / step)));
     const n = samples[i].n;
-    setCursors((c) => (e.shiftKey || e.button === 2 ? { ...c, b: n } : { ...c, a: n }));
+    setCursors((c) => (e.shiftKey || e.button === 2 || cursorMode === 'b' ? { ...c, b: n } : { ...c, a: n }));
   };
   // Between the cursors: samples, clock cycles, and edges / period of the selected signal.
   const measure = (() => {
@@ -235,6 +237,14 @@ export function LogicAnalyzer() {
 
       <div className="flex items-center gap-3 flex-wrap font-sans text-[0.6875rem]" data-testid="analyzer-measure" style={{ color: 'var(--text-secondary)' }}>
         <span style={{ color: 'var(--text-muted)' }}>{t("Cursors: click = A, Shift+click = B")}</span>
+        <span className="inline-flex rounded-[0.25rem] border overflow-hidden" style={{ borderColor: 'var(--border-subtle)' }} role="group" aria-label={t("Cursor to place")}>
+          {(['a', 'b'] as const).map((m) => (
+            <button key={m} type="button" data-testid={`analyzer-cursor-mode-${m}`} aria-pressed={cursorMode === m} onClick={() => setCursorMode(m)}
+              className="px-2 min-h-6 font-mono" style={{ backgroundColor: cursorMode === m ? 'var(--accent-subtle)' : 'transparent', color: m === 'a' ? '#a78bfa' : '#f472b6' }}>
+              {m.toUpperCase()}
+            </button>
+          ))}
+        </span>
         {ia >= 0 && <span className="font-mono" style={{ color: '#a78bfa' }}>A #{cursors.a}</span>}
         {ib >= 0 && <span className="font-mono" style={{ color: '#f472b6' }}>B #{cursors.b}</span>}
         {measure && (

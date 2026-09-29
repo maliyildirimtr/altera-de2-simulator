@@ -1,16 +1,39 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'node:path';
-import { exampleEditorPlugin } from './vite/exampleEditorPlugin';
+import fs from 'node:fs';
+import { createHash } from 'node:crypto';
+
+/**
+ * Offline support: emits /sw.js from pwa/sw.template.js with the build's own
+ * file list, so every release gets a new service worker and cache.
+ * Files over 6 MB (large compiler WASM) are cached on first use instead.
+ */
+function logiclabPwa(): Plugin {
+  return {
+    name: 'logiclab-pwa',
+    apply: 'build',
+    generateBundle(_options, bundle) {
+      const files = Object.values(bundle)
+        .filter((f) => !f.fileName.endsWith('.map') && !f.fileName.endsWith('.html'))
+        .filter((f) => ((f.type === 'chunk' ? f.code : f.source) ?? '').length < 6 * 1024 * 1024)
+        .map((f) => `/${f.fileName}`);
+      const precache = ['/', '/index.html', '/manifest.webmanifest', '/favicon.svg', '/icon-192.png', '/icon-512.png', ...files];
+      const version = createHash('sha256').update(precache.join('\n')).digest('hex').slice(0, 12);
+      const template = fs.readFileSync(path.resolve(__dirname, 'pwa/sw.template.js'), 'utf8');
+      const source = `const VERSION = ${JSON.stringify(version)};\nconst PRECACHE = ${JSON.stringify(precache)};\n${template}`;
+      this.emitFile({ type: 'asset', fileName: 'sw.js', source });
+    },
+  };
+}
 
 export default defineConfig({
   base: '/',
   plugins: [
     react(),
     tailwindcss(),
-    // Dev server only: lets #/dev/examples save example sources to disk.
-    exampleEditorPlugin(__dirname),
+    logiclabPwa(),
     {
       name: 'yosys2digitaljs-topsort-vite-plugin',
       transform(code, id) {
