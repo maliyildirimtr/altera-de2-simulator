@@ -121,6 +121,7 @@ import { applyMetadata, diffOverride, normalizeMetadata } from '../../../example
 import { buildLabReport } from '../../../report/labReport';
 import * as Gates from '../../../gates/circuit';
 import * as Num from '../../../logic/numbers';
+import * as Fsm from '../../../fsm/fsm';
 import { defaultSpec, generateTestbench, readPorts, resizeSpec, setValue } from '../../../waveform/stimulus';
 import { minimize, parseExpression, sopText, tableOf, variablesOf } from '../../../logic/boolean';
 import { ISO, project, faceTransform, sevenSegmentShapes } from '../boardGeometry';
@@ -3355,6 +3356,64 @@ endmodule`);
   const tr = Gates.runTests(Gates.PRESETS.ram.circuit, 'addr data we write | q\n5 9 1 C | 9\n4 0 0 0 | 0\n5 0 0 0 | 0x9\n0b101 0 0 0 | 0b1001');
   assert.deepStrictEqual([tr.error, tr.passed, tr.failed], [null, 4, 0]);
   pass('gate designer buses: splitter/merger, register, RAM and ROM match their DE2 Verilog; widths are checked');
+}
+
+{
+  // FSM designer: conditions, checks, stepping, and Verilog that behaves the same in every encoding.
+  assert.strictEqual(Fsm.evalCond(Fsm.parseCond("a & ~b | a' & b", ['a', 'b']) as Fsm.Cond, { a: 0, b: 1 }), 1);
+  assert.throws(() => Fsm.parseCond('a & q', ['a']), /unknown input "q"/);
+  assert.throws(() => Fsm.parseCond('(a', ['a']), /missing \)/);
+  assert.deepStrictEqual(Fsm.parseCond('', ['a']), { k: 'const', v: 1 });
+  const tl = Fsm.FSM_PRESETS.traffic.design;
+  const tlCheck = Fsm.analyze(tl);
+  assert.deepStrictEqual(tlCheck.uncovered.r, ['0'], 'with t = 0 the light stays');
+  assert.deepStrictEqual(tlCheck.unreachable, []);
+  const overl: Fsm.FsmDesign = { ...Fsm.emptyDesign(), edges: [...Fsm.emptyDesign().edges, { id: 'x2', from: 's0', to: 's0', cond: '1', out: {} }] };
+  assert.deepStrictEqual(Fsm.analyze(overl).overlapping.s0, ['1']);
+  assert.strictEqual(Fsm.step(overl, 's0', { x: 1 }).next, 's1', 'the first matching transition wins');
+  assert.strictEqual(Fsm.stateTable(Fsm.FSM_PRESETS.seq1011.design).length, 8);
+  // Verilog: random input runs match the designer, for each preset and encoding.
+  for (const [key, preset] of Object.entries(Fsm.FSM_PRESETS)) {
+    for (const encoding of ['binary', 'gray', 'onehot'] as Fsm.Encoding[]) {
+      const d = { ...preset.design, encoding };
+      const eng = compileVerilog(Fsm.toVerilog(d));
+      let st: Record<string, number> = {};
+      const zero = Object.fromEntries(d.inputs.map((i) => [i, 0]));
+      st = eng.evaluate({ clk: 0, reset: 1, ...zero }, st);
+      st = eng.evaluate({ clk: 1, reset: 1, ...zero }, st);
+      let state = d.initial;
+      let rnd = 11;
+      for (let t = 0; t < 60; t += 1) {
+        const env: Record<string, number> = {};
+        d.inputs.forEach((i) => { rnd = (rnd * 1103515245 + 12345) & 0x7fffffff; env[i] = (rnd >> 8) & 1; });
+        st = eng.evaluate({ clk: 0, reset: 0, ...env }, st);
+        const r = Fsm.step(d, state, env);
+        assert.deepStrictEqual(d.outputs.map((o) => st[o]), d.outputs.map((o) => r.outputs[o]), `${key}/${encoding} outputs at step ${t}`);
+        st = eng.evaluate({ clk: 1, reset: 0, ...env }, st);
+        state = r.next;
+        assert.strictEqual(st.state, Fsm.stateCodes(d)[state], `${key}/${encoding} state code at step ${t}`);
+      }
+    }
+  }
+  // DE2 version: KEY1 steps the machine, KEY0 resets it, HEX0 shows the state number.
+  const d = Fsm.FSM_PRESETS.seq1011.design;
+  const de2 = compileVerilog(Fsm.toVerilog(d, { de2: true, clock: 'KEY1' }));
+  assert.deepStrictEqual(de2.inputs, ['KEY1', 'KEY0', 'SW0']);
+  let st: Record<string, number> = de2.evaluate({ KEY1: 1, KEY0: 0, SW0: 0 }, {});
+  st = de2.evaluate({ KEY1: 0, KEY0: 0, SW0: 0 }, st);
+  st = de2.evaluate({ KEY1: 1, KEY0: 1, SW0: 0 }, st);
+  for (const bit of [1, 0, 1]) {
+    st = de2.evaluate({ KEY1: 0, KEY0: 1, SW0: bit }, st);
+    st = de2.evaluate({ KEY1: 1, KEY0: 1, SW0: bit }, st);
+  }
+  assert.strictEqual(st.state, 3, 'after 1, 0, 1 the detector is in S3');
+  assert.strictEqual(de2.evaluate({ KEY1: 1, KEY0: 1, SW0: 1 }, st).LEDR0, 1, 'and a 1 now makes z = 1 (Mealy)');
+  assert.strictEqual(st.HEX0, Gates.SEG7_PATTERNS[3], 'HEX0 shows 3');
+  assert.deepStrictEqual([st.LEDG1, st.LEDG0], [1, 1]);
+  // The DE2 FSM view recognises the generated machine.
+  const seen = extractFsm(Fsm.toVerilog(d));
+  assert.ok(seen && seen.states.length === 4 && seen.initial === 'S0');
+  pass('FSM designer: conditions, checks, stepping and Verilog (binary, Gray, one-hot, DE2 on KEY1) agree');
 }
 
 console.log(`--- DE2 Board Renderer Regression: PASS (${checks.length} checks) ---`);

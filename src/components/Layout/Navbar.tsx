@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
-import { Cpu, Activity, GitGraph, BookOpen, Sun, Moon, Menu, X, Layers, Grid, GraduationCap, Users, Shapes, BookOpenCheck, ChevronDown, Grid3x3, Binary } from 'lucide-react';
+import { Cpu, Activity, GitGraph, BookOpen, Sun, Moon, Menu, X, Layers, Grid, GraduationCap, Users, Shapes, BookOpenCheck, ChevronDown, Grid3x3, Binary, Workflow } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nProvider';
 import { PLATFORM_NAME } from '../../lib/platform';
 
@@ -14,6 +14,7 @@ const TOOL_LINKS = [
   { to: '/waveform',      key: 'waveform', icon: Activity },
   { to: '/schematic',     key: 'schematic', icon: GitGraph },
   { to: '/gates',         key: 'gates', icon: Shapes },
+  { to: '/fsm',           key: 'fsm', icon: Workflow },
   { to: '/examples',      key: 'examples', icon: BookOpen },
 ] as const;
 
