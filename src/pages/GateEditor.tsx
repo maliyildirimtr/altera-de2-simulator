@@ -154,7 +154,7 @@ function PartIcon({ type }: { type: GateType }) {
   );
   switch (type) {
     case 'IN': return box('0/1');
-    case 'OUT': return <svg width="26" height="18" viewBox="0 0 26 18" aria-hidden="true"><circle cx="13" cy="9" r="6" fill="#ef4444" /></svg>;
+    case 'OUT': return <svg width="26" height="18" viewBox="0 0 26 18" aria-hidden="true"><circle cx="13" cy="9" r="7" fill="none" stroke={s} strokeWidth="1.3" /><text x="13" y="12" textAnchor="middle" fontSize="8" fontWeight="700" fill={s}>1</text></svg>;
     case 'BTN': return <svg width="26" height="18" viewBox="0 0 26 18" aria-hidden="true"><rect x="5" y="2" width="16" height="14" rx="3" fill="none" stroke={s} /><circle cx="13" cy="9" r="4.5" fill={s} /></svg>;
     case 'CLK': return <svg width="26" height="18" viewBox="0 0 26 18" aria-hidden="true"><path d="M2,14 H7 V4 H13 V14 H19 V4 H24" fill="none" stroke={s} strokeWidth="1.5" /></svg>;
     case 'CONST0': return box('0');
@@ -529,10 +529,13 @@ export default function GateEditor() {
           </g>
         )}
         {n.type === 'OUT' && (
-          <circle cx={24} cy={H / 2} r={10} fill={v ? '#ef4444' : 'var(--bg-panel)'} stroke="var(--text-secondary)" style={{ filter: v ? 'drop-shadow(0 0 6px rgba(239,68,68,0.9))' : undefined }} />
+          <g data-testid={`gate-output-${n.label || n.id}`}>
+            <rect x={10} y={14} width={24} height={24} rx={12} fill={v ? '#ef4444' : 'var(--bg-panel)'} stroke="var(--text-secondary)" />
+            <text x={22} y={31} textAnchor="middle" fontSize={13} fontWeight={700} fill={v ? '#fff' : 'var(--text-primary)'} pointerEvents="none">{v}</text>
+          </g>
         )}
         {labelled(n.type) && n.type !== 'SEG7' && (
-          <text x={n.type === 'OUT' ? 40 : 42} y={H / 2 + 4} fontSize={12} fontWeight={600} fill="var(--text-primary)" pointerEvents="none">{n.label}</text>
+          <text x={42} y={H / 2 + 4} fontSize={12} fontWeight={600} fill="var(--text-primary)" pointerEvents="none">{n.label}</text>
         )}
         {n.type === 'SEG7' && <text x={w / 2} y={h + 13} textAnchor="middle" fontSize={11} fontWeight={600} fill="var(--text-primary)" pointerEvents="none">{n.label}</text>}
         {isGate(n.type) && (
