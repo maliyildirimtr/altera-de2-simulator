@@ -1111,23 +1111,22 @@ export default function GateEditor() {
       );
     } else body = <rect x={4} y={6} width={w - 8} height={h - 12} rx={8} fill="var(--bg-surface)" stroke={stroke} strokeWidth={isSel ? 2.4 : 1.4} />;
 
-    return (
-      <g key={n.id} data-node={n.id} data-type={n.type} data-value={v} data-rot={rot} transform={`translate(${n.x},${n.y})`}>
-        <g transform={rot ? `rotate(${rot} ${w / 2} ${h / 2})` : undefined}>
-        <g onPointerDown={(e) => onNodeDown(e, n)} style={{ cursor: 'move' }}>
-          {body}
-          {glitch && <rect x={-4} y={-4} width={w + 8} height={h + 8} rx={10} fill="none" stroke="#f59e0b" strokeWidth={2} strokeDasharray="4 3" />}
-        </g>
+    // Inputs, outputs, LEDs, clocks and buttons stay upright when rotated:
+    // only their pin moves, and the inside is laid out again for the new shape.
+    const uprightIO = rot !== 0 && (['IN', 'OUT', 'LED', 'CLK', 'BTN'] as GateType[]).includes(n.type);
+    if (uprightIO) body = null;
+    const ioControls = (cx: number, cy: number, lx: number, ly: number, anchor: 'start' | 'middle' | 'end') => (
+      <>
         {n.type === 'IN' && (
           <g data-testid={`gate-toggle-${n.label || n.id}`} onPointerDown={(e) => { e.stopPropagation(); toggleInput(n.id); }} style={{ cursor: 'pointer' }}>
-            <rect x={10} y={14} width={24} height={24} rx={5} fill={v ? on : 'var(--bg-panel)'} stroke="var(--text-secondary)" />
-            <text x={22} y={31} transform={upright(22, 31)} textAnchor="middle" fontSize={13} fontWeight={700} fill={v ? '#fff' : 'var(--text-primary)'}>{v}</text>
+            <rect x={cx - 12} y={cy - 12} width={24} height={24} rx={5} fill={v ? on : 'var(--bg-panel)'} stroke="var(--text-secondary)" />
+            <text x={cx} y={cy + 5} textAnchor="middle" fontSize={13} fontWeight={700} fill={v ? '#fff' : 'var(--text-primary)'}>{v}</text>
           </g>
         )}
         {n.type === 'CLK' && (
           <g data-testid={`gate-toggle-${n.label || n.id}`} onPointerDown={(e) => { e.stopPropagation(); toggleInput(n.id); }} style={{ cursor: 'pointer' }}>
-            <rect x={10} y={14} width={24} height={24} rx={5} fill={v ? '#0ea5e9' : 'var(--bg-panel)'} stroke="var(--text-secondary)" />
-            <path d="M13,33 H17 V19 H23 V33 H27 V19 H31" fill="none" stroke={v ? '#fff' : 'var(--text-primary)'} strokeWidth={1.6} />
+            <rect x={cx - 12} y={cy - 12} width={24} height={24} rx={5} fill={v ? '#0ea5e9' : 'var(--bg-panel)'} stroke="var(--text-secondary)" />
+            <path d={`M${cx - 9},${cy + 7} H${cx - 5} V${cy - 7} H${cx + 1} V${cy + 7} H${cx + 5} V${cy - 7} H${cx + 9}`} fill="none" stroke={v ? '#fff' : 'var(--text-primary)'} strokeWidth={1.6} />
           </g>
         )}
         {n.type === 'BTN' && (
@@ -1139,22 +1138,36 @@ export default function GateEditor() {
             style={{ cursor: 'pointer' }}
           >
             <title>{g.holdHint}</title>
-            <rect x={10} y={14} width={24} height={24} rx={5} fill="var(--bg-panel)" stroke="var(--text-secondary)" />
-            <circle cx={22} cy={26} r={v ? 6.5 : 8} fill={v ? '#2563eb' : '#334155'} />
+            <rect x={cx - 12} y={cy - 12} width={24} height={24} rx={5} fill="var(--bg-panel)" stroke="var(--text-secondary)" />
+            <circle cx={cx} cy={cy} r={v ? 6.5 : 8} fill={v ? '#2563eb' : '#334155'} />
           </g>
         )}
         {n.type === 'LED' && (
-          <circle data-testid={`gate-led-${n.label || n.id}`} cx={22} cy={H / 2} r={10} fill={v ? '#ef4444' : 'var(--bg-panel)'} stroke="var(--text-secondary)" style={{ filter: v ? 'drop-shadow(0 0 6px rgba(239,68,68,0.9))' : undefined }} />
+          <circle data-testid={`gate-led-${n.label || n.id}`} cx={cx} cy={cy} r={10} fill={v ? '#ef4444' : 'var(--bg-panel)'} stroke="var(--text-secondary)" style={{ filter: v ? 'drop-shadow(0 0 6px rgba(239,68,68,0.9))' : undefined }} />
         )}
         {n.type === 'OUT' && (
           <g data-testid={`gate-output-${n.label || n.id}`}>
-            <rect x={10} y={14} width={24} height={24} rx={12} fill={v ? '#ef4444' : 'var(--bg-panel)'} stroke="var(--text-secondary)" />
-            <text x={22} y={31} transform={upright(22, 31)} textAnchor="middle" fontSize={13} fontWeight={700} fill={v ? '#fff' : 'var(--text-primary)'} pointerEvents="none">{v}</text>
+            <rect x={cx - 12} y={cy - 12} width={24} height={24} rx={12} fill={v ? '#ef4444' : 'var(--bg-panel)'} stroke="var(--text-secondary)" />
+            <text x={cx} y={cy + 5} textAnchor="middle" fontSize={13} fontWeight={700} fill={v ? '#fff' : 'var(--text-primary)'} pointerEvents="none">{v}</text>
           </g>
         )}
         {labelled(n.type) && n.type !== 'SEG7' && n.type !== 'TUNNEL' && (
-          <text x={42} y={H / 2 + 4} transform={upright(42, H / 2 + 4)} fontSize={12} fontWeight={600} fill="var(--text-primary)" pointerEvents="none">{n.label}</text>
+          <text x={lx} y={ly} textAnchor={anchor} fontSize={12} fontWeight={600} fill="var(--text-primary)" pointerEvents="none">{n.label}</text>
         )}
+      </>
+    );
+    const box = boxOf(n);
+    const [bx, by, bw, bh] = [box.x - n.x, box.y - n.y, box.w, box.h];
+    const sideways = rot === 90 || rot === 270;
+
+    return (
+      <g key={n.id} data-node={n.id} data-type={n.type} data-value={v} data-rot={rot} transform={`translate(${n.x},${n.y})`}>
+        <g transform={rot ? `rotate(${rot} ${w / 2} ${h / 2})` : undefined}>
+        <g onPointerDown={(e) => onNodeDown(e, n)} style={{ cursor: 'move' }}>
+          {body}
+          {glitch && <rect x={-4} y={-4} width={w + 8} height={h + 8} rx={10} fill="none" stroke="#f59e0b" strokeWidth={2} strokeDasharray="4 3" />}
+        </g>
+        {!uprightIO && ioControls(22, H / 2, 42, H / 2 + 4, 'start')}
         {n.type === 'SEG7' && <text x={w / 2} y={h + 13} transform={upright(w / 2, h + 13)} textAnchor="middle" fontSize={11} fontWeight={600} fill="var(--text-primary)" pointerEvents="none">{n.label}</text>}
         {isGate(n.type) && (
           <text x={W / 2 - 4} y={h + 12} transform={upright(W / 2 - 4, h + 12)} textAnchor="middle" fontSize={9.5} fill="var(--text-muted)" pointerEvents="none">
@@ -1191,6 +1204,16 @@ export default function GateEditor() {
           );
         })}
         </g>
+        {uprightIO && (
+          <>
+            <g onPointerDown={(e) => onNodeDown(e, n)} style={{ cursor: 'move' }}>
+              <rect x={bx + 4} y={by + 4} width={bw - 8} height={bh - 8} rx={8} fill="var(--bg-surface)" stroke={stroke} strokeWidth={isSel ? 2.4 : 1.4} />
+            </g>
+            {sideways
+              ? ioControls(bx + bw / 2, by + (rot === 90 ? 26 : bh - 26), bx + bw / 2, by + (rot === 90 ? bh - 12 : 22), 'middle')
+              : ioControls(bx + bw - 22, by + bh / 2, bx + bw - 40, by + bh / 2 + 4, 'end')}
+          </>
+        )}
       </g>
     );
   };
