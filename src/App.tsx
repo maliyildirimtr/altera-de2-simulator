@@ -22,6 +22,7 @@ const Classroom = lazy(() => import('./pages/Classroom'));
 const GateEditor = lazy(() => import('./pages/GateEditor'));
 const Lessons = lazy(() => import('./pages/Lessons'));
 const KMap = lazy(() => import('./pages/KMap'));
+const NumberSystems = lazy(() => import('./pages/NumberSystems'));
 // Dev server only: local editor for src/examples/source (see vite/exampleEditorPlugin.ts).
 const DevExamples = import.meta.env.DEV ? lazy(() => import('./pages/DevExamples')) : null;
 
@@ -43,6 +44,7 @@ function DocumentTitle() {
       '/gates': d.gates.title,
       '/lessons': d.nav.lessons,
       '/kmap': d.kmap.title,
+      '/numbers': d.nav.numbers,
       '/digital-logic': d.nav.digitalLogic,
       '/fpga': d.nav.fpga,
     };
@@ -103,6 +105,7 @@ export default function App() {
               <Route path="/gates" element={<GateEditor />} />
               <Route path="/lessons" element={<Lessons />} />
               <Route path="/kmap" element={<KMap />} />
+              <Route path="/numbers" element={<NumberSystems />} />
               {DevExamples && <Route path="/dev/examples" element={<DevExamples />} />}
               <Route path="*" element={<NotFound />} />
             </Routes>

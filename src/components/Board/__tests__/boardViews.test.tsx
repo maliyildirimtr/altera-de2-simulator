@@ -117,6 +117,7 @@ import { extractFsm } from '../../../board/fsmExtract';
 import { applyMetadata, diffOverride, normalizeMetadata } from '../../../examples/metadata';
 import { buildLabReport } from '../../../report/labReport';
 import * as Gates from '../../../gates/circuit';
+import * as Num from '../../../logic/numbers';
 import { defaultSpec, generateTestbench, readPorts, resizeSpec, setValue } from '../../../waveform/stimulus';
 import { minimize, parseExpression, sopText, tableOf, variablesOf } from '../../../logic/boolean';
 import { ISO, project, faceTransform, sevenSegmentShapes } from '../boardGeometry';
@@ -3175,6 +3176,24 @@ useBoardStore.setState({ engine: null, pinMappings: [], simState: {} });
   assert.deepStrictEqual([seqRes.error, seqRes.passed], [null, 3], 'clock pulses step a counter in a test table');
   assert.match(Gates.testTemplate(inner), /^a b \| s co\n0 0 \| X X/);
   pass('blocks, tunnels and test tables work, including a full adder made of two half-adder blocks');
+}
+
+
+{
+  // Number systems helper.
+  assert.deepStrictEqual(Num.parseIn('0x2D', 16), { value: 45n, error: null });
+  assert.deepStrictEqual(Num.parseIn('1011 0110', 2), { value: 182n, error: null });
+  assert.strictEqual(Num.parseIn('102', 2).error, 'digit');
+  assert.strictEqual(Num.parseIn('-5', 10).value, -5n);
+  const a = Num.analyze(-5n, 8);
+  assert.deepStrictEqual([Num.binary(a.bits, 8), a.unsigned, a.signed, a.overflow], ['11111011', 251n, -5n, false]);
+  assert.strictEqual(Num.analyze(300n, 8).overflow, true);
+  assert.strictEqual(Num.analyze(0xffffffffn, 32).signed, -1n, '32-bit values need no special care');
+  assert.deepStrictEqual(Num.twosComplementSteps(5n, 8), { plain: '00000101', inverted: '11111010', result: '11111011' });
+  assert.deepStrictEqual(Num.divisionSteps(6n).map((r) => r[2]), [0, 1, 1]);
+  assert.strictEqual(Num.group('101101', 4), '10 1101');
+  assert.strictEqual(Num.toBase(255n, 16), 'FF');
+  pass('number systems: parsing, two\'s complement and the working steps are correct');
 }
 
 console.log(`--- DE2 Board Renderer Regression: PASS (${checks.length} checks) ---`);
