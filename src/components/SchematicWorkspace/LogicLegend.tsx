@@ -43,7 +43,7 @@ export const LogicLegend: React.FC = () => {
         }}
       >
         <Zap size={12} className="text-[var(--text-muted)]" />
-        <span className="text-[11px] font-sans">{t("Logic Colors")}</span>
+        <span className="text-[0.6875rem] font-sans">{t("Logic Colors")}</span>
         <span className="inline-flex items-center text-[var(--text-muted)]">
           {isExpanded ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
         </span>
@@ -78,7 +78,7 @@ export const LogicLegend: React.FC = () => {
           ))}
         </div>
       ) : (
-        <div className="flex items-center gap-2 mt-1 font-mono text-[11px]">
+        <div className="flex items-center gap-2 mt-1 font-mono text-[0.6875rem]">
           <div className="flex items-center gap-1">
             <span
               style={{

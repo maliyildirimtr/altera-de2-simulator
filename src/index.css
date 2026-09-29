@@ -27,6 +27,13 @@
 html {
   height: 100%;
   overflow: hidden;
+  /*
+   * The whole interface is sized in rem, so it scales with this one value.
+   * Up to 1536px wide it is the usual 16px; on larger monitors text and
+   * controls grow with the window (about 18px at 1920, 21px at 2560),
+   * capped at 22px for very wide screens.
+   */
+  font-size: clamp(16px, calc(16px + (100vw - 1536px) * 0.0049), 22px);
   background-color: var(--bg-app);
   color: var(--text-primary);
 }
@@ -275,7 +282,7 @@ textarea:disabled,
   align-items: center;
   gap: 4px;
   padding: 2px 6px;
-  font-size: 10px;
+  font-size: 0.625rem;
   font-weight: var(--font-semibold);
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -319,7 +326,7 @@ textarea:disabled,
   justify-content: center;
   height: 24px;
   padding: 0 8px;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: var(--font-medium);
   color: var(--text-secondary);
   border-radius: var(--radius-xs);
@@ -345,61 +352,61 @@ textarea:disabled,
    PHASE 13A — TYPOGRAPHY SYSTEM UTILITIES
    ============================================= */
 .typography-display {
-  font-size: 36px;
+  font-size: 2.25rem;
   font-weight: 700;
   line-height: 1.15;
   letter-spacing: -0.02em;
 }
 .typography-page-title {
-  font-size: 28px;
+  font-size: 1.75rem;
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.015em;
 }
 .typography-section-title {
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 600;
   line-height: 1.25;
 }
 .typography-headline {
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
   line-height: 1.35;
 }
 .typography-body {
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1.5;
 }
 .typography-control {
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 500;
   line-height: 1.4;
 }
 .typography-panel-header {
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 .typography-subsection-label {
-  font-size: 10px;
+  font-size: 0.625rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 .typography-caption {
-  font-size: 11px;
+  font-size: 0.6875rem;
   line-height: 1.4;
   color: var(--text-muted);
 }
 .typography-badge {
-  font-size: 10px;
+  font-size: 0.625rem;
   font-weight: 600;
   letter-spacing: 0.04em;
 }
 .typography-mono-meta {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.6875rem;
   letter-spacing: -0.01em;
 }
 
@@ -668,7 +675,7 @@ circle[stroke="#a855f7"],
 .joint-element[data-type="digitaljs.Input"]:has(.btnface[fill="white"]) text.value,
 .joint-element[data-logic-value="0"] text.value {
   fill: #38bdf8 !important;
-  font-size: 18px !important;
+  font-size: 1.125rem !important;
   font-weight: 900 !important;
 }
 
@@ -686,7 +693,7 @@ circle[stroke="#a855f7"],
 .joint-element[data-type="digitaljs.Input"]:has(.btnface[fill="black"]) text.value,
 .joint-element[data-logic-value="1"] text.value {
   fill: #22c55e !important;
-  font-size: 18px !important;
+  font-size: 1.125rem !important;
   font-weight: 900 !important;
 }
 
@@ -701,7 +708,7 @@ circle[stroke="#a855f7"],
 .joint-element[data-type="digitaljs.Output"]:has(circle[fill="#38bdf8"]) text.value,
 .joint-element[data-type="digitaljs.Output"][data-logic-value="0"] text.value {
   fill: #38bdf8 !important;
-  font-size: 18px !important;
+  font-size: 1.125rem !important;
   font-weight: 900 !important;
 }
 
@@ -710,7 +717,7 @@ circle[stroke="#a855f7"],
 .joint-element[data-type="digitaljs.Output"]:has(circle[fill="#22c55e"]) text.value,
 .joint-element[data-type="digitaljs.Output"][data-logic-value="1"] text.value {
   fill: #22c55e !important;
-  font-size: 18px !important;
+  font-size: 1.125rem !important;
   font-weight: 900 !important;
 }
 
@@ -741,7 +748,7 @@ circle[stroke="#a855f7"],
 .joint-element[data-type="digitaljs.Output"] > text.label {
   fill: var(--text-primary) !important;
   font-weight: bold !important;
-  font-size: 14px !important;
+  font-size: 0.875rem !important;
 }
 
 /* JointJS SVG Clipping Fix - ÖNEMLİ: Kırpılma engellemesi */
@@ -762,7 +769,7 @@ circle[stroke="#a855f7"],
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
   border-radius: 4px !important;
   font-family: var(--font-mono);
-  font-size: 11px !important;
+  font-size: 0.6875rem !important;
 }
 
 /* =========================================
@@ -878,7 +885,7 @@ circle[stroke="#a855f7"],
   margin: 0 0 18px;
   color: #8193aa;
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.06em;
   line-height: 1.4;
@@ -928,7 +935,7 @@ circle[stroke="#a855f7"],
   justify-content: center;
   gap: 8px;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;
@@ -971,7 +978,7 @@ circle[stroke="#a855f7"],
   flex-wrap: wrap;
   row-gap: 6px;
   color: #7d8da3;
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1.5;
 }
 
@@ -1049,7 +1056,7 @@ circle[stroke="#a855f7"],
   }
 
   .landing-hero-product__eyebrow {
-    font-size: 11px;
+    font-size: 0.6875rem;
     margin-bottom: 14px;
   }
 
@@ -1082,7 +1089,7 @@ circle[stroke="#a855f7"],
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px 16px;
-    font-size: 12.5px;
+    font-size: 0.7812rem;
   }
 
   .landing-hero-product__meta li + li::before {

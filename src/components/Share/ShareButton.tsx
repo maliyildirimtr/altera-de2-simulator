@@ -49,7 +49,7 @@ export function ShareButton({ getPayload, className, labelClassName = 'hidden md
       aria-label={t("Copy share link")}
       className={
         className ??
-        'flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-xs font-medium border transition-colors shadow-xs'
+        'flex items-center gap-1.5 px-2.5 py-1 rounded-[0.25rem] text-xs font-medium border transition-colors shadow-xs'
       }
       style={style ?? { backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
     >

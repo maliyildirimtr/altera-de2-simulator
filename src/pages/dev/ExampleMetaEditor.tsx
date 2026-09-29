@@ -249,10 +249,10 @@ export default function ExampleMetaEditor({ lang, files }: { lang: 'en' | 'tr'; 
     if (mod) set(k === 'sourceFile' ? 'topModule' : 'de2TopModule', mod);
   };
 
-  const input = 'w-full h-8 px-2 rounded-[4px] border text-[13px] bg-transparent';
+  const input = 'w-full h-8 px-2 rounded-[0.25rem] border text-[0.8125rem] bg-transparent';
   const inputStyle = { borderColor: 'var(--border-subtle)', color: 'var(--text-primary)', backgroundColor: 'var(--bg-app)' };
-  const label = 'text-[11.5px] font-semibold flex flex-col gap-1';
-  const btn = 'h-8 px-3 rounded-[4px] border text-[12.5px] font-medium flex items-center gap-1.5 disabled:opacity-40';
+  const label = 'text-[0.7188rem] font-semibold flex flex-col gap-1';
+  const btn = 'h-8 px-3 rounded-[0.25rem] border text-[0.7812rem] font-medium flex items-center gap-1.5 disabled:opacity-40';
   const btnStyle = { borderColor: 'var(--border-subtle)', color: 'var(--text-primary)', backgroundColor: 'var(--bg-surface)' };
 
   const fileSelect = (k: 'sourceFile' | 'testbenchFile' | 'de2File', optional: boolean) => (
@@ -264,25 +264,25 @@ export default function ExampleMetaEditor({ lang, files }: { lang: 'en' | 'tr'; 
 
   return (
     <div data-testid="meta-editor" className="flex-1 min-h-0 flex flex-col md:flex-row">
-      <ul className="md:w-[250px] shrink-0 overflow-y-auto border-b md:border-b-0 md:border-r py-1 max-h-[30vh] md:max-h-none" style={{ borderColor: 'var(--border-subtle)' }}>
+      <ul className="md:w-[15.625rem] shrink-0 overflow-y-auto border-b md:border-b-0 md:border-r py-1 max-h-[30vh] md:max-h-none" style={{ borderColor: 'var(--border-subtle)' }}>
         <li>
-          <button type="button" data-testid="meta-new" onClick={() => setSelected(NEW_KEY)} className="w-full text-left px-4 py-1.5 text-[12.5px] font-semibold flex items-center gap-1.5 hover:bg-[var(--bg-hover)]" style={{ color: 'var(--accent-primary)', backgroundColor: isNew ? 'var(--accent-subtle)' : undefined }}>
+          <button type="button" data-testid="meta-new" onClick={() => setSelected(NEW_KEY)} className="w-full text-left px-4 py-1.5 text-[0.7812rem] font-semibold flex items-center gap-1.5 hover:bg-[var(--bg-hover)]" style={{ color: 'var(--accent-primary)', backgroundColor: isNew ? 'var(--accent-subtle)' : undefined }}>
             <Plus size={13} /> {t.newExample}
           </button>
         </li>
         {[...BASE_EXAMPLES.map((e) => ({ id: e.id, title: meta?.overrides[e.id]?.title ?? e.title, tag: meta?.overrides[e.id] ? t.edited : t.builtIn })), ...(meta?.added ?? []).map((a) => ({ id: a.id, title: a.title, tag: t.added }))].map((e) => (
           <li key={e.id}>
-            <button type="button" data-testid={`meta-item-${e.id}`} onClick={() => setSelected(e.id)} className="w-full text-left px-4 py-1.5 text-[12.5px] hover:bg-[var(--bg-hover)] flex items-center gap-2" style={{ backgroundColor: e.id === selected ? 'var(--accent-subtle)' : undefined }}>
+            <button type="button" data-testid={`meta-item-${e.id}`} onClick={() => setSelected(e.id)} className="w-full text-left px-4 py-1.5 text-[0.7812rem] hover:bg-[var(--bg-hover)] flex items-center gap-2" style={{ backgroundColor: e.id === selected ? 'var(--accent-subtle)' : undefined }}>
               <span className="flex-1 truncate" style={{ color: e.id === selected ? 'var(--accent-primary)' : undefined }}>{e.title}</span>
-              <span className="text-[10.5px] shrink-0" style={{ color: e.tag === t.builtIn ? 'var(--text-muted)' : '#d97706' }}>{e.tag}</span>
+              <span className="text-[0.6562rem] shrink-0" style={{ color: e.tag === t.builtIn ? 'var(--text-muted)' : '#d97706' }}>{e.tag}</span>
             </button>
           </li>
         ))}
       </ul>
 
       <div className="flex-1 min-w-0 overflow-y-auto p-4">
-        <p className="text-[12px] mb-3" style={{ color: 'var(--text-secondary)' }}>{t.lead}</p>
-        {status && <p data-testid="meta-status" className="text-[12.5px] mb-3" style={{ color: status.kind === 'ok' ? '#16a34a' : '#ef4444' }}>{status.text}</p>}
+        <p className="text-[0.75rem] mb-3" style={{ color: 'var(--text-secondary)' }}>{t.lead}</p>
+        {status && <p data-testid="meta-status" className="text-[0.7812rem] mb-3" style={{ color: status.kind === 'ok' ? '#16a34a' : '#ef4444' }}>{status.text}</p>}
         {draft && (
           <div className="grid sm:grid-cols-2 gap-3 max-w-3xl">
             {!isBase && (
@@ -309,7 +309,7 @@ export default function ExampleMetaEditor({ lang, files }: { lang: 'en' | 'tr'; 
             <label className={label}>{t.de2TopModule}<input data-testid="meta-de2TopModule" className={`${input} font-mono`} style={inputStyle} value={draft.de2TopModule} disabled={isBase || !draft.de2File} onChange={(e) => set('de2TopModule', e.target.value)} /></label>
 
             {problems.length > 0 && (
-              <p data-testid="meta-problems" className="sm:col-span-2 text-[12px]" style={{ color: '#d97706' }}>{t.fixFirst} {problems.join(' · ')}</p>
+              <p data-testid="meta-problems" className="sm:col-span-2 text-[0.75rem]" style={{ color: '#d97706' }}>{t.fixFirst} {problems.join(' · ')}</p>
             )}
             <div className="sm:col-span-2 flex items-center gap-2 flex-wrap">
               <button type="button" data-testid="meta-save" className={`${btn} text-white`} style={{ backgroundColor: 'var(--accent-primary)', borderColor: 'var(--accent-primary)' }} disabled={problems.length > 0} onClick={() => void save()}><Save size={13} /> {t.save}</button>

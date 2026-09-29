@@ -123,43 +123,43 @@ export function StimulusEditor({ open, onClose, source, hasTestbench, onGenerate
     onGenerate(`${spec.top}_tb.sv`, code, run);
   };
 
-  const input = 'h-8 px-2 rounded-[4px] border text-[12.5px] bg-transparent';
+  const input = 'h-8 px-2 rounded-[0.25rem] border text-[0.7812rem] bg-transparent';
   const inputStyle = { borderColor: 'var(--border-subtle)', color: 'var(--text-primary)', backgroundColor: 'var(--bg-app)' };
-  const btn = 'h-8 px-3 rounded-[4px] border text-[12.5px] font-medium flex items-center gap-1.5 disabled:opacity-40';
+  const btn = 'h-8 px-3 rounded-[0.25rem] border text-[0.7812rem] font-medium flex items-center gap-1.5 disabled:opacity-40';
   const btnStyle = { borderColor: 'var(--border-subtle)', color: 'var(--text-primary)', backgroundColor: 'var(--bg-surface)' };
-  const nameCol = 'sticky left-0 z-[1] pr-3 font-mono text-[12px] whitespace-nowrap';
+  const nameCol = 'sticky left-0 z-[1] pr-3 font-mono text-[0.75rem] whitespace-nowrap';
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-3" style={{ backgroundColor: 'rgba(0,0,0,0.45)' }} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div role="dialog" aria-modal="true" aria-labelledby="stim-title" data-testid="stimulus-editor" className="w-full max-w-5xl max-h-[92vh] flex flex-col rounded-[8px] border shadow-xl" style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}>
+      <div role="dialog" aria-modal="true" aria-labelledby="stim-title" data-testid="stimulus-editor" className="w-full max-w-5xl max-h-[92vh] flex flex-col rounded-[0.5rem] border shadow-xl" style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}>
         <div className="flex items-center gap-2 px-4 py-3 border-b shrink-0" style={{ borderColor: 'var(--border-subtle)' }}>
           <Wand2 size={16} style={{ color: 'var(--accent-primary)' }} />
-          <h2 id="stim-title" className="text-[14px] font-bold flex-1">{t.title}{spec ? <span className="font-mono font-normal" style={{ color: 'var(--text-muted)' }}> — {spec.top}</span> : null}</h2>
+          <h2 id="stim-title" className="text-[0.875rem] font-bold flex-1">{t.title}{spec ? <span className="font-mono font-normal" style={{ color: 'var(--text-muted)' }}> — {spec.top}</span> : null}</h2>
           <button type="button" aria-label={t.cancel} onClick={onClose} className="p-1 rounded hover:bg-[var(--bg-hover)]"><X size={15} /></button>
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto p-4 flex flex-col gap-3">
-          <p className="text-[12.5px] leading-snug" style={{ color: 'var(--text-secondary)' }}>{t.lead}</p>
+          <p className="text-[0.7812rem] leading-snug" style={{ color: 'var(--text-secondary)' }}>{t.lead}</p>
           {!spec ? (
-            <p data-testid="stim-noports" className="text-[13px]" style={{ color: '#d97706' }}>{t.noPorts}</p>
+            <p data-testid="stim-noports" className="text-[0.8125rem]" style={{ color: '#d97706' }}>{t.noPorts}</p>
           ) : (
             <>
               <div className="flex flex-wrap items-end gap-3">
-                <label className="flex flex-col gap-1 text-[11.5px] font-semibold">{t.steps}
+                <label className="flex flex-col gap-1 text-[0.7188rem] font-semibold">{t.steps}
                   <input data-testid="stim-steps" type="number" min={MIN_STEPS} max={MAX_STEPS} className={`${input} w-20`} style={inputStyle} value={spec.steps} onChange={(e) => update((s) => resizeSpec(s, Number(e.target.value) || MIN_STEPS))} />
                 </label>
-                <label className="flex flex-col gap-1 text-[11.5px] font-semibold">{t.clock}
+                <label className="flex flex-col gap-1 text-[0.7188rem] font-semibold">{t.clock}
                   <select data-testid="stim-clock" className={input} style={inputStyle} value={spec.clock ?? ''} onChange={(e) => update((s) => resizeSpec({ ...s, clock: e.target.value || null, stepTime: e.target.value ? s.clockPeriod : s.stepTime }, s.steps))}>
                     <option value="">{t.none}</option>
                     {spec.inputs.filter((p) => p.width === 1).map((p) => <option key={p.name} value={p.name}>{p.name}</option>)}
                   </select>
                 </label>
                 {spec.clock ? (
-                  <label className="flex flex-col gap-1 text-[11.5px] font-semibold">{t.period}
+                  <label className="flex flex-col gap-1 text-[0.7188rem] font-semibold">{t.period}
                     <input data-testid="stim-period" type="number" min={2} max={1000} step={2} className={`${input} w-24`} style={inputStyle} value={spec.clockPeriod} onChange={(e) => { const v = Math.max(2, Math.min(1000, Math.round((Number(e.target.value) || 2) / 2) * 2)); update((s) => ({ ...s, clockPeriod: v, stepTime: v })); }} />
                   </label>
                 ) : (
-                  <label className="flex flex-col gap-1 text-[11.5px] font-semibold">{t.stepTime}
+                  <label className="flex flex-col gap-1 text-[0.7188rem] font-semibold">{t.stepTime}
                     <input data-testid="stim-steptime" type="number" min={1} max={1000} className={`${input} w-24`} style={inputStyle} value={spec.stepTime} onChange={(e) => { const v = Math.max(1, Math.min(1000, Math.round(Number(e.target.value) || 1))); update((s) => ({ ...s, stepTime: v })); }} />
                   </label>
                 )}
@@ -168,13 +168,13 @@ export function StimulusEditor({ open, onClose, source, hasTestbench, onGenerate
                 <button type="button" data-testid="stim-clear" className={btn} style={btnStyle} onClick={() => update((s) => ({ ...s, values: Object.fromEntries(data.map((p) => [p.name, Array(s.steps).fill(0)])) }))}><Eraser size={13} /> {t.clear}</button>
               </div>
 
-              <div className="overflow-x-auto border rounded-[6px] p-2 select-none" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-app)' }}>
+              <div className="overflow-x-auto border rounded-[0.375rem] p-2 select-none" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-app)' }}>
                 <table className="border-separate" style={{ borderSpacing: 0 }}>
                   <thead>
                     <tr>
                       <th className={nameCol} style={{ backgroundColor: 'var(--bg-app)' }} />
                       {Array.from({ length: spec.steps }, (_, i) => (
-                        <th key={i} className="text-[9.5px] font-normal text-center" style={{ width: CELL, minWidth: CELL, color: 'var(--text-muted)' }}>{i}</th>
+                        <th key={i} className="text-[0.5938rem] font-normal text-center" style={{ width: CELL, minWidth: CELL, color: 'var(--text-muted)' }}>{i}</th>
                       ))}
                     </tr>
                   </thead>
@@ -226,7 +226,7 @@ export function StimulusEditor({ open, onClose, source, hasTestbench, onGenerate
                                 <input
                                   data-testid={`stim-cell-${p.name}-${i}`}
                                   aria-label={`${p.name} ${t.step} ${i}`}
-                                  className="font-mono text-[11px] text-center rounded-[3px] border"
+                                  className="font-mono text-[0.6875rem] text-center rounded-[0.1875rem] border"
                                   style={{ width: CELL - 2, height: 24, borderColor: i > 0 && row[i - 1] !== v ? '#10b981' : 'var(--border-subtle)', backgroundColor: v ? 'rgba(16,185,129,0.10)' : 'transparent', color: 'var(--text-primary)', fontSize: digits > 2 ? 9 : 11 }}
                                   value={v.toString(16).toUpperCase()}
                                   maxLength={digits}
@@ -242,13 +242,13 @@ export function StimulusEditor({ open, onClose, source, hasTestbench, onGenerate
                   </tbody>
                 </table>
                 {spec.outputs.length > 0 && (
-                  <p className="text-[11.5px] mt-2 font-mono" style={{ color: 'var(--text-muted)' }}>{t.outputs}: {spec.outputs.map((p) => `${p.name}${p.width > 1 ? `[${p.width - 1}:0]` : ''}`).join(', ')}</p>
+                  <p className="text-[0.7188rem] mt-2 font-mono" style={{ color: 'var(--text-muted)' }}>{t.outputs}: {spec.outputs.map((p) => `${p.name}${p.width > 1 ? `[${p.width - 1}:0]` : ''}`).join(', ')}</p>
                 )}
               </div>
 
               <details>
-                <summary className="text-[12px] font-semibold cursor-pointer">{t.preview}</summary>
-                <pre data-testid="stim-code" className="mt-2 p-3 rounded-[6px] border text-[11.5px] font-mono overflow-auto max-h-[260px]" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-app)' }}>{code}</pre>
+                <summary className="text-[0.75rem] font-semibold cursor-pointer">{t.preview}</summary>
+                <pre data-testid="stim-code" className="mt-2 p-3 rounded-[0.375rem] border text-[0.7188rem] font-mono overflow-auto max-h-[16.25rem]" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-app)' }}>{code}</pre>
               </details>
             </>
           )}

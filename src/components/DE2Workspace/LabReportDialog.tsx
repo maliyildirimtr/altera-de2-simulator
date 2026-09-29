@@ -118,20 +118,20 @@ export function LabReportDialog({ open, onClose, defaultTitle, onMessage }: { op
     onClose();
   };
 
-  const field = 'w-full h-9 px-2.5 rounded-[4px] border text-[13px]';
+  const field = 'w-full h-9 px-2.5 rounded-[0.25rem] border text-[0.8125rem]';
   const fieldStyle = { borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)' };
-  const label = 'flex flex-col gap-1 text-[12px] font-semibold';
+  const label = 'flex flex-col gap-1 text-[0.75rem] font-semibold';
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.45)' }} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div role="dialog" aria-modal="true" aria-labelledby="lab-report-title" data-testid="lab-report-dialog" className="w-full max-w-md rounded-[8px] border shadow-xl" style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}>
+      <div role="dialog" aria-modal="true" aria-labelledby="lab-report-title" data-testid="lab-report-dialog" className="w-full max-w-md rounded-[0.5rem] border shadow-xl" style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}>
         <div className="flex items-center gap-2 px-4 py-3 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
           <FileText size={16} style={{ color: 'var(--accent-primary)' }} />
-          <h2 id="lab-report-title" className="text-[14px] font-bold flex-1">{t.title}</h2>
+          <h2 id="lab-report-title" className="text-[0.875rem] font-bold flex-1">{t.title}</h2>
           <button type="button" aria-label={t.cancel} onClick={onClose} className="p-1 rounded hover:bg-[var(--bg-hover)]"><X size={15} /></button>
         </div>
         <form className="p-4 flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); create(); }}>
-          <p className="text-[12px] leading-snug" style={{ color: 'var(--text-secondary)' }}>{t.lead}</p>
+          <p className="text-[0.75rem] leading-snug" style={{ color: 'var(--text-secondary)' }}>{t.lead}</p>
           <label className={label}>{t.reportTitle}<input ref={firstRef} data-testid="report-title" className={field} style={fieldStyle} value={title} maxLength={100} onChange={(e) => setTitle(e.target.value)} /></label>
           <div className="grid grid-cols-2 gap-3">
             <label className={label}>{t.author}<input data-testid="report-author" className={field} style={fieldStyle} value={saved.author} maxLength={80} onChange={(e) => setSaved((s) => ({ ...s, author: e.target.value }))} /></label>
@@ -139,8 +139,8 @@ export function LabReportDialog({ open, onClose, defaultTitle, onMessage }: { op
           </div>
           <label className={label}>{t.notes}<textarea data-testid="report-notes" rows={4} className={`${field} h-auto py-2 font-normal`} style={fieldStyle} placeholder={t.notesPh} value={notes} maxLength={4000} onChange={(e) => setNotes(e.target.value)} /></label>
           <div className="flex justify-end gap-2 pt-1">
-            <button type="button" onClick={onClose} className="h-9 px-3 rounded-[4px] border text-[13px]" style={{ borderColor: 'var(--border-subtle)' }}>{t.cancel}</button>
-            <button type="submit" data-testid="report-create" className="h-9 px-4 rounded-[4px] text-[13px] font-semibold text-white" style={{ backgroundColor: 'var(--accent-primary)' }}>{t.create}</button>
+            <button type="button" onClick={onClose} className="h-9 px-3 rounded-[0.25rem] border text-[0.8125rem]" style={{ borderColor: 'var(--border-subtle)' }}>{t.cancel}</button>
+            <button type="submit" data-testid="report-create" className="h-9 px-4 rounded-[0.25rem] text-[0.8125rem] font-semibold text-white" style={{ backgroundColor: 'var(--accent-primary)' }}>{t.create}</button>
           </div>
         </form>
       </div>

@@ -66,13 +66,13 @@ export const SchematicProjectPanel: React.FC<SchematicProjectPanelProps> = ({
         <div className="flex items-center gap-1.5 min-w-0">
           <FolderTree size={13} className="text-blue-500 shrink-0" />
           <span
-            className="text-[11px] font-bold uppercase tracking-wider truncate"
+            className="text-[0.6875rem] font-bold uppercase tracking-wider truncate"
             style={{ color: 'var(--text-muted)' }}
           >
             {t("Project Files")}
           </span>
           <span
-            className="text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0 border"
+            className="text-[0.625rem] px-1.5 py-0.5 rounded font-mono shrink-0 border"
             style={{
               backgroundColor: 'var(--bg-surface)',
               borderColor: 'var(--border-subtle)',
@@ -87,7 +87,7 @@ export const SchematicProjectPanel: React.FC<SchematicProjectPanelProps> = ({
             data-testid="create-file-btn"
             onClick={onCreateFile}
             title={t("Create New HDL File")}
-            className="p-1 rounded-[4px] border transition-colors hover:bg-[var(--bg-hover)]"
+            className="p-1 rounded-[0.25rem] border transition-colors hover:bg-[var(--bg-hover)]"
             style={{
               backgroundColor: 'var(--bg-surface)',
               borderColor: 'var(--border-subtle)',
@@ -100,7 +100,7 @@ export const SchematicProjectPanel: React.FC<SchematicProjectPanelProps> = ({
             <button
               onClick={onClose}
               title={t("Collapse Project Panel")}
-              className="p-1 rounded-[4px] hover:bg-[var(--bg-hover)] transition-colors"
+              className="p-1 rounded-[0.25rem] hover:bg-[var(--bg-hover)] transition-colors"
               style={{ color: 'var(--text-muted)' }}
             >
               <X size={14} />
@@ -155,7 +155,7 @@ export const SchematicProjectPanel: React.FC<SchematicProjectPanelProps> = ({
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
                   <span
-                    className="text-[10px] font-mono select-none"
+                    className="text-[0.625rem] font-mono select-none"
                     style={{ color: 'var(--text-muted)' }}
                   >
                     {lineCount}L

@@ -132,7 +132,7 @@ export default function FpgaHub() {
               </p>
             </div>
             <span
-              className="font-mono text-[11px] px-2.5 py-1 rounded border self-start sm:self-center"
+              className="font-mono text-[0.6875rem] px-2.5 py-1 rounded border self-start sm:self-center"
               style={{
                 backgroundColor: 'var(--bg-panel)',
                 borderColor: 'var(--border-subtle)',
@@ -182,7 +182,7 @@ export default function FpgaHub() {
                       {step.title}
                     </h3>
                     <p
-                      className="text-[11px] leading-relaxed"
+                      className="text-[0.6875rem] leading-relaxed"
                       style={{ color: 'var(--text-secondary)' }}
                     >
                       {step.desc}
@@ -191,7 +191,7 @@ export default function FpgaHub() {
 
                   {idx < WORKFLOW_STEPS.length - 1 && (
                     <div
-                      className="absolute -right-2 top-1/2 -translate-y-1/2 z-20 text-[11px] font-mono select-none pointer-events-none"
+                      className="absolute -right-2 top-1/2 -translate-y-1/2 z-20 text-[0.6875rem] font-mono select-none pointer-events-none"
                       style={{ color: 'var(--text-muted)' }}
                       aria-hidden="true"
                     >
@@ -218,7 +218,7 @@ export default function FpgaHub() {
                 <div key={step.num} className="relative">
                   {/* Spine Node Badge */}
                   <div
-                    className="absolute -left-9 top-3 w-7 h-7 rounded border flex items-center justify-center font-mono text-[11px] font-bold z-10"
+                    className="absolute -left-9 top-3 w-7 h-7 rounded border flex items-center justify-center font-mono text-[0.6875rem] font-bold z-10"
                     style={{
                       backgroundColor: 'var(--bg-surface)',
                       borderColor: 'var(--border-strong)',
@@ -251,7 +251,7 @@ export default function FpgaHub() {
                         <Icon size={13} />
                       </div>
                     </div>
-                    <p className="text-[11px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                    <p className="text-[0.6875rem] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
                       {step.desc}
                     </p>
                   </div>
@@ -298,7 +298,7 @@ export default function FpgaHub() {
                   {/* Card Header: Category & Tool Badges */}
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <span
-                      className="text-[10px] font-mono uppercase tracking-wider font-semibold"
+                      className="text-[0.625rem] font-mono uppercase tracking-wider font-semibold"
                       style={{ color: 'var(--accent-primary)' }}
                     >
                       {ex.category}
@@ -306,7 +306,7 @@ export default function FpgaHub() {
                     <div className="flex items-center gap-1">
                       {ex.tools.waveform && (
                         <span
-                          className="text-[8px] font-mono px-1 py-0.5 rounded border"
+                          className="text-[0.5rem] font-mono px-1 py-0.5 rounded border"
                           style={{
                             backgroundColor: 'rgba(16,185,129,0.08)',
                             borderColor: 'rgba(16,185,129,0.25)',
@@ -318,7 +318,7 @@ export default function FpgaHub() {
                       )}
                       {ex.tools.schematic && (
                         <span
-                          className="text-[8px] font-mono px-1 py-0.5 rounded border"
+                          className="text-[0.5rem] font-mono px-1 py-0.5 rounded border"
                           style={{
                             backgroundColor: 'rgba(13,148,136,0.08)',
                             borderColor: 'rgba(13,148,136,0.25)',
@@ -329,7 +329,7 @@ export default function FpgaHub() {
                         </span>
                       )}
                       <span
-                        className="text-[8px] font-mono px-1 py-0.5 rounded border font-semibold"
+                        className="text-[0.5rem] font-mono px-1 py-0.5 rounded border font-semibold"
                         style={{
                           backgroundColor: 'rgba(37,99,235,0.08)',
                           borderColor: 'rgba(37,99,235,0.25)',
@@ -350,7 +350,7 @@ export default function FpgaHub() {
                   </h3>
 
                   {/* Description */}
-                  <p className="text-[11px] leading-relaxed line-clamp-2 mb-3" style={{ color: 'var(--text-secondary)' }}>
+                  <p className="text-[0.6875rem] leading-relaxed line-clamp-2 mb-3" style={{ color: 'var(--text-secondary)' }}>
                     {ex.description}
                   </p>
                 </div>
@@ -364,12 +364,12 @@ export default function FpgaHub() {
                     type="button"
                     data-testid={`launch-board-btn-${ex.id}`}
                     onClick={() => handleLaunchOnBoard(ex)}
-                    className="inline-flex items-center gap-1 font-medium text-[11px] transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1 font-medium text-[0.6875rem] transition-colors cursor-pointer"
                     style={{ color: 'var(--accent-primary)' }}
                   >
                     Launch on Board <ArrowRight size={11} />
                   </button>
-                  <span className="font-mono text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                  <span className="font-mono text-[0.625rem]" style={{ color: 'var(--text-muted)' }}>
                     {ex.topModule}.sv
                   </span>
                 </div>

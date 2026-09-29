@@ -69,7 +69,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
   const t = useT();
   return (
     <header
-      className="h-[42px] px-3 sm:px-4 flex items-center justify-between shrink-0 z-20 select-none border-b min-w-0"
+      className="h-[2.625rem] px-3 sm:px-4 flex items-center justify-between shrink-0 z-20 select-none border-b min-w-0"
       style={{
         backgroundColor: 'var(--bg-toolbar)',
         borderColor: 'var(--border-subtle)',
@@ -82,7 +82,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
           data-testid="wf-toggle-project"
           onClick={onToggleProjectPanel}
           title={t("Toggle Project Panel (Alt+P)")}
-          className={`flex items-center gap-1.5 px-2 py-1 rounded-[4px] text-xs font-medium border transition-colors ${
+          className={`flex items-center gap-1.5 px-2 py-1 rounded-[0.25rem] text-xs font-medium border transition-colors ${
             projectPanelOpen
               ? 'bg-[var(--accent-subtle)] text-[var(--accent-primary)] border-[var(--accent-border)] font-semibold shadow-xs'
               : 'border-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
@@ -96,7 +96,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
           data-testid="wf-toggle-objects"
           onClick={onToggleObjectsPanel}
           title={t("Toggle Objects Panel (Alt+O)")}
-          className={`flex items-center gap-1.5 px-2 py-1 rounded-[4px] text-xs font-medium border transition-colors ${
+          className={`flex items-center gap-1.5 px-2 py-1 rounded-[0.25rem] text-xs font-medium border transition-colors ${
             objectsPanelOpen
               ? 'bg-[var(--accent-subtle)] text-[var(--accent-primary)] border-[var(--accent-border)] font-semibold shadow-xs'
               : 'border-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
@@ -110,7 +110,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
 
         {/* ── Primary View Segmented Switcher ── */}
         <div
-          className="flex items-center p-0.5 rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-input)] gap-0.5"
+          className="flex items-center p-0.5 rounded-[0.25rem] border border-[var(--border-subtle)] bg-[var(--bg-input)] gap-0.5"
           role="tablist"
         >
           <button
@@ -118,7 +118,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
             role="tab"
             aria-selected={mainView === 'waveform'}
             onClick={() => onChangeMainView('waveform')}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[3px] text-xs transition-colors ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[0.1875rem] text-xs transition-colors ${
               mainView === 'waveform'
                 ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
                 : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-transparent'
@@ -138,7 +138,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
               onChangeMainView('editor');
               if (onToggleEditor) onToggleEditor();
             }}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[3px] text-xs transition-colors ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[0.1875rem] text-xs transition-colors ${
               mainView === 'editor'
                 ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
                 : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-transparent'
@@ -154,7 +154,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
             role="tab"
             aria-selected={mainView === 'split'}
             onClick={() => onChangeMainView('split')}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[3px] text-xs transition-colors ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[0.1875rem] text-xs transition-colors ${
               mainView === 'split'
                 ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
                 : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-transparent'
@@ -179,7 +179,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
           data-testid="wf-btn-compile"
           onClick={onCompile}
           disabled={isCompiling}
-          className={`flex items-center gap-1.5 px-3 py-1 rounded-[4px] text-xs font-medium transition-colors shadow-xs ${
+          className={`flex items-center gap-1.5 px-3 py-1 rounded-[0.25rem] text-xs font-medium transition-colors shadow-xs ${
             isCompiling
               ? 'opacity-60 cursor-not-allowed bg-[var(--accent-primary)] text-white'
               : 'bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white'
@@ -199,7 +199,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
           data-testid="wf-btn-run"
           onClick={onRun}
           disabled={!isCompiled || isCompiling || isPlaying}
-          className={`hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-[4px] text-xs font-medium transition-colors shadow-xs ${
+          className={`hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-[0.25rem] text-xs font-medium transition-colors shadow-xs ${
             !isCompiled || isCompiling || isPlaying
               ? 'bg-[var(--bg-surface)] text-[var(--text-disabled)] border border-[var(--border-subtle)] opacity-40 cursor-not-allowed'
               : 'bg-emerald-600 hover:bg-emerald-500 text-white'
@@ -216,7 +216,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
           data-testid="wf-btn-restart"
           onClick={onRestart}
           disabled={!isCompiled}
-          className="hidden sm:flex p-1.5 rounded-[4px] text-xs font-medium border transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="hidden sm:flex p-1.5 rounded-[0.25rem] text-xs font-medium border transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           style={{
             backgroundColor: 'var(--bg-surface)',
             borderColor: 'var(--border-subtle)',
@@ -235,11 +235,11 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
         <div className="w-px h-4 bg-[var(--border-subtle)] mx-0.5 hidden md:block" />
 
         {/* Zoom Controls */}
-        <div className="flex items-center rounded-[4px] border border-[var(--border-subtle)] p-0.5 bg-[var(--bg-input)]">
+        <div className="flex items-center rounded-[0.25rem] border border-[var(--border-subtle)] p-0.5 bg-[var(--bg-input)]">
           <button
             data-testid="wf-btn-zoom-out"
             onClick={onZoomOut}
-            className="hidden md:flex p-1 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] rounded-[3px] text-[var(--text-muted)] transition-colors"
+            className="hidden md:flex p-1 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] rounded-[0.1875rem] text-[var(--text-muted)] transition-colors"
             title={t("Zoom Out")}
             aria-label={t("Zoom Out")}
           >
@@ -248,7 +248,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
 
           <span
             data-testid="wf-zoom-level"
-            className="text-[11px] font-mono px-1.5 min-w-[44px] text-center select-none text-[var(--text-secondary)] hidden lg:inline"
+            className="text-[0.6875rem] font-mono px-1.5 min-w-[2.75rem] text-center select-none text-[var(--text-secondary)] hidden lg:inline"
           >
             {(() => {
               if (zoomLevel >= 10) return `${zoomLevel.toFixed(0)}x`;
@@ -262,7 +262,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
           <button
             data-testid="wf-btn-zoom-in"
             onClick={onZoomIn}
-            className="hidden md:flex p-1 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] rounded-[3px] text-[var(--text-muted)] transition-colors"
+            className="hidden md:flex p-1 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] rounded-[0.1875rem] text-[var(--text-muted)] transition-colors"
             title={t("Zoom In")}
             aria-label={t("Zoom In")}
           >
@@ -272,7 +272,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
           <button
             data-testid="wf-btn-zoom-fit"
             onClick={onZoomFit}
-            className="flex items-center gap-1 px-1.5 py-0.5 ml-0 md:ml-0.5 hover:bg-[var(--bg-hover)] hover:text-[var(--accent-primary)] rounded-[3px] text-[var(--text-muted)] transition-colors text-[10px] font-medium md:border-l md:border-[var(--border-subtle)]"
+            className="flex items-center gap-1 px-1.5 py-0.5 ml-0 md:ml-0.5 hover:bg-[var(--bg-hover)] hover:text-[var(--accent-primary)] rounded-[0.1875rem] text-[var(--text-muted)] transition-colors text-[0.625rem] font-medium md:border-l md:border-[var(--border-subtle)]"
             title={t("Zoom to Fit Full Simulation Duration (Alt+F)")}
             aria-label={t("Zoom to Fit Full Simulation Duration (Alt+F)")}
           >
@@ -291,7 +291,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
         <>
         <div
           data-testid="wf-timing-display"
-          className="hidden xl:flex items-center gap-2.5 px-2.5 py-1 border border-[var(--border-subtle)] rounded-[4px] font-mono text-[11px] bg-[var(--bg-input)] text-[var(--text-secondary)] shadow-xs"
+          className="hidden xl:flex items-center gap-2.5 px-2.5 py-1 border border-[var(--border-subtle)] rounded-[0.25rem] font-mono text-[0.6875rem] bg-[var(--bg-input)] text-[var(--text-secondary)] shadow-xs"
         >
           <div className="flex items-center gap-1">
             <span className="text-blue-400 font-semibold">A:</span>
@@ -328,7 +328,7 @@ export const WaveformToolbar: React.FC<WaveformToolbarProps> = ({
           data-testid="wf-toggle-console"
           onClick={onToggleConsole}
           title={t("Toggle Console (Alt+T)")}
-          className={`flex items-center gap-1.5 px-2 py-1 rounded-[4px] text-xs font-medium border transition-colors ${
+          className={`flex items-center gap-1.5 px-2 py-1 rounded-[0.25rem] text-xs font-medium border transition-colors ${
             consoleOpen
               ? 'bg-[var(--accent-subtle)] text-[var(--accent-primary)] border-[var(--accent-border)] font-semibold shadow-xs'
               : 'border-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'

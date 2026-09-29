@@ -25,8 +25,8 @@ export function InstanceTree({ tree, activeScope, onScopeSelect }: InstanceTreeP
         <div
           className={`flex items-center gap-1.5 py-1 px-2 cursor-pointer text-xs font-mono transition-colors ${
             isActive
-              ? 'bg-[var(--accent-subtle)] text-[var(--text-primary)] font-semibold rounded-[3px]'
-              : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] rounded-[3px]'
+              ? 'bg-[var(--accent-subtle)] text-[var(--text-primary)] font-semibold rounded-[0.1875rem]'
+              : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] rounded-[0.1875rem]'
           }`}
           style={{ paddingLeft: `${depth * 12 + 8}px` }}
           onClick={() => onScopeSelect(scope)}

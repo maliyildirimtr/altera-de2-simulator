@@ -172,7 +172,7 @@ export const SourcePreviewModal: React.FC<SourcePreviewModalProps> = ({ example,
                 }`}
               >
                 <span>{tab.label}</span>
-                <span className="text-[10px] opacity-75 font-normal">({tab.filename})</span>
+                <span className="text-[0.625rem] opacity-75 font-normal">({tab.filename})</span>
               </button>
             );
           })}
@@ -190,7 +190,7 @@ export const SourcePreviewModal: React.FC<SourcePreviewModalProps> = ({ example,
             {lines.map((line, idx) => (
               <div key={idx} className="flex hover:bg-[var(--accent-subtle)] px-2 rounded">
                 <span
-                  className="w-10 text-right pr-4 select-none font-mono text-[11px]"
+                  className="w-10 text-right pr-4 select-none font-mono text-[0.6875rem]"
                   style={{ color: 'var(--text-muted)' }}
                 >
                   {idx + 1}
@@ -203,7 +203,7 @@ export const SourcePreviewModal: React.FC<SourcePreviewModalProps> = ({ example,
 
         {/* Footer info */}
         <div
-          className="flex items-center justify-between px-6 py-2.5 border-t text-[11px]"
+          className="flex items-center justify-between px-6 py-2.5 border-t text-[0.6875rem]"
           style={{
             backgroundColor: 'var(--bg-panel-header)',
             borderColor: 'var(--border-subtle)',

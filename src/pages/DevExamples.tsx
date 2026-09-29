@@ -10,6 +10,7 @@ import { useBoardStore } from '../store/boardStore';
 import { markWorkspaceDirty, markWorkspaceUser } from '../services/exampleHandoff';
 import { useI18n } from '../i18n/I18nProvider';
 import ExampleMetaEditor from './dev/ExampleMetaEditor';
+import { uiScale } from '../lib/uiScale';
 
 const API = '/__logiclab/examples';
 const HEADERS = { 'X-LogicLab-Dev': '1' };
@@ -195,33 +196,33 @@ export default function DevExamples() {
     navigate('/de2-simulator');
   };
 
-  const btn = 'h-8 px-3 rounded-[4px] border text-[12.5px] font-medium flex items-center gap-1.5 disabled:opacity-40';
+  const btn = 'h-8 px-3 rounded-[0.25rem] border text-[0.7812rem] font-medium flex items-center gap-1.5 disabled:opacity-40';
   const btnStyle = { borderColor: 'var(--border-subtle)', color: 'var(--text-primary)', backgroundColor: 'var(--bg-surface)' };
 
   return (
     <div data-testid="dev-examples" className="absolute inset-0 flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)' }}>
       <div role="tablist" className="flex gap-1 px-3 pt-2 border-b shrink-0" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
         {(['files', 'meta'] as const).map((k) => (
-          <button key={k} type="button" role="tab" aria-selected={tab === k} data-testid={`dev-tab-${k}`} onClick={() => setTab(k)} className="px-3 py-1.5 text-[12.5px] font-semibold border-b-2 -mb-px" style={{ borderColor: tab === k ? 'var(--accent-primary)' : 'transparent', color: tab === k ? 'var(--accent-primary)' : 'var(--text-secondary)' }}>
+          <button key={k} type="button" role="tab" aria-selected={tab === k} data-testid={`dev-tab-${k}`} onClick={() => setTab(k)} className="px-3 py-1.5 text-[0.7812rem] font-semibold border-b-2 -mb-px" style={{ borderColor: tab === k ? 'var(--accent-primary)' : 'transparent', color: tab === k ? 'var(--accent-primary)' : 'var(--text-secondary)' }}>
             {k === 'files' ? t.tabFiles : t.tabMeta}
           </button>
         ))}
       </div>
       {tab === 'meta' ? <ExampleMetaEditor lang={lang} files={files.map((f) => f.name)} /> : (
       <div className="flex-1 min-h-0 flex flex-col md:flex-row">
-      <aside className="md:w-[270px] shrink-0 border-b md:border-b-0 md:border-r flex flex-col min-h-0" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
+      <aside className="md:w-[16.875rem] shrink-0 border-b md:border-b-0 md:border-r flex flex-col min-h-0" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
         <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
-          <h1 className="text-[15px] font-bold">{t.title}</h1>
-          <p className="text-[11.5px] mt-1 leading-snug" style={{ color: 'var(--text-secondary)' }}>{t.lead}</p>
+          <h1 className="text-[0.9375rem] font-bold">{t.title}</h1>
+          <p className="text-[0.7188rem] mt-1 leading-snug" style={{ color: 'var(--text-secondary)' }}>{t.lead}</p>
         </div>
         <div className="px-4 py-2 flex items-center justify-between">
-          <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t.files} ({files.length})</span>
-          <button type="button" className="text-[12px] flex items-center gap-1 underline" onClick={createFile}><FilePlus2 size={13} /> {t.newFile}</button>
+          <span className="text-[0.6875rem] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t.files} ({files.length})</span>
+          <button type="button" className="text-[0.75rem] flex items-center gap-1 underline" onClick={createFile}><FilePlus2 size={13} /> {t.newFile}</button>
         </div>
         <ul className="flex-1 overflow-y-auto pb-2">
           {files.map((f) => (
             <li key={f.name}>
-              <button type="button" data-testid={`dev-file-${f.name}`} onClick={() => void open(f.name)} className="w-full text-left px-4 py-1.5 text-[12.5px] font-mono hover:bg-[var(--bg-hover)]" style={{ backgroundColor: f.name === active ? 'var(--accent-subtle)' : undefined, color: f.name === active ? 'var(--accent-primary)' : undefined }}>
+              <button type="button" data-testid={`dev-file-${f.name}`} onClick={() => void open(f.name)} className="w-full text-left px-4 py-1.5 text-[0.7812rem] font-mono hover:bg-[var(--bg-hover)]" style={{ backgroundColor: f.name === active ? 'var(--accent-subtle)' : undefined, color: f.name === active ? 'var(--accent-primary)' : undefined }}>
                 {f.name}{f.name === active && dirty ? ' •' : ''}
               </button>
             </li>
@@ -231,20 +232,20 @@ export default function DevExamples() {
 
       <main className="flex-1 min-w-0 min-h-0 flex flex-col">
         <div className="px-3 py-2 border-b flex items-center gap-2 flex-wrap" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
-          <span className="font-mono text-[13px] font-semibold">{active || '—'}</span>
-          {dirty && <span className="text-[11.5px]" style={{ color: '#d97706' }}>● {t.unsaved}</span>}
+          <span className="font-mono text-[0.8125rem] font-semibold">{active || '—'}</span>
+          {dirty && <span className="text-[0.7188rem]" style={{ color: '#d97706' }}>● {t.unsaved}</span>}
           <span className="flex-1" />
           <button type="button" className={btn} style={btnStyle} disabled={!dirty} onClick={() => setCode(original)}><RotateCcw size={13} /> {t.revert}</button>
           <button type="button" className={btn} style={btnStyle} disabled={!code.trim()} onClick={tryOnDe2}><Cpu size={13} /> {t.tryDe2}</button>
           <button type="button" data-testid="dev-save" className={`${btn} text-white`} style={{ backgroundColor: 'var(--accent-primary)', borderColor: 'var(--accent-primary)' }} disabled={!dirty || saving} onClick={() => void save()}><Save size={13} /> {t.save}</button>
         </div>
         {status && (
-          <p data-testid="dev-status" className="px-3 py-1.5 text-[12px]" style={{ color: status.kind === 'ok' ? '#16a34a' : '#ef4444' }}>{status.text}</p>
+          <p data-testid="dev-status" className="px-3 py-1.5 text-[0.75rem]" style={{ color: status.kind === 'ok' ? '#16a34a' : '#ef4444' }}>{status.text}</p>
         )}
         <div className="flex-1 min-h-0">
-          <Editor height="100%" language="systemverilog" theme="vs-dark" value={code} onChange={(v) => setCode(v ?? '')} options={{ minimap: { enabled: false }, fontSize: 13, scrollBeyondLastLine: false, automaticLayout: true, tabSize: 4 }} />
+          <Editor height="100%" language="systemverilog" theme="vs-dark" value={code} onChange={(v) => setCode(v ?? '')} options={{ minimap: { enabled: false }, fontSize: Math.round(13 * uiScale()), scrollBeyondLastLine: false, automaticLayout: true, tabSize: 4 }} />
         </div>
-        <div className="border-t px-3 py-2 text-[12px] max-h-[150px] overflow-y-auto" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
+        <div className="border-t px-3 py-2 text-[0.75rem] max-h-[9.375rem] overflow-y-auto" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
           <p style={{ color: 'var(--text-secondary)' }}>
             <b>{t.usedBy}:</b> {usedBy.length ? usedBy.join(', ') : <i>{t.unused}</i>}
           </p>

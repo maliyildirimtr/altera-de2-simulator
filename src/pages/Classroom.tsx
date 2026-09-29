@@ -18,9 +18,9 @@ interface LoadedResult {
   checksumOk: boolean;
 }
 
-const field = 'h-9 px-2.5 rounded-[4px] border text-[13px] w-full';
+const field = 'h-9 px-2.5 rounded-[0.25rem] border text-[0.8125rem] w-full';
 const fieldStyle = { borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-panel)', color: 'var(--text-primary)' };
-const card = 'rounded-[6px] border p-4 sm:p-5 flex flex-col gap-3';
+const card = 'rounded-[0.375rem] border p-4 sm:p-5 flex flex-col gap-3';
 const cardStyle = { borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' };
 
 /**
@@ -141,55 +141,55 @@ export default function Classroom() {
     <div data-testid="classroom-page" className="absolute inset-0 overflow-y-auto" style={{ backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)' }}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 flex flex-col gap-6">
         <header>
-          <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{c.eyebrow}</p>
+          <p className="text-[0.6875rem] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{c.eyebrow}</p>
           <h1 className="text-2xl font-bold mt-1">{c.title}</h1>
-          <p className="text-[14px] mt-2 max-w-3xl leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{c.lead}</p>
+          <p className="text-[0.875rem] mt-2 max-w-3xl leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{c.lead}</p>
         </header>
 
         <section className={card} style={cardStyle} aria-labelledby="cls-create">
-          <h2 id="cls-create" className="text-[15px] font-bold flex items-center gap-2"><Link2 size={16} /> {c.createTitle}</h2>
+          <h2 id="cls-create" className="text-[0.9375rem] font-bold flex items-center gap-2"><Link2 size={16} /> {c.createTitle}</h2>
           <div className="grid sm:grid-cols-3 gap-3">
-            <label className="sm:col-span-3 flex flex-col gap-1 text-[12px]" style={{ color: 'var(--text-secondary)' }}>
+            <label className="sm:col-span-3 flex flex-col gap-1 text-[0.75rem]" style={{ color: 'var(--text-secondary)' }}>
               {c.fieldTitle}
               <input data-testid="cls-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={c.fieldTitlePlaceholder} className={field} style={fieldStyle} />
             </label>
-            <label className="sm:col-span-2 flex flex-col gap-1 text-[12px]" style={{ color: 'var(--text-secondary)' }}>
+            <label className="sm:col-span-2 flex flex-col gap-1 text-[0.75rem]" style={{ color: 'var(--text-secondary)' }}>
               {c.fieldTeacher}
               <input data-testid="cls-teacher" value={teacher} onChange={(e) => setTeacher(e.target.value)} className={field} style={fieldStyle} />
             </label>
-            <label className="flex flex-col gap-1 text-[12px]" style={{ color: 'var(--text-secondary)' }}>
+            <label className="flex flex-col gap-1 text-[0.75rem]" style={{ color: 'var(--text-secondary)' }}>
               {c.fieldDue}
               <input type="date" value={due} onChange={(e) => setDue(e.target.value)} className={field} style={fieldStyle} />
             </label>
           </div>
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <span className="text-[12px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{c.fieldExercises} ({picked.length})</span>
-            <span className="flex gap-3 text-[12px]">
+            <span className="text-[0.75rem] font-semibold" style={{ color: 'var(--text-secondary)' }}>{c.fieldExercises} ({picked.length})</span>
+            <span className="flex gap-3 text-[0.75rem]">
               <button type="button" className="underline" onClick={() => setPicked(EXERCISES.map((e) => e.id))}>{c.selectAll}</button>
               <button type="button" className="underline" onClick={() => setPicked([])}>{c.selectNone}</button>
             </span>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
             {EXERCISES.map((e, i) => (
-              <label key={e.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-[4px] border text-[13px] cursor-pointer" style={{ borderColor: picked.includes(e.id) ? 'var(--accent-primary)' : 'var(--border-subtle)', backgroundColor: picked.includes(e.id) ? 'var(--accent-subtle)' : undefined }}>
+              <label key={e.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-[0.25rem] border text-[0.8125rem] cursor-pointer" style={{ borderColor: picked.includes(e.id) ? 'var(--accent-primary)' : 'var(--border-subtle)', backgroundColor: picked.includes(e.id) ? 'var(--accent-subtle)' : undefined }}>
                 <input type="checkbox" data-testid={`cls-pick-${e.id}`} checked={picked.includes(e.id)} onChange={() => toggle(e.id)} />
                 <span>{String(i + 1).padStart(2, '0')} · {e.title[lang]}</span>
               </label>
             ))}
           </div>
-          {createError && <p className="text-[12.5px]" style={{ color: '#ef4444' }}>{createError}</p>}
+          {createError && <p className="text-[0.7812rem]" style={{ color: '#ef4444' }}>{createError}</p>}
           <div className="flex flex-wrap gap-2 items-center">
-            <button type="button" data-testid="cls-create" onClick={create} className="h-9 px-4 rounded-[4px] text-[13px] font-semibold text-white" style={{ backgroundColor: 'var(--accent-primary)' }}>
+            <button type="button" data-testid="cls-create" onClick={create} className="h-9 px-4 rounded-[0.25rem] text-[0.8125rem] font-semibold text-white" style={{ backgroundColor: 'var(--accent-primary)' }}>
               {c.createLink}
             </button>
           </div>
           {link && (
             <div className="flex flex-col sm:flex-row gap-2">
-              <input data-testid="cls-link" readOnly value={link} onFocus={(e) => e.currentTarget.select()} className={`${field} font-mono text-[12px]`} style={fieldStyle} />
-              <button type="button" onClick={copy} className="h-9 px-3 rounded-[4px] border text-[13px] flex items-center gap-1.5 shrink-0" style={{ borderColor: 'var(--border-subtle)' }}>
+              <input data-testid="cls-link" readOnly value={link} onFocus={(e) => e.currentTarget.select()} className={`${field} font-mono text-[0.75rem]`} style={fieldStyle} />
+              <button type="button" onClick={copy} className="h-9 px-3 rounded-[0.25rem] border text-[0.8125rem] flex items-center gap-1.5 shrink-0" style={{ borderColor: 'var(--border-subtle)' }}>
                 {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? c.copied : c.copyLink}
               </button>
-              <a href={link} target="_blank" rel="noopener noreferrer" className="h-9 px-3 rounded-[4px] border text-[13px] flex items-center gap-1.5 shrink-0" style={{ borderColor: 'var(--border-subtle)' }}>
+              <a href={link} target="_blank" rel="noopener noreferrer" className="h-9 px-3 rounded-[0.25rem] border text-[0.8125rem] flex items-center gap-1.5 shrink-0" style={{ borderColor: 'var(--border-subtle)' }}>
                 <ExternalLink size={14} /> {c.openAsStudent}
               </a>
             </div>
@@ -198,40 +198,40 @@ export default function Classroom() {
 
         <section className={card} style={cardStyle} aria-labelledby="cls-results">
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <h2 id="cls-results" className="text-[15px] font-bold flex items-center gap-2"><FileUp size={16} /> {c.resultsTitle}</h2>
+            <h2 id="cls-results" className="text-[0.9375rem] font-bold flex items-center gap-2"><FileUp size={16} /> {c.resultsTitle}</h2>
             <div className="flex gap-2">
-              <label className="h-9 px-3 rounded-[4px] text-[13px] font-semibold text-white flex items-center gap-1.5 cursor-pointer" style={{ backgroundColor: 'var(--accent-primary)' }}>
+              <label className="h-9 px-3 rounded-[0.25rem] text-[0.8125rem] font-semibold text-white flex items-center gap-1.5 cursor-pointer" style={{ backgroundColor: 'var(--accent-primary)' }}>
                 <FileUp size={14} /> {c.loadFiles}
                 <input data-testid="cls-files" type="file" accept=".json,application/json" multiple className="hidden" onChange={(e) => { void onFiles(e.target.files); e.target.value = ''; }} />
               </label>
               {rows.length > 0 && (
                 <>
-                  <button type="button" onClick={exportCsv} className="h-9 px-3 rounded-[4px] border text-[13px] flex items-center gap-1.5" style={{ borderColor: 'var(--border-subtle)' }}>
+                  <button type="button" onClick={exportCsv} className="h-9 px-3 rounded-[0.25rem] border text-[0.8125rem] flex items-center gap-1.5" style={{ borderColor: 'var(--border-subtle)' }}>
                     <Download size={14} /> {c.exportCsv}
                   </button>
-                  <button type="button" onClick={() => setLoaded([])} className="h-9 px-3 rounded-[4px] border text-[13px] flex items-center gap-1.5" style={{ borderColor: 'var(--border-subtle)' }}>
+                  <button type="button" onClick={() => setLoaded([])} className="h-9 px-3 rounded-[0.25rem] border text-[0.8125rem] flex items-center gap-1.5" style={{ borderColor: 'var(--border-subtle)' }}>
                     <Trash2 size={14} /> {c.clearResults}
                   </button>
                 </>
               )}
             </div>
           </div>
-          <p className="text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>{c.loadHint}</p>
-          {loadErrors.map((e) => <p key={e} className="text-[12.5px]" style={{ color: '#ef4444' }}>{e}</p>)}
+          <p className="text-[0.7812rem]" style={{ color: 'var(--text-secondary)' }}>{c.loadHint}</p>
+          {loadErrors.map((e) => <p key={e} className="text-[0.7812rem]" style={{ color: '#ef4444' }}>{e}</p>)}
           {assignments.length > 1 && (
-            <label className="flex items-center gap-2 text-[12.5px]">
+            <label className="flex items-center gap-2 text-[0.7812rem]">
               {c.assignment}
-              <select value={currentId} onChange={(e) => setSelectedAssignment(e.target.value)} className="h-8 px-2 rounded-[4px] border" style={fieldStyle}>
+              <select value={currentId} onChange={(e) => setSelectedAssignment(e.target.value)} className="h-8 px-2 rounded-[0.25rem] border" style={fieldStyle}>
                 {assignments.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
               </select>
             </label>
           )}
           {rows.length === 0 ? (
-            <p className="text-[13px] italic" style={{ color: 'var(--text-muted)' }}>{c.noResults}</p>
+            <p className="text-[0.8125rem] italic" style={{ color: 'var(--text-muted)' }}>{c.noResults}</p>
           ) : (
             <>
-              <div className="overflow-x-auto border rounded-[4px]" style={{ borderColor: 'var(--border-subtle)' }}>
-                <table data-testid="cls-table" className="w-full text-[12.5px] border-collapse">
+              <div className="overflow-x-auto border rounded-[0.25rem]" style={{ borderColor: 'var(--border-subtle)' }}>
+                <table data-testid="cls-table" className="w-full text-[0.7812rem] border-collapse">
                   <thead style={{ backgroundColor: 'var(--bg-panel)', color: 'var(--text-secondary)' }}>
                     <tr>
                       <th className="px-2.5 py-2 text-left">{c.student}</th>
@@ -262,10 +262,10 @@ export default function Classroom() {
                   </tbody>
                 </table>
               </div>
-              <p className="text-[13px]"><b>{c.classAverage}:</b> {avg}% · {rows.length} {c.student.toLowerCase()}</p>
+              <p className="text-[0.8125rem]"><b>{c.classAverage}:</b> {avg}% · {rows.length} {c.student.toLowerCase()}</p>
             </>
           )}
-          <p className="text-[11.5px]" style={{ color: 'var(--text-muted)' }}>{c.checksumNote}</p>
+          <p className="text-[0.7188rem]" style={{ color: 'var(--text-muted)' }}>{c.checksumNote}</p>
         </section>
       </div>
     </div>

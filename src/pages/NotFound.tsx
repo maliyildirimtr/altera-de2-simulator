@@ -30,7 +30,7 @@ export default function NotFound() {
             <li key={l.to}>
               <Link
                 to={l.to}
-                className="inline-flex px-3 py-1.5 rounded-[4px] border text-sm font-medium transition-colors hover:bg-[var(--bg-hover)]"
+                className="inline-flex px-3 py-1.5 rounded-[0.25rem] border text-sm font-medium transition-colors hover:bg-[var(--bg-hover)]"
                 style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
               >
                 {l.label}

@@ -104,14 +104,14 @@ export const TruthTableDrawer: React.FC<TruthTableDrawerProps> = ({
         <div className="flex items-center gap-2 min-w-0">
           <Table2 size={13} className="text-blue-500 shrink-0" />
           <span
-            className="text-[11px] font-bold uppercase tracking-wider truncate"
+            className="text-[0.6875rem] font-bold uppercase tracking-wider truncate"
             style={{ color: 'var(--text-muted)' }}
           >
             {t("Truth Table")}
           </span>
           {hasData && (
             <span
-              className="text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0 border font-medium"
+              className="text-[0.625rem] px-1.5 py-0.5 rounded font-mono shrink-0 border font-medium"
               style={{
                 backgroundColor: 'var(--bg-surface)',
                 borderColor: 'var(--border-subtle)',
@@ -126,7 +126,7 @@ export const TruthTableDrawer: React.FC<TruthTableDrawerProps> = ({
           data-testid="truth-table-close-btn"
           onClick={onClose}
           title={t("Close Truth Table")}
-          className="p-1 rounded-[4px] hover:bg-[var(--bg-hover)] transition-colors"
+          className="p-1 rounded-[0.25rem] hover:bg-[var(--bg-hover)] transition-colors"
           style={{ color: 'var(--text-muted)' }}
         >
           <X size={14} />

@@ -18,7 +18,7 @@ export const DE2Board3DPlaceholder: React.FC = () => (
     aria-label="3D board view is not available yet"
   >
     <div
-      className="max-w-[360px] flex flex-col items-center text-center gap-3 rounded-[6px] border px-6 py-7"
+      className="max-w-[22.5rem] flex flex-col items-center text-center gap-3 rounded-[0.375rem] border px-6 py-7"
       style={{
         backgroundColor: 'var(--bg-surface)',
         borderColor: 'var(--border-subtle)',
@@ -33,7 +33,7 @@ export const DE2Board3DPlaceholder: React.FC = () => (
         Not available yet. The renderer architecture is in place — the 3D view will read the same
         DE2 layout and the same simulation state as the 2D and 2.5D views.
       </p>
-      <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+      <p className="text-[0.6875rem]" style={{ color: 'var(--text-muted)' }}>
         Switch to 2D or 2.5D to continue working.
       </p>
     </div>

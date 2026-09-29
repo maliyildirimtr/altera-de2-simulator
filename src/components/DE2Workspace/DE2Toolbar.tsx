@@ -82,7 +82,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
 
   return (
     <header
-      className="h-[42px] w-full px-3 flex items-center justify-between shrink-0 select-none z-20 text-xs border-b transition-colors relative"
+      className="h-[2.625rem] w-full px-3 flex items-center justify-between shrink-0 select-none z-20 text-xs border-b transition-colors relative"
       style={{
         backgroundColor: 'var(--bg-toolbar)',
         borderColor: 'var(--border-subtle)',
@@ -94,7 +94,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
         <button
           onClick={onToggleProjectPanel}
-          className="w-[28px] h-[28px] sm:w-[30px] sm:h-[30px] rounded-[4px] border transition-colors hidden sm:flex items-center justify-center"
+          className="w-[1.75rem] h-[1.75rem] sm:w-[1.875rem] sm:h-[1.875rem] rounded-[0.25rem] border transition-colors hidden sm:flex items-center justify-center"
           style={{
             color: projectPanelOpen ? 'var(--accent-primary)' : 'var(--text-secondary)',
             backgroundColor: projectPanelOpen ? 'var(--accent-subtle)' : 'transparent',
@@ -108,7 +108,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
 
         <div className="flex items-center gap-1.5 sm:gap-2">
           <div
-            className="flex items-center gap-1 px-2 h-[26px] rounded-[4px] border text-[11px] font-semibold select-none"
+            className="flex items-center gap-1 px-2 h-[1.625rem] rounded-[0.25rem] border text-[0.6875rem] font-semibold select-none"
             style={{
               backgroundColor: 'var(--accent-subtle)',
               borderColor: 'var(--accent-border)',
@@ -123,7 +123,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
           <div className="hidden lg:flex items-center gap-2">
             <span style={{ color: 'var(--border-strong)' }}>/</span>
             <span
-              className="font-mono font-medium max-w-[120px] truncate text-[11px]"
+              className="font-mono font-medium max-w-[7.5rem] truncate text-[0.6875rem]"
               style={{ color: 'var(--text-muted)' }}
               title={hasHdl ? 'main.sv' : '(no source)'}
             >
@@ -152,7 +152,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
           />
           <span
             data-testid="engine-status-label"
-            className="hidden xl:inline text-[11px] font-semibold"
+            className="hidden xl:inline text-[0.6875rem] font-semibold"
             style={{
               color: compileState === 'error'
                 ? 'var(--state-error)'
@@ -168,14 +168,14 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
 
       {/* ── Center: View Mode Switcher (Board / Split / Code) ── */}
       <div
-        className="inline-flex items-center p-0.5 rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-input)] gap-0.5 shrink-0 mx-1 select-none"
+        className="inline-flex items-center p-0.5 rounded-[0.25rem] border border-[var(--border-subtle)] bg-[var(--bg-input)] gap-0.5 shrink-0 mx-1 select-none"
         role="group"
         aria-label={t("Workspace View Mode")}
       >
         <button
           data-testid="view-board"
           onClick={() => onSelectView('board')}
-          className={`flex items-center gap-1.5 px-2 sm:px-2.5 h-[28px] rounded-[3px] text-[11.5px] font-medium transition-colors ${
+          className={`flex items-center gap-1.5 px-2 sm:px-2.5 h-[1.75rem] rounded-[0.1875rem] text-[0.7188rem] font-medium transition-colors ${
             activeView === 'board'
               ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] shadow-xs font-semibold border border-[var(--border-subtle)]'
               : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-transparent'
@@ -191,7 +191,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
         <button
           data-testid="view-split"
           onClick={() => onSelectView('split')}
-          className={`flex items-center gap-1.5 px-2 sm:px-2.5 h-[28px] rounded-[3px] text-[11.5px] font-medium transition-colors ${
+          className={`flex items-center gap-1.5 px-2 sm:px-2.5 h-[1.75rem] rounded-[0.1875rem] text-[0.7188rem] font-medium transition-colors ${
             activeView === 'split'
               ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] shadow-xs font-semibold border border-[var(--border-subtle)]'
               : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-transparent'
@@ -207,7 +207,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
         <button
           data-testid="view-code"
           onClick={() => onSelectView('code')}
-          className={`flex items-center gap-1.5 px-2 sm:px-2.5 h-[28px] rounded-[3px] text-[11.5px] font-medium transition-colors ${
+          className={`flex items-center gap-1.5 px-2 sm:px-2.5 h-[1.75rem] rounded-[0.1875rem] text-[0.7188rem] font-medium transition-colors ${
             activeView === 'code'
               ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] shadow-xs font-semibold border border-[var(--border-subtle)]'
               : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-transparent'
@@ -229,7 +229,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
           <button
             data-testid="de2-open-import"
             onClick={onOpenImport}
-            className="flex items-center gap-1.5 px-2.5 h-[30px] rounded-[4px] border font-medium transition-colors text-xs"
+            className="flex items-center gap-1.5 px-2.5 h-[1.875rem] rounded-[0.25rem] border font-medium transition-colors text-xs"
             style={{
               backgroundColor: 'var(--bg-surface)',
               borderColor: 'var(--border-subtle)',
@@ -253,7 +253,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
             data-testid="de2-compile"
             onClick={onCompile}
             disabled={isCompiling || !hasHdl}
-            className="flex items-center gap-1.5 px-3 h-[30px] rounded-[4px] text-white font-semibold shadow-xs transition-colors disabled:opacity-40 disabled:pointer-events-none text-xs"
+            className="flex items-center gap-1.5 px-3 h-[1.875rem] rounded-[0.25rem] text-white font-semibold shadow-xs transition-colors disabled:opacity-40 disabled:pointer-events-none text-xs"
             style={{
               backgroundColor: 'var(--accent-primary)',
             }}
@@ -279,7 +279,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
               else startAutoSimulation();
             }}
             disabled={!isReady}
-            className={`flex items-center gap-1.5 px-2.5 h-[30px] rounded-[4px] font-semibold transition-colors disabled:opacity-40 disabled:pointer-events-none text-white text-xs ${
+            className={`flex items-center gap-1.5 px-2.5 h-[1.875rem] rounded-[0.25rem] font-semibold transition-colors disabled:opacity-40 disabled:pointer-events-none text-white text-xs ${
               isSimRunning
                 ? 'bg-amber-600 hover:bg-amber-500'
                 : 'bg-emerald-600 hover:bg-emerald-500'
@@ -296,7 +296,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
             data-testid="de2-clock-step"
             onClick={() => tickClock()}
             disabled={!isReady || isSimRunning}
-            className="flex items-center gap-1.5 px-2.5 h-[30px] rounded-[4px] border font-medium transition-colors disabled:opacity-40 disabled:pointer-events-none text-xs"
+            className="flex items-center gap-1.5 px-2.5 h-[1.875rem] rounded-[0.25rem] border font-medium transition-colors disabled:opacity-40 disabled:pointer-events-none text-xs"
             style={{
               backgroundColor: 'var(--bg-surface)',
               borderColor: 'var(--border-subtle)',
@@ -313,7 +313,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
           <button
             data-testid="de2-reset"
             onClick={resetBoard}
-            className="w-[30px] h-[30px] rounded-[4px] flex items-center justify-center transition-colors border border-transparent hover:border-[var(--border-subtle)] hover:bg-[var(--bg-hover)]"
+            className="w-[1.875rem] h-[1.875rem] rounded-[0.25rem] flex items-center justify-center transition-colors border border-transparent hover:border-[var(--border-subtle)] hover:bg-[var(--bg-hover)]"
             style={{ color: 'var(--text-secondary)' }}
             title={t("Reset Board State (Switches, Keys, LEDs, HEX, Clock)")}
             aria-label={t("Reset Board")}
@@ -329,7 +329,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
           {/* Toggle Bottom Console */}
           <button
             onClick={onToggleConsole}
-            className="w-[30px] h-[30px] rounded-[4px] flex items-center justify-center transition-colors border"
+            className="w-[1.875rem] h-[1.875rem] rounded-[0.25rem] flex items-center justify-center transition-colors border"
             style={{
               color: consoleOpen ? 'var(--accent-primary)' : 'var(--text-secondary)',
               backgroundColor: consoleOpen ? 'var(--accent-subtle)' : 'transparent',
@@ -344,7 +344,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
           {/* Toggle Inspector */}
           <button
             onClick={onToggleInspector}
-            className="w-[30px] h-[30px] rounded-[4px] flex items-center justify-center transition-colors border"
+            className="w-[1.875rem] h-[1.875rem] rounded-[0.25rem] flex items-center justify-center transition-colors border"
             style={{
               color: inspectorOpen ? 'var(--accent-primary)' : 'var(--text-secondary)',
               backgroundColor: inspectorOpen ? 'var(--accent-subtle)' : 'transparent',
@@ -361,7 +361,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
             <button
               data-testid="de2-reset-layout"
               onClick={onResetLayout}
-              className="w-[30px] h-[30px] rounded-[4px] flex items-center justify-center transition-colors border border-transparent hover:border-[var(--border-subtle)] hover:bg-[var(--bg-hover)]"
+              className="w-[1.875rem] h-[1.875rem] rounded-[0.25rem] flex items-center justify-center transition-colors border border-transparent hover:border-[var(--border-subtle)] hover:bg-[var(--bg-hover)]"
               style={{
                 color: 'var(--text-secondary)',
               }}
@@ -500,7 +500,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
                     <PanelLeft size={14} style={{ color: 'var(--text-secondary)' }} />
                     <span>{t("Project Panel")}</span>
                   </div>
-                  <span className="text-[10px] font-semibold" style={{ color: 'var(--text-muted)' }}>
+                  <span className="text-[0.625rem] font-semibold" style={{ color: 'var(--text-muted)' }}>
                     {projectPanelOpen ? t("ON") : t("OFF")}
                   </span>
                 </button>
@@ -518,7 +518,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
                     <PanelRight size={14} style={{ color: 'var(--text-secondary)' }} />
                     <span>{t("Inspector Panel")}</span>
                   </div>
-                  <span className="text-[10px] font-semibold" style={{ color: 'var(--text-muted)' }}>
+                  <span className="text-[0.625rem] font-semibold" style={{ color: 'var(--text-muted)' }}>
                     {inspectorOpen ? t("ON") : t("OFF")}
                   </span>
                 </button>
@@ -536,7 +536,7 @@ export const DE2Toolbar: React.FC<DE2ToolbarProps> = ({
                     <Terminal size={14} style={{ color: 'var(--text-secondary)' }} />
                     <span>{t("Console / Messages")}</span>
                   </div>
-                  <span className="text-[10px] font-semibold" style={{ color: 'var(--text-muted)' }}>
+                  <span className="text-[0.625rem] font-semibold" style={{ color: 'var(--text-muted)' }}>
                     {consoleOpen ? t("ON") : t("OFF")}
                   </span>
                 </button>

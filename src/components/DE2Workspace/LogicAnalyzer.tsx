@@ -112,9 +112,9 @@ export function LogicAnalyzer() {
     : triggerStatus === 'done' ? 'Triggered — capture stopped'
     : '';
   const triggerIndex = triggerN === null ? -1 : samples.findIndex((sample) => sample.n === triggerN);
-  const btn = 'flex items-center gap-1 px-2 py-0.5 rounded-[4px] border text-[11px] disabled:opacity-40';
+  const btn = 'flex items-center gap-1 px-2 py-0.5 rounded-[0.25rem] border text-[0.6875rem] disabled:opacity-40';
   const btnStyle = { borderColor: 'var(--border-subtle)', color: 'var(--text-primary)', backgroundColor: 'var(--bg-surface)' };
-  const field = 'px-1.5 py-0.5 rounded-[4px] border text-[11px]';
+  const field = 'px-1.5 py-0.5 rounded-[0.25rem] border text-[0.6875rem]';
   const fieldStyle = { borderColor: 'var(--border-subtle)', color: 'var(--text-primary)', backgroundColor: 'var(--bg-input)' };
 
   return (
@@ -123,7 +123,7 @@ export function LogicAnalyzer() {
         <button
           type="button"
           onClick={() => setCapturePaused(!paused)}
-          className="flex items-center gap-1 px-2 py-0.5 rounded-[4px] border text-[11px]"
+          className="flex items-center gap-1 px-2 py-0.5 rounded-[0.25rem] border text-[0.6875rem]"
           style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-primary)', backgroundColor: 'var(--bg-surface)' }}
           data-testid="analyzer-pause"
         >
@@ -133,17 +133,17 @@ export function LogicAnalyzer() {
         <button
           type="button"
           onClick={clearCapture}
-          className="flex items-center gap-1 px-2 py-0.5 rounded-[4px] border text-[11px]"
+          className="flex items-center gap-1 px-2 py-0.5 rounded-[0.25rem] border text-[0.6875rem]"
           style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-primary)', backgroundColor: 'var(--bg-surface)' }}
           data-testid="analyzer-clear"
         >
           <Trash2 size={11} /> {t("Clear")}
         </button>
-        <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+        <span className="text-[0.6875rem]" style={{ color: 'var(--text-muted)' }}>
           {samples.length} / {MAX_SAMPLES} samples · click a name to hide it
         </span>
         {Object.keys(hidden).some((k) => hidden[k]) && (
-          <button type="button" className="text-[11px] underline" style={{ color: 'var(--text-secondary)' }} onClick={() => setHidden({})}>
+          <button type="button" className="text-[0.6875rem] underline" style={{ color: 'var(--text-secondary)' }} onClick={() => setHidden({})}>
             Show all
           </button>
         )}
@@ -158,7 +158,7 @@ export function LogicAnalyzer() {
 
       <div className="flex items-center gap-2 flex-wrap font-sans" data-testid="analyzer-trigger">
         <Crosshair size={12} style={{ color: 'var(--text-muted)' }} />
-        <span className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>{t("Trigger")}</span>
+        <span className="text-[0.6875rem]" style={{ color: 'var(--text-secondary)' }}>{t("Trigger")}</span>
         <select
           value={armed ? armed.signal : selectedSignal}
           disabled={!!armed}
@@ -200,7 +200,7 @@ export function LogicAnalyzer() {
           {armed ? t("Disarm") : t("Arm")}
         </button>
         {triggerText && (
-          <span className="text-[11px]" data-testid="analyzer-trigger-status" data-status={triggerStatus} style={{ color: triggerStatus === 'armed' ? 'var(--state-warning)' : 'var(--state-success)' }}>
+          <span className="text-[0.6875rem]" data-testid="analyzer-trigger-status" data-status={triggerStatus} style={{ color: triggerStatus === 'armed' ? 'var(--state-warning)' : 'var(--state-success)' }}>
             {triggerText}
           </span>
         )}

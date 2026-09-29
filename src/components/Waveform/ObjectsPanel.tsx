@@ -71,12 +71,12 @@ export function ObjectsPanel({
             borderColor: 'var(--accent-border)',
           }}
         >
-          <span className="text-[10px] font-mono text-[var(--accent-primary)] font-semibold">
+          <span className="text-[0.625rem] font-mono text-[var(--accent-primary)] font-semibold">
             {selectedObjects.length} selected
           </span>
           <button
             onClick={handleAddSelected}
-            className="text-[10px] bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white px-2 py-0.5 rounded font-medium shadow-xs transition-colors"
+            className="text-[0.625rem] bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white px-2 py-0.5 rounded font-medium shadow-xs transition-colors"
           >
             + Add to Wave
           </button>
@@ -91,7 +91,7 @@ export function ObjectsPanel({
         >
           <Layers size={24} className="mb-2.5 opacity-30 text-blue-400" />
           <p className="font-semibold text-slate-300 mb-1 text-xs">{t("No signals loaded")}</p>
-          <p className="text-[11px] text-slate-500 max-w-[210px] leading-relaxed">
+          <p className="text-[0.6875rem] text-slate-500 max-w-[13.125rem] leading-relaxed">
             Compile an HDL project or import a VCD file to inspect design signals.
           </p>
         </div>
@@ -99,7 +99,7 @@ export function ObjectsPanel({
         <>
           {/* ── Responsive Column Header Row ── */}
           <div
-            className="grid grid-cols-[minmax(80px,1.5fr)_minmax(50px,1fr)_minmax(50px,1fr)] border-b text-[10px] font-bold tracking-wider uppercase h-6 shrink-0 px-2 items-center gap-1.5"
+            className="grid grid-cols-[minmax(80px,1.5fr)_minmax(50px,1fr)_minmax(50px,1fr)] border-b text-[0.625rem] font-bold tracking-wider uppercase h-6 shrink-0 px-2 items-center gap-1.5"
             style={{
               backgroundColor: 'var(--bg-panel-header)',
               borderColor: 'var(--border-subtle)',
@@ -113,7 +113,7 @@ export function ObjectsPanel({
 
           {/* ── Responsive Signal Rows ── */}
           <div
-            className="flex-1 overflow-auto text-slate-200 font-mono text-[11px] py-0.5"
+            className="flex-1 overflow-auto text-slate-200 font-mono text-[0.6875rem] py-0.5"
             style={{ backgroundColor: 'var(--bg-panel)' }}
           >
             {signals.map((sig, idx) => {
@@ -139,21 +139,21 @@ export function ObjectsPanel({
                       {sig.name.split('.').pop()}
                     </span>
                     {sig.width > 1 && (
-                      <span className="text-[9px] text-slate-500 shrink-0">[{sig.width - 1}:0]</span>
+                      <span className="text-[0.5625rem] text-slate-500 shrink-0">[{sig.width - 1}:0]</span>
                     )}
                   </div>
 
                   {/* Value */}
-                  <div className="min-w-0 overflow-hidden font-semibold text-yellow-300 truncate text-[11px] tabular-nums">
+                  <div className="min-w-0 overflow-hidden font-semibold text-yellow-300 truncate text-[0.6875rem] tabular-nums">
                     {getSignalValueAtTime(sig, currentTime)}
                   </div>
 
                   {/* Type & Quick Add */}
-                  <div className="flex items-center justify-between min-w-0 overflow-hidden text-slate-400 text-[10px] uppercase">
+                  <div className="flex items-center justify-between min-w-0 overflow-hidden text-slate-400 text-[0.625rem] uppercase">
                     <span className="truncate">{sig.type}</span>
                     <button
                       onClick={e => handleAddOne(e, sig.name)}
-                      className="opacity-0 group-hover:opacity-100 shrink-0 px-1.5 py-0.5 bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white rounded text-[9px] cursor-pointer shadow-xs transition-opacity ml-1 font-sans"
+                      className="opacity-0 group-hover:opacity-100 shrink-0 px-1.5 py-0.5 bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white rounded text-[0.5625rem] cursor-pointer shadow-xs transition-opacity ml-1 font-sans"
                       title={t("Add to Waveform")}
                     >
                       + Add

@@ -27,6 +27,7 @@ import { EXAMPLES_LIST, getExampleById } from '../examples/registry';
 
 import { useT } from '../i18n/toolText';
 import { useI18n } from '../i18n/I18nProvider';
+import { useUiScale } from '../lib/uiScale';
 const STORAGE_KEY = 'de2_workspace_layout_v1';
 
 export type DE2ViewMode = 'board' | 'split' | 'code';
@@ -103,6 +104,8 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
   const [isInspectorOpen, setIsInspectorOpen] = useState(true);
   const [isConsoleOpen, setIsConsoleOpen] = useState(false);
   const [report, setReport] = useState<{ open: boolean; title: string }>({ open: false, title: '' });
+  // Panel widths are stored at 1x and scaled with the UI (large monitors).
+  const ui = useUiScale();
 
   const persistLayout = useCallback((updates?: Partial<WorkspaceLayout>) => {
     setLayout(prev => {
@@ -407,7 +410,7 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
         {/* Left: Project Panel */}
         <ProjectPanel
           isOpen={isProjectOpen}
-          width={layout.projectWidth}
+          width={Math.round(layout.projectWidth * ui)}
           onToggle={() => setIsProjectOpen(false)}
           onOpenImport={() => setUploaderOpen(true)}
           activeView={activeView}
@@ -428,7 +431,7 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
             onResize={(delta) => {
               setLayout(prev => ({
                 ...prev,
-                projectWidth: Math.min(360, Math.max(170, prev.projectWidth + delta)),
+                projectWidth: Math.min(360, Math.max(170, prev.projectWidth + delta / ui)),
               }));
             }}
             onResizeEnd={() => persistLayout()}
@@ -515,7 +518,7 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
               // Dragging left (negative delta) increases inspector width
               setLayout(prev => ({
                 ...prev,
-                inspectorWidth: Math.min(450, Math.max(240, prev.inspectorWidth - delta)),
+                inspectorWidth: Math.min(450, Math.max(240, prev.inspectorWidth - delta / ui)),
               }));
             }}
             onResizeEnd={() => persistLayout()}
@@ -529,7 +532,7 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
         {/* Right: Inspector Panel */}
         <InspectorPanel
           isOpen={isInspectorOpen}
-          width={layout.inspectorWidth}
+          width={Math.round(layout.inspectorWidth * ui)}
           pinMappingHeight={layout.pinMappingHeight}
           onPinMappingResize={(delta) => {
             setLayout(prev => ({

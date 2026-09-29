@@ -478,7 +478,7 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
         actionsSlot={
           <>
             <ShareButton
-              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-xs font-medium border transition-colors shadow-xs"
+              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-[0.25rem] text-xs font-medium border transition-colors shadow-xs"
               labelClassName="hidden 2xl:inline"
               getPayload={() => ({ v: 1, tool: 'schematic', files: projectFilesRef.current })}
               onMessage={(msg, kind) => { if (kind === 'error') setAlertMessage(msg); }}
@@ -491,7 +491,7 @@ export default function SchematicPage({ isDarkMode }: { isDarkMode: boolean }) {
                 onClick={() => exportSchematic(fmt)}
                 disabled={!circuitData || synthesisStatus === 'error'}
                 title={`Download the schematic as ${fmt.toUpperCase()}`}
-                className="hidden xl:flex items-center gap-1.5 px-2 py-1 rounded-[4px] text-xs font-medium border transition-colors shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
+                className="hidden xl:flex items-center gap-1.5 px-2 py-1 rounded-[0.25rem] text-xs font-medium border transition-colors shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
               >
                 <ImageDown size={13} />

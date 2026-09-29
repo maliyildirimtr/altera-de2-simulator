@@ -198,7 +198,7 @@ export const ImportDialog: React.FC<ImportDialogProps> = ({
           {/* Staged Files List */}
           {stagedFiles.length > 0 && (
             <div className="space-y-1.5">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              <span className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">
                 Ready for Import ({stagedFiles.length})
               </span>
               <div className="max-h-40 overflow-y-auto border border-[#1e293b] rounded-md bg-[#080d18] divide-y divide-[#1e293b]">
@@ -212,7 +212,7 @@ export const ImportDialog: React.FC<ImportDialogProps> = ({
                       )}
                       <span className="font-mono text-slate-200 truncate">{file.name}</span>
                       <span
-                        className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-semibold ${
+                        className={`text-[0.625rem] px-1.5 py-0.5 rounded uppercase font-semibold ${
                           file.type === 'hdl'
                             ? 'bg-blue-500/20 text-blue-300'
                             : 'bg-emerald-500/20 text-emerald-300'

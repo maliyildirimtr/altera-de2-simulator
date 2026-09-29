@@ -4,7 +4,7 @@ export function RouteLoading() {
     <div
       role="status"
       aria-live="polite"
-      className="flex-1 flex items-center justify-center text-[13px]"
+      className="flex-1 flex items-center justify-center text-[0.8125rem]"
       style={{ color: 'var(--text-muted)' }}
     >
       Loading…

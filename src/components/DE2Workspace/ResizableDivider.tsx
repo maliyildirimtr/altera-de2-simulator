@@ -184,8 +184,8 @@ export const ResizableDivider: React.FC<ResizableDividerProps> = ({
         className={`
           absolute
           ${isVertical 
-            ? 'top-0 bottom-0 -left-[5px] w-[11px] cursor-col-resize' 
-            : 'left-0 right-0 -top-[5px] h-[11px] cursor-row-resize'}
+            ? 'top-0 bottom-0 -left-[0.3125rem] w-[0.6875rem] cursor-col-resize' 
+            : 'left-0 right-0 -top-[0.3125rem] h-[0.6875rem] cursor-row-resize'}
         `}
       />
     </div>

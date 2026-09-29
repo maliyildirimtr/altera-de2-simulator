@@ -122,9 +122,9 @@ export default function KMap() {
     }
   };
 
-  const card = 'rounded-[6px] border p-4 flex flex-col gap-3';
+  const card = 'rounded-[0.375rem] border p-4 flex flex-col gap-3';
   const cardStyle = { borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' };
-  const btn = 'h-8 px-3 rounded-[4px] border text-[12.5px] font-medium flex items-center gap-1.5 hover:bg-[var(--bg-hover)]';
+  const btn = 'h-8 px-3 rounded-[0.25rem] border text-[0.7812rem] font-medium flex items-center gap-1.5 hover:bg-[var(--bg-hover)]';
   const btnStyle = { borderColor: 'var(--border-subtle)', color: 'var(--text-primary)', backgroundColor: 'var(--bg-surface)' };
   const cellText = (v: Cell) => (v === 2 ? 'X' : String(v));
 
@@ -133,47 +133,47 @@ export default function KMap() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 flex flex-col gap-4">
         <header>
           <h1 className="text-2xl font-bold">{k.title}</h1>
-          <p className="text-[14px] mt-1 max-w-3xl" style={{ color: 'var(--text-secondary)' }}>{k.lead}</p>
+          <p className="text-[0.875rem] mt-1 max-w-3xl" style={{ color: 'var(--text-secondary)' }}>{k.lead}</p>
         </header>
 
         <section className={card} style={cardStyle}>
-          <label className="text-[12.5px] font-semibold" htmlFor="kmap-expr">{k.expression}</label>
+          <label className="text-[0.7812rem] font-semibold" htmlFor="kmap-expr">{k.expression}</label>
           <div className="flex gap-2 flex-wrap">
             <input
               id="kmap-expr"
               data-testid="kmap-expr"
               value={expr}
               onChange={(e) => applyExpression(e.target.value)}
-              className="flex-1 min-w-[240px] h-10 px-3 rounded-[4px] border font-mono text-[15px]"
+              className="flex-1 min-w-[15rem] h-10 px-3 rounded-[0.25rem] border font-mono text-[0.9375rem]"
               style={{ borderColor: error ? '#ef4444' : 'var(--border-subtle)', backgroundColor: 'var(--bg-panel)', color: 'var(--text-primary)' }}
               spellCheck={false}
             />
-            <label className="flex items-center gap-2 text-[12.5px]">
+            <label className="flex items-center gap-2 text-[0.7812rem]">
               {k.variables}
-              <select value={n} onChange={(e) => setVarCount(Number(e.target.value))} className="h-10 px-2 rounded-[4px] border" style={btnStyle} data-testid="kmap-nvars">
+              <select value={n} onChange={(e) => setVarCount(Number(e.target.value))} className="h-10 px-2 rounded-[0.25rem] border" style={btnStyle} data-testid="kmap-nvars">
                 {[2, 3, 4].map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </label>
           </div>
-          <p className="text-[11.5px]" style={{ color: error ? '#ef4444' : 'var(--text-muted)' }}>{error || k.syntax}</p>
+          <p className="text-[0.7188rem]" style={{ color: error ? '#ef4444' : 'var(--text-muted)' }}>{error || k.syntax}</p>
         </section>
 
         <div className="grid lg:grid-cols-2 gap-4">
           {/* K-map */}
           <section className={card} style={cardStyle}>
-            <h2 className="text-[14px] font-bold">{k.kmap}</h2>
+            <h2 className="text-[0.875rem] font-bold">{k.kmap}</h2>
             <div className="overflow-x-auto">
-              <table data-testid="kmap-grid" className="border-collapse font-mono text-[14px]">
+              <table data-testid="kmap-grid" className="border-collapse font-mono text-[0.875rem]">
                 <thead>
                   <tr>
-                    <th className="px-2 py-1 text-[11px] text-right" style={{ color: 'var(--text-muted)' }}>{rowVarNames}\{colVarNames}</th>
-                    {layout.cols.map((c) => <th key={c} className="px-3 py-1 text-[12px]" style={{ color: 'var(--text-secondary)' }}>{bitsOf(c, layout.colVars)}</th>)}
+                    <th className="px-2 py-1 text-[0.6875rem] text-right" style={{ color: 'var(--text-muted)' }}>{rowVarNames}\{colVarNames}</th>
+                    {layout.cols.map((c) => <th key={c} className="px-3 py-1 text-[0.75rem]" style={{ color: 'var(--text-secondary)' }}>{bitsOf(c, layout.colVars)}</th>)}
                   </tr>
                 </thead>
                 <tbody>
                   {layout.rows.map((r) => (
                     <tr key={r}>
-                      <th className="px-2 py-1 text-[12px] text-right" style={{ color: 'var(--text-secondary)' }}>{bitsOf(r, layout.rowVars)}</th>
+                      <th className="px-2 py-1 text-[0.75rem] text-right" style={{ color: 'var(--text-secondary)' }}>{bitsOf(r, layout.rowVars)}</th>
                       {layout.cols.map((c) => {
                         const m = cellMinterm(n, r, c);
                         const groups = cover.map((p, gi) => (covers(p, m) ? gi : -1)).filter((gi) => gi >= 0);
@@ -184,12 +184,12 @@ export default function KMap() {
                               type="button"
                               data-testid={`kmap-cell-${m}`}
                               onClick={() => { cycle(m); setExpr(''); }}
-                              className="w-14 h-14 border text-[18px] font-bold relative"
+                              className="w-14 h-14 border text-[1.125rem] font-bold relative"
                               style={{ borderColor: 'var(--border-subtle)', boxShadow: shadow || undefined, color: cells[m] === 1 ? 'var(--text-primary)' : 'var(--text-muted)', backgroundColor: 'var(--bg-panel)' }}
                               title={`m${m} (${vars.map((v, i) => `${v}=${(m >> (n - 1 - i)) & 1}`).join(', ')})`}
                             >
                               {cellText(cells[m])}
-                              <span className="absolute left-1 top-0.5 text-[9px] font-normal" style={{ color: 'var(--text-muted)' }}>{m}</span>
+                              <span className="absolute left-1 top-0.5 text-[0.5625rem] font-normal" style={{ color: 'var(--text-muted)' }}>{m}</span>
                             </button>
                           </td>
                         );
@@ -199,13 +199,13 @@ export default function KMap() {
                 </tbody>
               </table>
             </div>
-            <p className="text-[11.5px]" style={{ color: 'var(--text-muted)' }}>{k.cellHint}</p>
+            <p className="text-[0.7188rem]" style={{ color: 'var(--text-muted)' }}>{k.cellHint}</p>
           </section>
 
           {/* Result */}
           <section className={card} style={cardStyle}>
-            <h2 className="text-[14px] font-bold">{k.result}</h2>
-            <p className="font-mono text-[18px]" data-testid="kmap-sop">
+            <h2 className="text-[0.875rem] font-bold">{k.result}</h2>
+            <p className="font-mono text-[1.125rem]" data-testid="kmap-sop">
               y = {cover.length === 0 ? '0' : cover.map((p, gi) => (
                 <span key={gi}>
                   {gi > 0 && ' + '}
@@ -213,7 +213,7 @@ export default function KMap() {
                 </span>
               ))}
             </p>
-            <p className="text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>
+            <p className="text-[0.7812rem]" style={{ color: 'var(--text-secondary)' }}>
               {fmt(k.stats, { terms: cover.length, literals })} · Σm({ones.join(', ') || '—'}){dcs.length ? ` + d(${dcs.join(', ')})` : ''}
             </p>
             <div className="flex gap-2 flex-wrap">
@@ -221,15 +221,15 @@ export default function KMap() {
               <button type="button" className={btn} style={btnStyle} onClick={runOnDe2} data-testid="kmap-to-de2"><Cpu size={13} /> {k.toDe2}</button>
               <button type="button" className={btn} style={btnStyle} onClick={copy}><Copy size={13} /> {copied ? k.copied : k.copyVerilog}</button>
             </div>
-            <pre className="text-[12px] p-2 rounded-[4px] border overflow-auto font-mono" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-panel)' }}>{verilog}</pre>
+            <pre className="text-[0.75rem] p-2 rounded-[0.25rem] border overflow-auto font-mono" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-panel)' }}>{verilog}</pre>
           </section>
         </div>
 
         {/* Truth table */}
         <section className={card} style={cardStyle}>
-          <h2 className="text-[14px] font-bold">{k.truthTable}</h2>
+          <h2 className="text-[0.875rem] font-bold">{k.truthTable}</h2>
           <div className="overflow-x-auto">
-            <table data-testid="kmap-truth" className="font-mono text-[13px] border-collapse">
+            <table data-testid="kmap-truth" className="font-mono text-[0.8125rem] border-collapse">
               <thead>
                 <tr>
                   <th className="px-2 py-1 text-left" style={{ color: 'var(--text-muted)' }}>m</th>
@@ -243,7 +243,7 @@ export default function KMap() {
                     <td className="px-2 py-0.5" style={{ color: 'var(--text-muted)' }}>{m}</td>
                     {bitsOf(m, n).split('').map((b, i) => <td key={i} className="px-2 py-0.5 text-center">{b}</td>)}
                     <td className="px-1 py-0.5" style={{ borderLeft: '1px solid var(--border-subtle)' }}>
-                      <button type="button" onClick={() => { cycle(m); setExpr(''); }} className="w-8 h-6 rounded-[3px] font-bold" style={{ backgroundColor: v === 1 ? 'rgba(34,197,94,0.18)' : v === 2 ? 'rgba(217,119,6,0.15)' : 'transparent', color: v === 1 ? '#16a34a' : v === 2 ? '#d97706' : 'var(--text-muted)' }}>{cellText(v)}</button>
+                      <button type="button" onClick={() => { cycle(m); setExpr(''); }} className="w-8 h-6 rounded-[0.1875rem] font-bold" style={{ backgroundColor: v === 1 ? 'rgba(34,197,94,0.18)' : v === 2 ? 'rgba(217,119,6,0.15)' : 'transparent', color: v === 1 ? '#16a34a' : v === 2 ? '#d97706' : 'var(--text-muted)' }}>{cellText(v)}</button>
                     </td>
                   </tr>
                 ))}

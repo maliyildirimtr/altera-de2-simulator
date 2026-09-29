@@ -69,7 +69,7 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
             <span className="font-medium">{t("Console")}</span>
             {messages.length > 0 && (
               <span
-                className="text-[10px] font-mono px-1.5 py-0.2 rounded"
+                className="text-[0.625rem] font-mono px-1.5 py-0.2 rounded"
                 style={{
                   backgroundColor: 'var(--bg-surface)',
                   color: 'var(--text-muted)',
@@ -94,7 +94,7 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
             <AlertCircle size={13} className={compileError ? 'text-red-500' : 'text-[var(--text-muted)]'} />
             <span className="font-medium">{t("Problems")}</span>
             {compileError && (
-              <span className="text-[10px] font-mono bg-red-500/10 text-red-500 px-1.5 py-0.2 rounded border border-red-500/20 font-semibold">
+              <span className="text-[0.625rem] font-mono bg-red-500/10 text-red-500 px-1.5 py-0.2 rounded border border-red-500/20 font-semibold">
                 1
               </span>
             )}
@@ -126,7 +126,7 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
         </div>
         <button
           onClick={onToggle}
-          className="p-1 rounded-[4px] hover:bg-[var(--bg-hover)] transition-colors"
+          className="p-1 rounded-[0.25rem] hover:bg-[var(--bg-hover)] transition-colors"
           style={{ color: 'var(--text-muted)' }}
           title={t("Expand Panel")}
         >
@@ -158,7 +158,7 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
           <button
             data-testid="console-tab-console"
             onClick={() => setActiveTab('console')}
-            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-[4px] transition-colors ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-[0.25rem] transition-colors ${
               activeTab === 'console'
                 ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
                 : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
@@ -168,7 +168,7 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
             <span>{t("Console")}</span>
             {messages.length > 0 && (
               <span
-                className="text-[10px] font-mono px-1 rounded ml-1"
+                className="text-[0.625rem] font-mono px-1 rounded ml-1"
                 style={{
                   backgroundColor: 'var(--bg-surface)',
                   color: 'var(--text-muted)',
@@ -183,7 +183,7 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
           <button
             data-testid="console-tab-problems"
             onClick={() => setActiveTab('problems')}
-            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-[4px] transition-colors ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-[0.25rem] transition-colors ${
               activeTab === 'problems'
                 ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
                 : compileError
@@ -194,7 +194,7 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
             <AlertCircle size={13} className={compileError ? 'text-red-500' : 'text-[var(--text-muted)]'} />
             <span>{t("Problems")}</span>
             {compileError && (
-              <span className="text-[10px] font-mono bg-red-500/10 text-red-500 px-1.5 rounded ml-1 border border-red-500/20 font-semibold">
+              <span className="text-[0.625rem] font-mono bg-red-500/10 text-red-500 px-1.5 rounded ml-1 border border-red-500/20 font-semibold">
                 1
               </span>
             )}
@@ -203,7 +203,7 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
           <button
             data-testid="console-tab-analyzer"
             onClick={() => setActiveTab('analyzer')}
-            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-[4px] transition-colors ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-[0.25rem] transition-colors ${
               activeTab === 'analyzer'
                 ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
                 : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
@@ -216,7 +216,7 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
           <button
             data-testid="console-tab-fsm"
             onClick={() => setActiveTab('fsm')}
-            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-[4px] transition-colors ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-[0.25rem] transition-colors ${
               activeTab === 'fsm'
                 ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
                 : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
@@ -230,7 +230,7 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
         <div className="flex items-center gap-1">
           <button
             onClick={onClear}
-            className="p-1 rounded-[4px] hover:bg-[var(--bg-hover)] transition-colors"
+            className="p-1 rounded-[0.25rem] hover:bg-[var(--bg-hover)] transition-colors"
             style={{ color: 'var(--text-muted)' }}
             title={t("Clear Messages")}
             aria-label={t("Clear Messages")}
@@ -239,7 +239,7 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
           </button>
           <button
             onClick={onToggle}
-            className="p-1 rounded-[4px] hover:bg-[var(--bg-hover)] transition-colors"
+            className="p-1 rounded-[0.25rem] hover:bg-[var(--bg-hover)] transition-colors"
             style={{ color: 'var(--text-muted)' }}
             title={t("Collapse Panel")}
             aria-label={t("Collapse Panel")}
@@ -256,7 +256,7 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
             {messages.length > 0 ? (
               messages.map(msg => (
                 <div key={msg.id} className="flex items-start gap-2 leading-relaxed">
-                  <span className="select-none text-[10px]" style={{ color: 'var(--text-muted)' }}>{msg.timestamp}</span>
+                  <span className="select-none text-[0.625rem]" style={{ color: 'var(--text-muted)' }}>{msg.timestamp}</span>
                   {msg.type === 'error' && <AlertCircle size={13} className="text-red-400 shrink-0 mt-0.5" />}
                   {msg.type === 'success' && <CheckCircle2 size={13} className="text-emerald-400 shrink-0 mt-0.5" />}
                   <span
@@ -287,7 +287,7 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
         {activeTab === 'problems' && (
           <div>
             {compileError ? (
-              <div className="p-2.5 rounded-[4px] bg-red-500/10 border border-red-500/30 flex items-start gap-2.5">
+              <div className="p-2.5 rounded-[0.25rem] bg-red-500/10 border border-red-500/30 flex items-start gap-2.5">
                 <AlertCircle size={15} className="text-red-400 shrink-0 mt-0.5" />
                 <div className="flex-1 text-xs">
                   <div className="font-semibold text-red-400 mb-1">{t("Compilation Error")}</div>

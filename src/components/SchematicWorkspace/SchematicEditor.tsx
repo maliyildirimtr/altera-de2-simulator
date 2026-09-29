@@ -5,6 +5,7 @@ import { FileCode, X, Upload } from 'lucide-react';
 import type { ProjectFile } from './SchematicProjectPanel';
 
 import { useT } from '../../i18n/toolText';
+import { uiScale } from '../../lib/uiScale';
 interface SchematicEditorProps {
   files: ProjectFile[];
   activeFileIndex: number;
@@ -113,7 +114,7 @@ export const SchematicEditor: React.FC<SchematicEditorProps> = ({
             <button
               onClick={onClose}
               title={t("Close Editor")}
-              className="p-1 rounded-[4px] hover:bg-[var(--bg-hover)] transition-colors"
+              className="p-1 rounded-[0.25rem] hover:bg-[var(--bg-hover)] transition-colors"
               style={{
                 background: 'transparent',
                 border: 'none',
@@ -165,7 +166,7 @@ export const SchematicEditor: React.FC<SchematicEditorProps> = ({
             }}
             options={{
               minimap: { enabled: false },
-              fontSize: 13,
+              fontSize: Math.round(13 * uiScale()),
               wordWrap: 'on',
               lineNumbers: 'on',
               scrollBeyondLastLine: false,

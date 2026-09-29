@@ -20,6 +20,7 @@ import {
   type ExerciseStat,
 } from '../classroom/assignment';
 import { downloadText } from '../utils/svgExport';
+import { uiScale } from '../lib/uiScale';
 
 const STORAGE_KEY = 'logiclab_exercises_v1';
 const MAX_ROWS_SHOWN = 128;
@@ -78,8 +79,8 @@ function TruthTable({
   const sequential = rows.some((r) => r.cycle !== undefined);
   return (
     <div className="flex flex-col gap-1 min-h-0">
-      <div className="overflow-auto border rounded-[4px]" style={{ borderColor: 'var(--border-subtle)' }}>
-        <table data-testid="exercise-truth-table" className="w-full text-[12px] font-mono border-collapse">
+      <div className="overflow-auto border rounded-[0.25rem]" style={{ borderColor: 'var(--border-subtle)' }}>
+        <table data-testid="exercise-truth-table" className="w-full text-[0.75rem] font-mono border-collapse">
           <thead style={{ backgroundColor: 'var(--bg-panel-header, var(--bg-surface))', color: 'var(--text-secondary)' }}>
             <tr>
               {sequential && <th className={th} style={{ color: 'var(--text-muted)' }}>{t.cycle}</th>}
@@ -133,7 +134,7 @@ function TruthTable({
         </table>
       </div>
       {total > visible.length && (
-        <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+        <p className="text-[0.6875rem]" style={{ color: 'var(--text-muted)' }}>
           {fmt(t.rowsShown, { shown: visible.length, total })}
         </p>
       )}
@@ -148,7 +149,7 @@ function ResultBanner({ result }: { result: GradeResult }) {
     <div
       data-testid="exercise-result"
       data-kind={result.kind}
-      className="rounded-[4px] border px-3 py-2 text-[13px] leading-relaxed"
+      className="rounded-[0.25rem] border px-3 py-2 text-[0.8125rem] leading-relaxed"
       style={{
         borderColor: tone === 'ok' ? 'rgba(34,197,94,0.4)' : tone === 'warn' ? 'rgba(234,179,8,0.4)' : 'rgba(239,68,68,0.4)',
         backgroundColor: tone === 'ok' ? 'rgba(34,197,94,0.08)' : tone === 'warn' ? 'rgba(234,179,8,0.08)' : 'rgba(239,68,68,0.08)',
@@ -315,7 +316,7 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
 
   const graded = result?.kind === 'graded';
   const levelLabel = (e: Exercise) => (e.level === 'beginner' ? t.beginner : t.intermediate);
-  const btn = 'flex items-center gap-1.5 px-3 h-8 rounded-[4px] text-xs font-semibold border transition-colors';
+  const btn = 'flex items-center gap-1.5 px-3 h-8 rounded-[0.25rem] text-xs font-semibold border transition-colors';
 
   return (
     <div
@@ -325,51 +326,51 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
     >
       {/* Exercise list */}
       <aside
-        className="md:w-[260px] shrink-0 border-b md:border-b-0 md:border-r flex flex-col min-h-0"
+        className="md:w-[16.25rem] shrink-0 border-b md:border-b-0 md:border-r flex flex-col min-h-0"
         style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}
       >
         <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
-          <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t.eyebrow}</p>
-          <h1 className="text-[15px] font-bold mt-0.5">{t.title}</h1>
-          <p data-testid="exercise-progress" className="text-[12px] mt-1" style={{ color: 'var(--text-secondary)' }}>
+          <p className="text-[0.6875rem] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t.eyebrow}</p>
+          <h1 className="text-[0.9375rem] font-bold mt-0.5">{t.title}</h1>
+          <p data-testid="exercise-progress" className="text-[0.75rem] mt-1" style={{ color: 'var(--text-secondary)' }}>
             {fmt(t.progress, { done: solvedCount, total: EXERCISES.length })}
           </p>
           {assignmentNote && (
-            <p data-testid="assignment-note" className="text-[11.5px] mt-1.5" style={{ color: 'var(--accent-primary)' }}>{assignmentNote}</p>
+            <p data-testid="assignment-note" className="text-[0.7188rem] mt-1.5" style={{ color: 'var(--accent-primary)' }}>{assignmentNote}</p>
           )}
         </div>
         {active && (
           <div data-testid="assignment-banner" className="px-4 py-3 border-b flex flex-col gap-2" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--accent-subtle)' }}>
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--accent-primary)' }}>{c.assignment}</p>
-              <p data-testid="assignment-title" className="text-[13.5px] font-bold leading-snug">{active.assignment.title}</p>
-              <p className="text-[11.5px]" style={{ color: 'var(--text-secondary)' }}>
+              <p className="text-[0.6875rem] font-semibold uppercase tracking-wider" style={{ color: 'var(--accent-primary)' }}>{c.assignment}</p>
+              <p data-testid="assignment-title" className="text-[0.8438rem] font-bold leading-snug">{active.assignment.title}</p>
+              <p className="text-[0.7188rem]" style={{ color: 'var(--text-secondary)' }}>
                 {[active.assignment.teacher && fmt(c.bannerBy, { teacher: active.assignment.teacher }), active.assignment.due && fmt(c.bannerDue, { date: active.assignment.due })].filter(Boolean).join(' · ')}
               </p>
-              <p className="text-[11.5px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+              <p className="text-[0.7188rem] mt-0.5" style={{ color: 'var(--text-secondary)' }}>
                 {fmt(c.assignedProgress, { done: active.assignment.exercises.filter((id) => progress.solved[id]).length, total: active.assignment.exercises.length })}
               </p>
             </div>
-            <label className="flex flex-col gap-1 text-[11.5px]" style={{ color: 'var(--text-secondary)' }}>
+            <label className="flex flex-col gap-1 text-[0.7188rem]" style={{ color: 'var(--text-secondary)' }}>
               {c.yourName}
               <input
                 data-testid="assignment-student"
                 value={active.student}
                 onChange={(e) => setStudent(e.target.value)}
                 placeholder={c.namePlaceholder}
-                className="h-8 px-2 rounded-[4px] border text-[13px]"
+                className="h-8 px-2 rounded-[0.25rem] border text-[0.8125rem]"
                 style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-panel)', color: 'var(--text-primary)' }}
               />
             </label>
-            <label className="flex items-center gap-1.5 text-[11.5px]" style={{ color: 'var(--text-secondary)' }}>
+            <label className="flex items-center gap-1.5 text-[0.7188rem]" style={{ color: 'var(--text-secondary)' }}>
               <input type="checkbox" checked={onlyAssigned} onChange={(e) => setOnlyAssigned(e.target.checked)} />
               {c.onlyAssigned}
             </label>
-            <button type="button" data-testid="assignment-download" onClick={downloadResult} className="h-8 rounded-[4px] text-xs font-semibold text-white" style={{ backgroundColor: 'var(--accent-primary)' }}>
+            <button type="button" data-testid="assignment-download" onClick={downloadResult} className="h-8 rounded-[0.25rem] text-xs font-semibold text-white" style={{ backgroundColor: 'var(--accent-primary)' }}>
               {c.downloadResult}
             </button>
-            <p className="text-[11px] leading-snug" style={{ color: 'var(--text-muted)' }}>{c.resultHint}</p>
-            <button type="button" onClick={leaveAssignment} className="text-[11px] underline self-start" style={{ color: 'var(--text-secondary)' }}>
+            <p className="text-[0.6875rem] leading-snug" style={{ color: 'var(--text-muted)' }}>{c.resultHint}</p>
+            <button type="button" onClick={leaveAssignment} className="text-[0.6875rem] underline self-start" style={{ color: 'var(--text-secondary)' }}>
               {c.leave}
             </button>
           </div>
@@ -377,7 +378,7 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
         {/* Mobile: compact picker */}
         <div className="md:hidden p-3">
           <select
-            className="w-full h-9 px-2 rounded-[4px] border text-sm"
+            className="w-full h-9 px-2 rounded-[0.25rem] border text-sm"
             style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-panel)', color: 'var(--text-primary)' }}
             value={exercise.id}
             onChange={(e) => select(e.target.value)}
@@ -409,10 +410,10 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
                     <Circle size={15} className="mt-0.5 shrink-0" style={{ color: 'var(--text-muted)' }} />
                   )}
                   <span className="min-w-0">
-                    <span className="block text-[13px] font-medium" style={{ color: active ? 'var(--accent-primary)' : 'var(--text-primary)' }}>
+                    <span className="block text-[0.8125rem] font-medium" style={{ color: active ? 'var(--accent-primary)' : 'var(--text-primary)' }}>
                       {String(i + 1).padStart(2, '0')} · {e.title[lang]}
                     </span>
-                    <span className="block text-[11px]" style={{ color: 'var(--text-muted)' }}>{levelLabel(e)}{e.sequential ? ` · ${t.sequential}` : ''}</span>
+                    <span className="block text-[0.6875rem]" style={{ color: 'var(--text-muted)' }}>{levelLabel(e)}{e.sequential ? ` · ${t.sequential}` : ''}</span>
                   </span>
                 </button>
               </li>
@@ -423,32 +424,32 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
 
       {/* Task + editor + results */}
       <main className="flex-1 min-w-0 min-h-0 flex flex-col lg:flex-row">
-        <section className="flex-1 min-w-0 min-h-[320px] flex flex-col border-b lg:border-b-0 lg:border-r" style={{ borderColor: 'var(--border-subtle)' }}>
+        <section className="flex-1 min-w-0 min-h-[20rem] flex flex-col border-b lg:border-b-0 lg:border-r" style={{ borderColor: 'var(--border-subtle)' }}>
           <div className="px-4 py-3 border-b flex flex-col gap-2" style={{ borderColor: 'var(--border-subtle)' }}>
             <div className="flex items-center gap-2 flex-wrap">
               <h2 data-testid="exercise-title" className="text-base font-bold">{exercise.title[lang]}</h2>
-              <span className="text-[11px] px-1.5 py-0.5 rounded border" style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}>
+              <span className="text-[0.6875rem] px-1.5 py-0.5 rounded border" style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}>
                 {levelLabel(exercise)}
               </span>
               {exercise.sequential && (
-                <span data-testid="exercise-sequential" className="text-[11px] px-1.5 py-0.5 rounded border" style={{ borderColor: 'rgba(96,165,250,0.45)', color: '#60a5fa' }}>
+                <span data-testid="exercise-sequential" className="text-[0.6875rem] px-1.5 py-0.5 rounded border" style={{ borderColor: 'rgba(96,165,250,0.45)', color: '#60a5fa' }}>
                   {t.sequential}
                 </span>
               )}
               {progress.solved[exercise.id] && (
-                <span className="text-[11px] px-1.5 py-0.5 rounded border border-emerald-500/40 text-emerald-500">{t.solved}</span>
+                <span className="text-[0.6875rem] px-1.5 py-0.5 rounded border border-emerald-500/40 text-emerald-500">{t.solved}</span>
               )}
             </div>
-            <p className="text-[13px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+            <p className="text-[0.8125rem] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
               <b style={{ color: 'var(--text-primary)' }}>{t.task}:</b> {exercise.prompt[lang]}
             </p>
             {showHint ? (
-              <p className="text-[12.5px] flex gap-1.5" style={{ color: 'var(--text-secondary)' }}>
+              <p className="text-[0.7812rem] flex gap-1.5" style={{ color: 'var(--text-secondary)' }}>
                 <Lightbulb size={14} className="shrink-0 mt-0.5 text-amber-500" />
                 <span><b>{t.hint}:</b> {exercise.hint[lang]}</span>
               </p>
             ) : (
-              <button type="button" onClick={() => setShowHint(true)} className="self-start text-[12px] underline" style={{ color: 'var(--text-secondary)' }}>
+              <button type="button" onClick={() => setShowHint(true)} className="self-start text-[0.75rem] underline" style={{ color: 'var(--text-secondary)' }}>
                 {t.showHint}
               </button>
             )}
@@ -479,7 +480,7 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
               />
             </div>
           </div>
-          <div className="flex-1 min-h-[240px] relative" data-testid="exercise-editor">
+          <div className="flex-1 min-h-[15rem] relative" data-testid="exercise-editor">
             <Editor
               height="100%"
               language="systemverilog"
@@ -490,14 +491,14 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
                 if (value === undefined) return;
                 setProgress((p) => ({ ...p, code: { ...p.code, [exercise.id]: value } }));
               }}
-              options={{ minimap: { enabled: false }, fontSize: 13, scrollBeyondLastLine: false, tabSize: 4 }}
+              options={{ minimap: { enabled: false }, fontSize: Math.round(13 * uiScale()), scrollBeyondLastLine: false, tabSize: 4 }}
             />
           </div>
         </section>
 
         <section className="lg:w-[42%] min-w-0 min-h-0 flex flex-col gap-3 p-4 overflow-y-auto">
           {result && diagnostics.length > 0 && (
-            <ul data-testid="exercise-diagnostics" className="flex flex-col gap-1 text-[12.5px] leading-snug">
+            <ul data-testid="exercise-diagnostics" className="flex flex-col gap-1 text-[0.7812rem] leading-snug">
               {diagnostics.slice(0, 6).map((dgn, i) => (
                 <li key={i} className="flex gap-2" style={{ color: 'var(--text-secondary)' }}>
                   <span className="font-mono shrink-0" style={{ color: dgn.severity === 'error' ? '#ef4444' : '#eab308' }}>
@@ -509,21 +510,21 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
             </ul>
           )}
           {result ? <ResultBanner result={result} /> : (
-            <p className="text-[12.5px]" style={{ color: 'var(--text-muted)' }}>{t.notChecked}</p>
+            <p className="text-[0.7812rem]" style={{ color: 'var(--text-muted)' }}>{t.notChecked}</p>
           )}
           <div className="flex items-center justify-between gap-2">
-            <h3 className="text-[12px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+            <h3 className="text-[0.75rem] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
               {graded ? t.resultTable : exercise.sequential ? t.goalCycles : t.goalTable}
             </h3>
             {graded && (
-              <label className="flex items-center gap-1.5 text-[12px]" style={{ color: 'var(--text-secondary)' }}>
+              <label className="flex items-center gap-1.5 text-[0.75rem]" style={{ color: 'var(--text-secondary)' }}>
                 <input type="checkbox" checked={onlyMismatches} onChange={(e) => setOnlyMismatches(e.target.checked)} />
                 {t.onlyMismatches}
               </label>
             )}
           </div>
           {exercise.sequential && (
-            <p className="text-[11.5px] -mt-1" style={{ color: 'var(--text-muted)' }}>
+            <p className="text-[0.7188rem] -mt-1" style={{ color: 'var(--text-muted)' }}>
               {fmt(t.sequentialNote, { clock: exercise.sequential.clock })}
             </p>
           )}

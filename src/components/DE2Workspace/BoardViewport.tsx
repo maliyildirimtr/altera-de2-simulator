@@ -86,7 +86,7 @@ function isInteractiveTarget(el: Element | null): boolean {
 }
 
 const CONTROL_BUTTON_CLASS =
-  'p-1 rounded-[3px] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]';
+  'p-1 rounded-[0.1875rem] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]';
 
 export const BoardViewport: React.FC<BoardViewportProps> = ({ isSplitView }) => {
   const t = useT();
@@ -537,7 +537,7 @@ export const BoardViewport: React.FC<BoardViewportProps> = ({ isSplitView }) => 
 
       {/* Floating canvas controls (bottom-right) */}
       <div
-        className="canvas-controls absolute bottom-3 right-3 flex items-center gap-1 rounded-[4px] px-2 py-1 z-20 border shadow-xs select-none"
+        className="canvas-controls absolute bottom-3 right-3 flex items-center gap-1 rounded-[0.25rem] px-2 py-1 z-20 border shadow-xs select-none"
         style={{
           backgroundColor: 'var(--bg-surface)',
           borderColor: 'var(--border-subtle)',
@@ -547,7 +547,7 @@ export const BoardViewport: React.FC<BoardViewportProps> = ({ isSplitView }) => 
       >
         <span
           data-testid="de2-zoom-label"
-          className="text-[11px] font-mono select-none mr-1 font-medium"
+          className="text-[0.6875rem] font-mono select-none mr-1 font-medium"
           style={{ color: 'var(--text-secondary)' }}
         >
           {Math.round(scale * 100)}%

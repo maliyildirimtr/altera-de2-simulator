@@ -71,9 +71,9 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
       }}
     >
       {/* ── Section 1: Project Files & HDL Slots ─────────────────── */}
-      <div className="flex-1 min-h-[180px] flex flex-col border-b border-[var(--border-subtle)] overflow-hidden">
+      <div className="flex-1 min-h-[11.25rem] flex flex-col border-b border-[var(--border-subtle)] overflow-hidden">
         <div
-          className="h-9 px-3 text-[11px] font-bold uppercase tracking-wider border-b flex items-center justify-between shrink-0"
+          className="h-9 px-3 text-[0.6875rem] font-bold uppercase tracking-wider border-b flex items-center justify-between shrink-0"
           style={{
             backgroundColor: 'var(--bg-panel-header)',
             borderColor: 'var(--border-subtle)',
@@ -85,7 +85,7 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
             <span className="truncate">{t("Project Files")}</span>
           </span>
           <span
-            className="text-[10px] px-1.5 py-0.2 rounded font-mono shrink-0 ml-1 border"
+            className="text-[0.625rem] px-1.5 py-0.2 rounded font-mono shrink-0 ml-1 border"
             style={{
               backgroundColor: 'var(--bg-surface)',
               borderColor: 'var(--border-subtle)',
@@ -100,14 +100,14 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
           {/* ── Group 1: Design Sources (Multi-File) ── */}
           <div data-testid="wf-slot-source" className="space-y-1.5 min-w-0">
             <div className="flex items-center justify-between px-1">
-              <span className="text-[10px] font-bold tracking-wider text-[var(--text-muted)] uppercase flex items-center gap-1 min-w-0 truncate">
+              <span className="text-[0.625rem] font-bold tracking-wider text-[var(--text-muted)] uppercase flex items-center gap-1 min-w-0 truncate">
                 <Cpu size={11} className="text-[var(--accent-primary)] shrink-0" />
                 <span className="truncate">{t("Sources")} ({sources.length})</span>
               </span>
               <button
                 data-testid="wf-import-source-btn"
                 onClick={onImportSource}
-                className="text-[11px] text-[var(--accent-primary)] hover:text-[var(--accent-hover)] flex items-center gap-0.5 px-1.5 py-0.5 rounded hover:bg-[var(--bg-hover)] transition-colors"
+                className="text-[0.6875rem] text-[var(--accent-primary)] hover:text-[var(--accent-hover)] flex items-center gap-0.5 px-1.5 py-0.5 rounded hover:bg-[var(--bg-hover)] transition-colors"
                 title={t("Add design source file (.v, .sv)")}
               >
                 <Plus size={11} />
@@ -117,18 +117,18 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
 
             {sources.length === 0 ? (
               <div
-                className="rounded-[4px] border p-3 text-center"
+                className="rounded-[0.25rem] border p-3 text-center"
                 style={{
                   backgroundColor: 'var(--bg-surface)',
                   borderColor: 'var(--border-subtle)',
                 }}
               >
-                <div className="text-[11px] text-[var(--text-muted)] mb-2 font-mono">
+                <div className="text-[0.6875rem] text-[var(--text-muted)] mb-2 font-mono">
                   {t("No design sources loaded")}
                 </div>
                 <button
                   onClick={onImportSource}
-                  className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-[4px] text-xs font-medium border transition-colors shadow-xs"
+                  className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-[0.25rem] text-xs font-medium border transition-colors shadow-xs"
                   style={{
                     backgroundColor: 'var(--bg-panel)',
                     borderColor: 'var(--border-subtle)',
@@ -154,7 +154,7 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
                         if (onSelectSourceFile) onSelectSourceFile(file.id);
                         onSelectSlot('source');
                       }}
-                      className={`group rounded-[4px] border p-2 flex items-center justify-between gap-2 cursor-pointer transition-colors ${
+                      className={`group rounded-[0.25rem] border p-2 flex items-center justify-between gap-2 cursor-pointer transition-colors ${
                         isActive
                           ? 'border-[var(--accent-border)] bg-[var(--accent-subtle)] shadow-xs'
                           : 'border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)]'
@@ -169,10 +169,10 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
                           }`}>
                             {file.name}
                           </div>
-                          <div className="text-[10px] text-[var(--text-muted)] flex items-center gap-1.5">
+                          <div className="text-[0.625rem] text-[var(--text-muted)] flex items-center gap-1.5">
                             <span className="font-mono">{file.content.split('\n').length}L</span>
                             {isActive && (
-                              <span className="text-emerald-400 flex items-center gap-0.5 text-[9px]">
+                              <span className="text-emerald-400 flex items-center gap-0.5 text-[0.5625rem]">
                                 <CheckCircle2 size={8} /> Active
                               </span>
                             )}
@@ -207,14 +207,14 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
           {/* ── Group 2: Testbench (TB) (Quiet informational/neutral styling, zero amber warning color) ── */}
           <div
             data-testid="wf-slot-testbench"
-            className={`rounded-[4px] border transition-colors ${
+            className={`rounded-[0.25rem] border transition-colors ${
               activeEditorSlot === 'testbench'
                 ? 'border-[var(--border-strong)] bg-[var(--bg-hover)] shadow-xs'
                 : 'border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:border-[var(--border-strong)]'
             }`}
           >
             <div className="px-2.5 py-1.5 flex items-center justify-between border-b border-[var(--border-subtle)]">
-              <span className="text-[10px] font-bold tracking-wider text-[var(--text-muted)] uppercase flex items-center gap-1">
+              <span className="text-[0.625rem] font-bold tracking-wider text-[var(--text-muted)] uppercase flex items-center gap-1">
                 <Layers size={11} className="text-slate-400" />
                 {t("Testbench (TB)")}
               </span>
@@ -244,9 +244,9 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
                   <div className="text-xs font-mono text-[var(--text-secondary)] truncate font-medium group-hover:text-[var(--text-primary)]">
                     {testbenchFile.name}
                   </div>
-                  <div className="text-[10px] text-[var(--text-muted)] flex items-center gap-1.5">
+                  <div className="text-[0.625rem] text-[var(--text-muted)] flex items-center gap-1.5">
                     <span className="font-mono">{testbenchFile.content.split('\n').length} lines</span>
-                    <span className="text-slate-400 flex items-center gap-0.5 text-[9px] px-1 py-0.2 rounded border border-[var(--border-subtle)] bg-[var(--bg-input)]">
+                    <span className="text-slate-400 flex items-center gap-0.5 text-[0.5625rem] px-1 py-0.2 rounded border border-[var(--border-subtle)] bg-[var(--bg-input)]">
                       <CheckCircle2 size={8} className="text-emerald-400" /> {t("Assigned")}
                     </span>
                   </div>
@@ -254,13 +254,13 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
               </div>
             ) : (
               <div className="p-3 text-center">
-                <div className="text-[11px] text-[var(--text-muted)] mb-2 font-mono">
+                <div className="text-[0.6875rem] text-[var(--text-muted)] mb-2 font-mono">
                   {t("No testbench loaded")}
                 </div>
                 <button
                   data-testid="wf-import-tb-btn"
                   onClick={onImportTestbench}
-                  className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-[4px] text-xs font-medium border transition-colors shadow-xs"
+                  className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-[0.25rem] text-xs font-medium border transition-colors shadow-xs"
                   style={{
                     backgroundColor: 'var(--bg-panel)',
                     borderColor: 'var(--border-subtle)',
@@ -283,7 +283,7 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
                   <div className="text-xs font-mono text-emerald-200 truncate font-medium">
                     {vcdFile.name}
                   </div>
-                  <div className="text-[10px] text-emerald-400/70">{t("Direct VCD Mode")}</div>
+                  <div className="text-[0.625rem] text-emerald-400/70">{t("Direct VCD Mode")}</div>
                 </div>
               </div>
               <button
@@ -301,7 +301,7 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
               <button
                 data-testid="wf-import-vcd-btn"
                 onClick={onImportVcd}
-                className="text-[10px] text-slate-500 hover:text-slate-300 underline transition-colors"
+                className="text-[0.625rem] text-slate-500 hover:text-slate-300 underline transition-colors"
               >
                 {t("or load pre-generated .vcd directly")}
               </button>
@@ -312,11 +312,11 @@ export const WaveformProjectPanel: React.FC<WaveformProjectPanelProps> = ({
 
       {/* ── Section 2: Hardware Hierarchy ───────────────────────── */}
       <div
-        className="flex-1 min-h-[140px] flex flex-col overflow-hidden"
+        className="flex-1 min-h-[8.75rem] flex flex-col overflow-hidden"
         style={{ backgroundColor: 'var(--bg-panel)' }}
       >
         <div
-          className="h-9 px-3 text-[11px] font-bold uppercase tracking-wider border-b flex items-center gap-1.5 shrink-0"
+          className="h-9 px-3 text-[0.6875rem] font-bold uppercase tracking-wider border-b flex items-center gap-1.5 shrink-0"
           style={{
             backgroundColor: 'var(--bg-panel-header)',
             borderColor: 'var(--border-subtle)',

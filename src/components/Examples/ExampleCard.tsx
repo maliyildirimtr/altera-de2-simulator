@@ -19,7 +19,7 @@ export const ExampleCard: React.FC<ExampleCardProps> = ({
   return (
     <div
       data-testid={`example-card-${example.id}`}
-      className="group flex flex-col justify-between p-4 sm:p-5 rounded-md border transition-all duration-150 min-h-[240px] font-sans"
+      className="group flex flex-col justify-between p-4 sm:p-5 rounded-md border transition-all duration-150 min-h-[15rem] font-sans"
       style={{
         backgroundColor: 'var(--bg-panel)',
         borderColor: 'var(--border-subtle)',
@@ -38,7 +38,7 @@ export const ExampleCard: React.FC<ExampleCardProps> = ({
         <div className="flex items-center justify-between gap-2 mb-2.5 flex-wrap">
           <div className="flex items-center gap-2">
             <span
-              className="text-[10px] font-mono uppercase tracking-wider font-semibold"
+              className="text-[0.625rem] font-mono uppercase tracking-wider font-semibold"
               style={{ color: 'var(--accent-primary)' }}
             >
               {example.category}
@@ -46,7 +46,7 @@ export const ExampleCard: React.FC<ExampleCardProps> = ({
 
             <span
               data-testid={`difficulty-badge-${example.id}`}
-              className="text-[10px] font-mono px-1.5 py-0.5 rounded border font-medium"
+              className="text-[0.625rem] font-mono px-1.5 py-0.5 rounded border font-medium"
               style={{
                 backgroundColor: 'var(--bg-surface)',
                 borderColor: 'var(--border-subtle)',
@@ -61,7 +61,7 @@ export const ExampleCard: React.FC<ExampleCardProps> = ({
           <div className="flex items-center gap-1">
             {example.tools.waveform && (
               <span
-                className="text-[9px] font-mono px-1.5 py-0.5 rounded border font-semibold"
+                className="text-[0.5625rem] font-mono px-1.5 py-0.5 rounded border font-semibold"
                 style={{
                   backgroundColor: 'rgba(16,185,129,0.08)',
                   borderColor: 'rgba(16,185,129,0.25)',
@@ -74,7 +74,7 @@ export const ExampleCard: React.FC<ExampleCardProps> = ({
             )}
             {example.tools.schematic && (
               <span
-                className="text-[9px] font-mono px-1.5 py-0.5 rounded border font-semibold"
+                className="text-[0.5625rem] font-mono px-1.5 py-0.5 rounded border font-semibold"
                 style={{
                   backgroundColor: 'rgba(13,148,136,0.08)',
                   borderColor: 'rgba(13,148,136,0.25)',
@@ -87,7 +87,7 @@ export const ExampleCard: React.FC<ExampleCardProps> = ({
             )}
             {example.tools.de2 && (
               <span
-                className="text-[9px] font-mono px-1.5 py-0.5 rounded border font-semibold"
+                className="text-[0.5625rem] font-mono px-1.5 py-0.5 rounded border font-semibold"
                 style={{
                   backgroundColor: 'rgba(245,158,11,0.08)',
                   borderColor: 'rgba(245,158,11,0.25)',
@@ -124,7 +124,7 @@ export const ExampleCard: React.FC<ExampleCardProps> = ({
             {example.topics.map((topic) => (
               <span
                 key={topic}
-                className="text-[10px] font-mono px-2 py-0.5 rounded border"
+                className="text-[0.625rem] font-mono px-2 py-0.5 rounded border"
                 style={{
                   backgroundColor: 'var(--bg-surface)',
                   borderColor: 'var(--border-subtle)',

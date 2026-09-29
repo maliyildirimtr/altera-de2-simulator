@@ -21,7 +21,7 @@ export const BoardViewModeSwitcher: React.FC<BoardViewModeSwitcherProps> = ({ mo
   <div
     data-testid="de2-board-view-switcher"
     data-active-mode={mode}
-    className="canvas-controls flex items-center gap-0.5 rounded-[4px] border p-0.5 select-none"
+    className="canvas-controls flex items-center gap-0.5 rounded-[0.25rem] border p-0.5 select-none"
     style={{
       backgroundColor: 'var(--bg-surface)',
       borderColor: 'var(--border-subtle)',
@@ -43,7 +43,7 @@ export const BoardViewModeSwitcher: React.FC<BoardViewModeSwitcherProps> = ({ mo
           aria-pressed={isActive}
           aria-disabled={!option.enabled}
           title={t(option.description)}
-          className="flex items-center gap-1 px-2 h-[24px] rounded-[3px] text-[11px] font-semibold transition-colors disabled:cursor-not-allowed"
+          className="flex items-center gap-1 px-2 h-[1.5rem] rounded-[0.1875rem] text-[0.6875rem] font-semibold transition-colors disabled:cursor-not-allowed"
           style={{
             backgroundColor: isActive ? 'var(--accent-subtle)' : 'transparent',
             color: !option.enabled
@@ -58,7 +58,7 @@ export const BoardViewModeSwitcher: React.FC<BoardViewModeSwitcherProps> = ({ mo
           <span>{option.label}</span>
           {option.badge && (
             <span
-              className="text-[9px] font-medium px-1 rounded-[2px]"
+              className="text-[0.5625rem] font-medium px-1 rounded-[0.125rem]"
               style={{
                 backgroundColor: 'var(--bg-input)',
                 color: 'var(--text-muted)',

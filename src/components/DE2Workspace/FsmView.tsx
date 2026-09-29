@@ -89,7 +89,7 @@ export function FsmView({ source }: { source: string }) {
 
   return (
     <div data-testid="fsm-view" data-fsm-state-var={model.stateVar} data-fsm-current={current ?? ''} className="flex flex-col gap-1 h-full">
-      <div className="text-[11px] font-sans" style={{ color: 'var(--text-muted)' }}>
+      <div className="text-[0.6875rem] font-sans" style={{ color: 'var(--text-muted)' }}>
         State register <code className="font-mono" style={{ color: 'var(--text-primary)' }}>{model.stateVar}</code>
         {' · '}{model.states.length} states · {model.transitions.length} transitions
         {current ? <> · now <b style={{ color: '#f59e0b' }}>{current}</b></> : value !== null ? <> · value {value} (unnamed)</> : null}

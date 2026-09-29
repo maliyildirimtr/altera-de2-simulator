@@ -8,6 +8,7 @@ import { publishDiagnostics, subscribeDiagnostics } from '../../core/simulator/d
 import { FileCode, Upload, BookOpen } from 'lucide-react';
 
 import { useT } from '../../i18n/toolText';
+import { uiScale } from '../../lib/uiScale';
 interface CodeEditorProps {
   isOpen: boolean;
   onOpenImport?: () => void;
@@ -38,7 +39,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ isOpen, onOpenImport, is
           <FileCode size={14} className="text-blue-400" />
           <span className="text-xs font-mono font-semibold text-slate-200">main.sv</span>
         </div>
-        <span className="text-[10px] text-slate-500 font-mono">SystemVerilog</span>
+        <span className="text-[0.625rem] text-slate-500 font-mono">SystemVerilog</span>
       </div>
 
       {/* Editor Canvas or Empty State */}
@@ -70,7 +71,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ isOpen, onOpenImport, is
             </div>
             <button
               onClick={() => setHdlCode('module main (\n  input  SW0,\n  output LEDR0\n);\n  assign LEDR0 = SW0;\nendmodule\n')}
-              className="mt-4 text-[11px] text-slate-500 hover:text-blue-400 underline transition-colors"
+              className="mt-4 text-[0.6875rem] text-slate-500 hover:text-blue-400 underline transition-colors"
             >
               {t("Or click here to create a minimal module")}
             </button>
@@ -114,7 +115,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ isOpen, onOpenImport, is
           onChange={handleEditorChange}
           options={{
             minimap: { enabled: false },
-            fontSize: 13,
+            fontSize: Math.round(13 * uiScale()),
             wordWrap: 'on',
             scrollBeyondLastLine: false,
             tabSize: 2,

@@ -69,7 +69,7 @@ export const SchematicConsole: React.FC<SchematicConsoleProps> = ({
           <button
             data-testid="tab-console"
             onClick={() => setActiveTab('console')}
-            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-[4px] transition-colors ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-[0.25rem] transition-colors ${
               activeTab === 'console'
                 ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
                 : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
@@ -81,7 +81,7 @@ export const SchematicConsole: React.FC<SchematicConsoleProps> = ({
           <button
             data-testid="tab-problems"
             onClick={() => setActiveTab('problems')}
-            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-[4px] transition-colors ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-[0.25rem] transition-colors ${
               activeTab === 'problems'
                 ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
                 : errorMessages.length > 0
@@ -92,7 +92,7 @@ export const SchematicConsole: React.FC<SchematicConsoleProps> = ({
             <AlertTriangle size={12} className={errorMessages.length > 0 ? 'text-red-500' : 'text-[var(--text-muted)]'} />
             <span>{t("Problems")}</span>
             {errorMessages.length > 0 && (
-              <span className="text-[10px] font-mono px-1.5 py-0.2 bg-red-500/10 text-red-500 rounded font-semibold border border-red-500/20">
+              <span className="text-[0.625rem] font-mono px-1.5 py-0.2 bg-red-500/10 text-red-500 rounded font-semibold border border-red-500/20">
                 {errorMessages.length}
               </span>
             )}
@@ -103,7 +103,7 @@ export const SchematicConsole: React.FC<SchematicConsoleProps> = ({
           <button
             onClick={onClear}
             title={t("Clear Console")}
-            className="p-1 rounded-[4px] hover:bg-[var(--bg-hover)] transition-colors text-xs font-sans"
+            className="p-1 rounded-[0.25rem] hover:bg-[var(--bg-hover)] transition-colors text-xs font-sans"
             style={{ color: 'var(--text-muted)' }}
           >
             {t("Clear")}
@@ -112,7 +112,7 @@ export const SchematicConsole: React.FC<SchematicConsoleProps> = ({
             onClick={onClose}
             title={t("Close Panel")}
             aria-label={t("Close Console")}
-            className="p-1 rounded-[4px] hover:bg-[var(--bg-hover)] transition-colors"
+            className="p-1 rounded-[0.25rem] hover:bg-[var(--bg-hover)] transition-colors"
             style={{ color: 'var(--text-muted)' }}
           >
             <X size={14} />

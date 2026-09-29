@@ -107,7 +107,7 @@ export function SignalNamePanel({
 
       {/* ── Column Headers (Resizable) ── */}
       <div
-        className="h-6 shrink-0 border-b flex text-[10px] font-bold tracking-wider uppercase select-none relative"
+        className="h-6 shrink-0 border-b flex text-[0.625rem] font-bold tracking-wider uppercase select-none relative"
         style={{
           backgroundColor: 'var(--bg-panel-header)',
           borderColor: 'var(--border-subtle)',
@@ -121,7 +121,7 @@ export function SignalNamePanel({
 
         {/* Drag handle */}
         <div
-          className="w-[3px] h-full shrink-0 cursor-col-resize hover:bg-[var(--accent-primary)] active:bg-[var(--accent-hover)] transition-colors"
+          className="w-[0.1875rem] h-full shrink-0 cursor-col-resize hover:bg-[var(--accent-primary)] active:bg-[var(--accent-hover)] transition-colors"
           style={{ backgroundColor: 'var(--border-subtle)' }}
           {...getHandleProps(0)}
         />
@@ -134,7 +134,7 @@ export function SignalNamePanel({
 
       {/* ── Scrollable Rows ── */}
       <div className="flex-1 overflow-hidden relative">
-        <div className="absolute inset-0 right-[-20px] overflow-y-scroll pr-[20px] pt-1">
+        <div className="absolute inset-0 right-[-1.25rem] overflow-y-scroll pr-[1.25rem] pt-1">
           {rows.map((row, idx) => {
             const isSelected = selectedSignal === row.id;
             const isBus = row.type === 'signal' && row.signal.width > 1;
@@ -168,22 +168,22 @@ export function SignalNamePanel({
                         {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
                       </div>
                     ) : (
-                      <div className="w-[17px] shrink-0" />
+                      <div className="w-[1.0625rem] shrink-0" />
                     )}
                     <Binary size={12} className={`shrink-0 ${row.type === 'bit' ? 'text-slate-500' : 'text-blue-400'}`} />
                     <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
                       <div className="flex items-center gap-1 min-w-0 leading-tight">
-                        <span className={`text-[11px] font-mono truncate select-none ${row.type === 'bit' ? 'text-slate-400' : 'text-slate-200 font-medium'}`}>
+                        <span className={`text-[0.6875rem] font-mono truncate select-none ${row.type === 'bit' ? 'text-slate-400' : 'text-slate-200 font-medium'}`}>
                           {row.displayName}
                         </span>
                         {row.type === 'signal' && row.signal.width > 1 && (
-                          <span className="text-[10px] text-slate-500 font-mono shrink-0">
+                          <span className="text-[0.625rem] text-slate-500 font-mono shrink-0">
                             [{row.signal.width - 1}:0]
                           </span>
                         )}
                       </div>
                       {row.type === 'signal' && row.scopePath && (
-                        <span className="text-[9px] font-mono text-slate-500 truncate leading-tight select-none">
+                        <span className="text-[0.5625rem] font-mono text-slate-500 truncate leading-tight select-none">
                           {row.scopePath}
                         </span>
                       )}
@@ -192,10 +192,10 @@ export function SignalNamePanel({
                 </div>
 
                 {/* Splitter visual bar */}
-                <div className="w-[3px] shrink-0 border-r border-slate-800/30" />
+                <div className="w-[0.1875rem] shrink-0 border-r border-slate-800/30" />
 
                 {/* ── Value Column ── */}
-                <div className="flex-1 flex items-center justify-between px-3 text-[12px] font-mono font-bold tracking-tight overflow-hidden">
+                <div className="flex-1 flex items-center justify-between px-3 text-[0.75rem] font-mono font-bold tracking-tight overflow-hidden">
                   <div className="truncate tabular-nums">
                     {renderValue(row)}
                   </div>

@@ -66,7 +66,7 @@ function StageCard({ example }: { example: LearningExample }) {
         {/* Card Header: Category & Tool Badges */}
         <div className="flex items-center justify-between gap-2 mb-2">
           <span
-            className="text-[10px] font-mono uppercase tracking-wider font-semibold"
+            className="text-[0.625rem] font-mono uppercase tracking-wider font-semibold"
             style={{ color: 'var(--accent-primary)' }}
           >
             {example.category}
@@ -74,7 +74,7 @@ function StageCard({ example }: { example: LearningExample }) {
           <div className="flex items-center gap-1">
             {example.tools.waveform && (
               <span
-                className="text-[8px] font-mono px-1 py-0.5 rounded border"
+                className="text-[0.5rem] font-mono px-1 py-0.5 rounded border"
                 style={{
                   backgroundColor: 'rgba(16,185,129,0.08)',
                   borderColor: 'rgba(16,185,129,0.25)',
@@ -86,7 +86,7 @@ function StageCard({ example }: { example: LearningExample }) {
             )}
             {example.tools.schematic && (
               <span
-                className="text-[8px] font-mono px-1 py-0.5 rounded border"
+                className="text-[0.5rem] font-mono px-1 py-0.5 rounded border"
                 style={{
                   backgroundColor: 'rgba(13,148,136,0.08)',
                   borderColor: 'rgba(13,148,136,0.25)',
@@ -98,7 +98,7 @@ function StageCard({ example }: { example: LearningExample }) {
             )}
             {example.tools.de2 && (
               <span
-                className="text-[8px] font-mono px-1 py-0.5 rounded border"
+                className="text-[0.5rem] font-mono px-1 py-0.5 rounded border"
                 style={{
                   backgroundColor: 'rgba(245,158,11,0.08)',
                   borderColor: 'rgba(245,158,11,0.25)',
@@ -120,7 +120,7 @@ function StageCard({ example }: { example: LearningExample }) {
         </h4>
 
         {/* Description */}
-        <p className="text-[11px] leading-relaxed line-clamp-2 mb-3" style={{ color: 'var(--text-secondary)' }}>
+        <p className="text-[0.6875rem] leading-relaxed line-clamp-2 mb-3" style={{ color: 'var(--text-secondary)' }}>
           {example.description}
         </p>
       </div>
@@ -132,12 +132,12 @@ function StageCard({ example }: { example: LearningExample }) {
       >
         <Link
           to="/examples"
-          className="inline-flex items-center gap-1 font-medium text-[11px] transition-colors"
+          className="inline-flex items-center gap-1 font-medium text-[0.6875rem] transition-colors"
           style={{ color: 'var(--accent-primary)' }}
         >
           View in Library <ArrowRight size={11} />
         </Link>
-        <span className="font-mono text-[10px]" style={{ color: 'var(--text-muted)' }}>
+        <span className="font-mono text-[0.625rem]" style={{ color: 'var(--text-muted)' }}>
           {example.topModule}.sv
         </span>
       </div>
@@ -224,7 +224,7 @@ export default function DigitalLogicHub() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2 mb-0.5">
-                        <span className="font-mono text-[11px] font-bold" style={{ color: 'var(--accent-primary)' }}>
+                        <span className="font-mono text-[0.6875rem] font-bold" style={{ color: 'var(--accent-primary)' }}>
                           STAGE {stage.step}
                         </span>
                         <span style={{ color: 'var(--border-subtle)' }}>&middot;</span>
@@ -239,7 +239,7 @@ export default function DigitalLogicHub() {
                   </div>
 
                   <span
-                    className="font-mono text-[11px] px-2.5 py-1 rounded border self-start sm:self-center"
+                    className="font-mono text-[0.6875rem] px-2.5 py-1 rounded border self-start sm:self-center"
                     style={{
                       backgroundColor: 'var(--bg-panel)',
                       borderColor: 'var(--border-subtle)',

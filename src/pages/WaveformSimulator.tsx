@@ -45,6 +45,7 @@ interface WaveformWorkspaceSave {
 import { getExampleById } from '../examples/registry';
 
 import { useT } from '../i18n/toolText';
+import { uiScale, useUiScale } from '../lib/uiScale';
 // ── Layout Persistence Schema ────────────────────────────────
 const LAYOUT_STORAGE_KEY = 'wf_workspace_layout_v1';
 
@@ -90,6 +91,8 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
   const t = useT();
   // ── Layout State ──────────────────────────────────────────
   const [layout, setLayout] = useState<WaveformLayout>(loadSavedLayout);
+  // Panel widths are stored at 1x and scaled with the UI (large monitors).
+  const ui = useUiScale();
   const layoutRef = useRef<WaveformLayout>(layout);
   layoutRef.current = layout;
 
@@ -1040,13 +1043,13 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
               onClick={() => setIsStimulusOpen(true)}
               disabled={!activeSourceFile}
               title={t("Draw input waveforms and generate a testbench")}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-xs font-medium border transition-colors shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-[0.25rem] text-xs font-medium border transition-colors shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
               style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
             >
               <Wand2 size={13} />
               <span className="hidden xl:inline">{t("Stimulus")}</span>
             </button>
-            <ToolbarMenu label={t("File")} icon={<FolderInput size={13} />} testId="wf-export-menu" className="flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-xs font-medium border transition-colors shadow-xs">
+            <ToolbarMenu label={t("File")} icon={<FolderInput size={13} />} testId="wf-export-menu" className="flex items-center gap-1.5 px-2.5 py-1 rounded-[0.25rem] text-xs font-medium border transition-colors shadow-xs">
               <button type="button" role="menuitem" data-testid="wf-btn-upload" onClick={() => generalInputRef.current?.click()} className={MENU_ITEM_CLASS} style={MENU_ITEM_STYLE} title={t("Upload .sv / .v / .vcd file")}>
                 <Upload size={13} />
                 <span>{t("Open file (.sv / .v / .vcd)")}</span>
@@ -1112,7 +1115,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
           {isProjectOpen && (
             <>
               <WaveformProjectPanel
-                width={layout.projectWidth}
+                width={Math.round(layout.projectWidth * ui)}
                 sourceFiles={sourceFiles}
                 testbenchFile={testbenchFile}
                 vcdFile={vcdFile}
@@ -1148,7 +1151,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
                 valueMax={360}
                 onResize={(delta) => {
                   setLayout(prev => {
-                    const next = { ...prev, projectWidth: Math.max(180, Math.min(360, prev.projectWidth + delta)) };
+                    const next = { ...prev, projectWidth: Math.max(180, Math.min(360, prev.projectWidth + delta / ui)) };
                     return next;
                   });
                 }}
@@ -1165,7 +1168,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
           {isObjectsOpen && (
             <>
               <WaveformObjectsPanel
-                width={layout.objectsWidth}
+                width={Math.round(layout.objectsWidth * ui)}
                 activeScope={activeScope}
                 currentTime={currentTime}
                 waveSignalNames={waveSignalNames}
@@ -1189,7 +1192,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
                 valueMax={420}
                 onResize={(delta) => {
                   setLayout(prev => {
-                    const next = { ...prev, objectsWidth: Math.max(200, Math.min(420, prev.objectsWidth + delta)) };
+                    const next = { ...prev, objectsWidth: Math.max(200, Math.min(420, prev.objectsWidth + delta / ui)) };
                     return next;
                   });
                 }}
@@ -1265,7 +1268,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
                           setActiveSourceId(file.id);
                           setActiveEditorRole('source');
                         }}
-                        className={`flex items-center gap-1.5 px-3 py-1 text-xs font-mono rounded-[4px] transition-colors group cursor-pointer shrink-0 border ${
+                        className={`flex items-center gap-1.5 px-3 py-1 text-xs font-mono rounded-[0.25rem] transition-colors group cursor-pointer shrink-0 border ${
                           isActive
                             ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] font-semibold border-[var(--accent-border)] shadow-xs'
                             : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] border-transparent'
@@ -1275,7 +1278,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
                         data-filename={file.name}
                         data-testid={isActive ? "wf-editor-tab-source" : `wf-editor-tab-source-${file.name}`}
                       >
-                        <span className="truncate max-w-[150px]">{file.name}</span>
+                        <span className="truncate max-w-[9.375rem]">{file.name}</span>
                         {sourceFiles.length > 1 && (
                           <button
                             onClick={(e) => {
@@ -1295,7 +1298,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
                   {/* Quick Add Source Button in Tab Strip */}
                   <button
                     onClick={() => sourceInputRef.current?.click()}
-                    className="flex items-center gap-1 px-2 py-1 text-xs text-[var(--accent-primary)] hover:text-[var(--accent-hover)] hover:bg-[var(--accent-subtle)] rounded-[4px] border border-dashed border-[var(--accent-border)] transition-colors shrink-0"
+                    className="flex items-center gap-1 px-2 py-1 text-xs text-[var(--accent-primary)] hover:text-[var(--accent-hover)] hover:bg-[var(--accent-subtle)] rounded-[0.25rem] border border-dashed border-[var(--accent-border)] transition-colors shrink-0"
                     title={t("Add or import another source file")}
                   >
                     <Plus size={11} />
@@ -1310,15 +1313,15 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
                     data-editor-tab="testbench"
                     data-filename={testbenchFile ? testbenchFile.name : 'testbench'}
                     onClick={() => setActiveEditorRole('testbench')}
-                    className={`flex items-center gap-1.5 px-3 py-1 text-xs font-mono rounded-[4px] transition-colors shrink-0 border ${
+                    className={`flex items-center gap-1.5 px-3 py-1 text-xs font-mono rounded-[0.25rem] transition-colors shrink-0 border ${
                       activeEditorRole === 'testbench'
                         ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] font-semibold border-[var(--border-strong)] shadow-xs'
                         : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] border-transparent'
                     }`}
                     title={testbenchFile ? testbenchFile.name : 'Testbench'}
                   >
-                    <span className="truncate max-w-[150px]">{testbenchFile ? testbenchFile.name : 'testbench (empty)'}</span>
-                    <span className="text-[9px] px-1 py-0.2 rounded bg-slate-800/40 text-slate-300 uppercase tracking-wider font-sans font-medium border border-slate-700/50">
+                    <span className="truncate max-w-[9.375rem]">{testbenchFile ? testbenchFile.name : 'testbench (empty)'}</span>
+                    <span className="text-[0.5625rem] px-1 py-0.2 rounded bg-slate-800/40 text-slate-300 uppercase tracking-wider font-sans font-medium border border-slate-700/50">
                       testbench
                     </span>
                   </button>
@@ -1368,7 +1371,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
                     }}
                     options={{
                       minimap: { enabled: false },
-                      fontSize: 13,
+                      fontSize: Math.round(13 * uiScale()),
                       wordWrap: 'on',
                       scrollBeyondLastLine: false,
                       fontFamily: '"Cascadia Code", "Fira Code", Consolas, monospace',
@@ -1391,7 +1394,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
                     <button
                       data-testid="wf-empty-editor-import-btn"
                       onClick={() => activeEditorRole === 'source' ? sourceInputRef.current?.click() : tbInputRef.current?.click()}
-                      className="px-3.5 py-1.5 rounded-[4px] text-xs font-medium bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white shadow-xs transition-colors"
+                      className="px-3.5 py-1.5 rounded-[0.25rem] text-xs font-medium bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white shadow-xs transition-colors"
                     >
                       Import {activeEditorRole === 'source' ? t("Source File") : t("Testbench File")}
                     </button>
@@ -1440,7 +1443,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
               >
                 {/* Left Column: Signal Names Panel */}
                 <SignalNamePanel
-                  width={layout.signalColumnWidth}
+                  width={Math.round(layout.signalColumnWidth * ui)}
                   rows={renderableRows}
                   currentTime={currentTime}
                   selectedSignal={selectedSignal}
@@ -1462,7 +1465,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
                   valueMax={380}
                   onResize={(delta) => {
                     setLayout(prev => {
-                      const next = { ...prev, signalColumnWidth: Math.max(160, Math.min(380, prev.signalColumnWidth + delta)) };
+                      const next = { ...prev, signalColumnWidth: Math.max(160, Math.min(380, prev.signalColumnWidth + delta / ui)) };
                       return next;
                     });
                   }}
@@ -1538,7 +1541,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
       {/* ── Context Menu (Portal/Absolute) ────────────────────────── */}
       {contextMenu && (
         <div
-          className="fixed z-50 border shadow-lg py-1 rounded-[4px] w-36 select-none"
+          className="fixed z-50 border shadow-lg py-1 rounded-[0.25rem] w-36 select-none"
           style={{
             top: contextMenu.y,
             left: contextMenu.x,
@@ -1550,7 +1553,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
           {contextMenu.type === 'radix' && (
             <>
               <div
-                className="px-3 py-1 text-[10px] border-b mb-1 font-bold tracking-wider uppercase font-mono"
+                className="px-3 py-1 text-[0.625rem] border-b mb-1 font-bold tracking-wider uppercase font-mono"
                 style={{
                   borderColor: 'var(--border-subtle)',
                   color: 'var(--text-muted)',

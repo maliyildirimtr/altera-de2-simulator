@@ -448,7 +448,7 @@ export default function GateEditor() {
   const sel = selected?.kind === 'node' ? byId.get(selected.id) : undefined;
   const on = '#22c55e';
   const off = 'var(--text-muted)';
-  const btn = 'h-8 px-2.5 rounded-[4px] border text-[12px] font-medium flex items-center gap-1.5 transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-40';
+  const btn = 'h-8 px-2.5 rounded-[0.25rem] border text-[0.75rem] font-medium flex items-center gap-1.5 transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-40';
   const btnStyle = { borderColor: 'var(--border-subtle)', color: 'var(--text-primary)', backgroundColor: 'var(--bg-surface)' };
   const loopSet = new Set(ev.loop);
   const labelled = (t: GateType) => SOURCES.includes(t) || t === 'OUT' || t === 'SEG7';
@@ -575,7 +575,7 @@ export default function GateEditor() {
     <div data-testid="gate-editor" className="absolute inset-0 flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)' }}>
       {/* Toolbar */}
       <div className="flex items-center gap-2 flex-wrap px-3 py-2 border-b" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
-        <h1 className="text-[14px] font-bold mr-2">{g.title}</h1>
+        <h1 className="text-[0.875rem] font-bold mr-2">{g.title}</h1>
         <button type="button" className={btn} style={btnStyle} onClick={() => addNode('IN')} data-testid="gate-quick-IN">+ {g.input}</button>
         <button type="button" className={btn} style={btnStyle} onClick={() => addNode('OUT')} data-testid="gate-quick-OUT">+ {g.output}</button>
         <span className="w-px h-6" style={{ backgroundColor: 'var(--border-subtle)' }} />
@@ -586,10 +586,10 @@ export default function GateEditor() {
                 {g.categories[category]} <ChevronDown size={12} style={{ opacity: 0.7 }} />
               </button>
               {menu === category && (
-                <div role="menu" className="absolute left-0 top-full mt-1 z-40 min-w-[230px] p-1 rounded-[6px] border shadow-lg flex flex-col" style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
+                <div role="menu" className="absolute left-0 top-full mt-1 z-40 min-w-[14.375rem] p-1 rounded-[0.375rem] border shadow-lg flex flex-col" style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
                   {types.map((t) => (
-                    <button key={t} type="button" role="menuitem" data-testid={`gate-add-${t}`} onClick={() => addNode(t)} className="flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-[4px] text-left text-[12.5px] hover:bg-[var(--accent-subtle)]" style={{ color: 'var(--text-primary)' }}>
-                      <span className="w-[28px] flex justify-center" style={{ color: 'var(--text-secondary)' }}><PartIcon type={t} /></span>
+                    <button key={t} type="button" role="menuitem" data-testid={`gate-add-${t}`} onClick={() => addNode(t)} className="flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-[0.25rem] text-left text-[0.7812rem] hover:bg-[var(--accent-subtle)]" style={{ color: 'var(--text-primary)' }}>
+                      <span className="w-[1.75rem] flex justify-center" style={{ color: 'var(--text-secondary)' }}><PartIcon type={t} /></span>
                       {g.partNames[t]}
                     </button>
                   ))}
@@ -599,9 +599,9 @@ export default function GateEditor() {
           ))}
         </div>
         <span className="flex-1" />
-        <label className="flex items-center gap-1.5 text-[12px]">
+        <label className="flex items-center gap-1.5 text-[0.75rem]">
           {g.presets}
-          <select className="h-8 px-2 rounded-[4px] border text-[12px]" style={btnStyle} value="" onChange={(e) => e.target.value && loadPreset(e.target.value)} data-testid="gate-preset">
+          <select className="h-8 px-2 rounded-[0.25rem] border text-[0.75rem]" style={btnStyle} value="" onChange={(e) => e.target.value && loadPreset(e.target.value)} data-testid="gate-preset">
             <option value="">—</option>
             {Object.entries(PRESETS).map(([k, p]) => <option key={k} value={k}>{p.title[lang]}</option>)}
           </select>
@@ -612,21 +612,21 @@ export default function GateEditor() {
       <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
         {/* Canvas */}
         <div className="flex-1 min-w-0 min-h-0 flex flex-col">
-          <div className="px-3 py-1.5 text-[11.5px] flex items-center gap-3 flex-wrap" style={{ color: 'var(--text-secondary)' }}>
+          <div className="px-3 py-1.5 text-[0.7188rem] flex items-center gap-3 flex-wrap" style={{ color: 'var(--text-secondary)' }}>
             <span>{pending ? g.connectHint : g.help}</span>
             {ev.loop.length > 0 && <span style={{ color: '#ef4444' }}>{g.loopWarning}</span>}
             {ev.floating.length > 0 && <span style={{ color: '#d97706' }}>{fmt(g.floatingWarning, { n: ev.floating.length })}</span>}
           </div>
           {showGraph && (
-            <div data-testid="gate-clock-bar" className="mx-3 mb-2 px-3 py-2 rounded-[6px] border flex items-center gap-2 flex-wrap" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
-              <span className="text-[12px] font-semibold flex items-center gap-1.5"><Timer size={14} /> {g.clock}</span>
+            <div data-testid="gate-clock-bar" className="mx-3 mb-2 px-3 py-2 rounded-[0.375rem] border flex items-center gap-2 flex-wrap" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
+              <span className="text-[0.75rem] font-semibold flex items-center gap-1.5"><Timer size={14} /> {g.clock}</span>
               <button type="button" className={btn} style={btnStyle} data-testid="gate-clock-pulse" disabled={clocks.length === 0 || running} onClick={pulse}><Zap size={13} /> {g.clockPulse}</button>
               <button type="button" className={btn} style={btnStyle} data-testid="gate-clock-run" disabled={clocks.length === 0} onClick={() => setRunning((r) => !r)}>
                 {running ? <Pause size={13} /> : <Play size={13} />} {running ? g.stopClock : g.autoClock}
               </button>
               {sequential && <button type="button" className={btn} style={btnStyle} data-testid="gate-reset-ff" onClick={resetFlipFlops}><RotateCcw size={13} /> {g.resetFF}</button>}
               {sequential && (
-                <span data-testid="gate-ff-state" className="text-[12px] font-mono ml-1" style={{ color: 'var(--text-secondary)' }}>
+                <span data-testid="gate-ff-state" className="text-[0.75rem] font-mono ml-1" style={{ color: 'var(--text-secondary)' }}>
                   {ffs.map((f, i) => `Q${i}=${seq.q[f.id] ?? 0}`).join('  ')}
                 </span>
               )}
@@ -637,7 +637,7 @@ export default function GateEditor() {
               ref={svgRef}
               data-testid="gate-canvas"
               viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`}
-              className="w-full min-w-[720px] rounded-[6px] border select-none"
+              className="w-full min-w-[45rem] rounded-[0.375rem] border select-none"
               style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-canvas, var(--bg-panel))', touchAction: 'none' }}
               onPointerMove={onMove}
               onPointerUp={onUp}
@@ -674,14 +674,14 @@ export default function GateEditor() {
 
             {/* Clocked timing diagram */}
             {showGraph && (
-              <div className="mt-3 rounded-[6px] border p-3" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
+              <div className="mt-3 rounded-[0.375rem] border p-3" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
                 <div className="flex items-center gap-3 flex-wrap">
-                  <h2 className="text-[12.5px] font-semibold">{g.dataGraph}</h2>
-                  <span className="text-[11.5px]" style={{ color: 'var(--text-secondary)' }}>{g.dataGraphHint}</span>
-                  {history.length > 0 && <button type="button" className="underline text-[11.5px] ml-auto" onClick={() => setHistory([])}>{g.clearGraph}</button>}
+                  <h2 className="text-[0.7812rem] font-semibold">{g.dataGraph}</h2>
+                  <span className="text-[0.7188rem]" style={{ color: 'var(--text-secondary)' }}>{g.dataGraphHint}</span>
+                  {history.length > 0 && <button type="button" className="underline text-[0.7188rem] ml-auto" onClick={() => setHistory([])}>{g.clearGraph}</button>}
                 </div>
                 {history.length === 0 ? (
-                  <p className="text-[12px] mt-2" style={{ color: 'var(--text-muted)' }}>{g.dataGraphEmpty}</p>
+                  <p className="text-[0.75rem] mt-2" style={{ color: 'var(--text-muted)' }}>{g.dataGraphEmpty}</p>
                 ) : (
                   <DataGraph history={history} rows={[...ins, ...ffs, ...outs, ...displays]} />
                 )}
@@ -689,15 +689,15 @@ export default function GateEditor() {
             )}
 
             {/* Timing / glitch view */}
-            <div className="mt-3 rounded-[6px] border p-3" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
+            <div className="mt-3 rounded-[0.375rem] border p-3" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
               <div className="flex items-center gap-3 flex-wrap">
-                <label className="flex items-center gap-1.5 text-[12.5px] font-semibold">
+                <label className="flex items-center gap-1.5 text-[0.7812rem] font-semibold">
                   <input type="checkbox" data-testid="gate-timing" checked={timingMode} onChange={(e) => { setTimingMode(e.target.checked); setTrace(null); }} />
                   <Timer size={14} /> {g.timingMode}
                 </label>
-                <span className="text-[11.5px]" style={{ color: 'var(--text-secondary)' }}>{timingMode ? g.timingHint : g.timingOff}</span>
+                <span className="text-[0.7188rem]" style={{ color: 'var(--text-secondary)' }}>{timingMode ? g.timingHint : g.timingOff}</span>
                 {trace && (
-                  <span className="flex items-center gap-2 text-[11.5px] ml-auto">
+                  <span className="flex items-center gap-2 text-[0.7188rem] ml-auto">
                     t = {traceTime} / {trace.end}
                     <input type="range" min={0} max={trace.end} value={traceTime} onChange={(e) => setTraceTime(Number(e.target.value))} />
                     <button type="button" className="underline" onClick={() => setTraceTime(0)}>{g.replay}</button>
@@ -706,7 +706,7 @@ export default function GateEditor() {
               </div>
               {trace && (
                 <>
-                  <p data-testid="gate-glitch-result" className="text-[12px] mt-2" style={{ color: trace.glitches.length ? '#d97706' : '#16a34a' }}>
+                  <p data-testid="gate-glitch-result" className="text-[0.75rem] mt-2" style={{ color: trace.glitches.length ? '#d97706' : '#16a34a' }}>
                     {trace.glitches.length
                       ? fmt(g.glitchFound, { names: trace.glitches.map((id) => byId.get(id)?.label || byId.get(id)?.type || id).join(', ') })
                       : g.noGlitch}
@@ -719,28 +719,28 @@ export default function GateEditor() {
         </div>
 
         {/* Side panel */}
-        <aside className="lg:w-[360px] shrink-0 border-t lg:border-t-0 lg:border-l overflow-y-auto p-3 flex flex-col gap-3" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
+        <aside className="lg:w-[22.5rem] shrink-0 border-t lg:border-t-0 lg:border-l overflow-y-auto p-3 flex flex-col gap-3" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
           {sel ? (
             <div className="flex flex-col gap-2">
-              <h2 className="text-[12px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{g.selected}: {g.partNames[sel.type]}</h2>
+              <h2 className="text-[0.75rem] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{g.selected}: {g.partNames[sel.type]}</h2>
               {labelled(sel.type) && (
-                <label className="text-[12px] flex flex-col gap-1">
+                <label className="text-[0.75rem] flex flex-col gap-1">
                   {g.signalName}
-                  <input value={sel.label} onChange={(e) => updateNode(sel.id, { label: e.target.value })} className="h-8 px-2 rounded-[4px] border text-[13px] font-mono" style={btnStyle} />
+                  <input value={sel.label} onChange={(e) => updateNode(sel.id, { label: e.target.value })} className="h-8 px-2 rounded-[0.25rem] border text-[0.8125rem] font-mono" style={btnStyle} />
                 </label>
               )}
               {MULTI_INPUT.includes(sel.type) && (
-                <label className="text-[12px] flex items-center gap-2">
+                <label className="text-[0.75rem] flex items-center gap-2">
                   {g.inputsCount}
-                  <select data-testid="gate-input-count" value={inputNames(sel).length} onChange={(e) => setInputCount(sel, Number(e.target.value))} className="h-8 px-2 rounded-[4px] border text-[13px]" style={btnStyle}>
+                  <select data-testid="gate-input-count" value={inputNames(sel).length} onChange={(e) => setInputCount(sel, Number(e.target.value))} className="h-8 px-2 rounded-[0.25rem] border text-[0.8125rem]" style={btnStyle}>
                     {[2, 3, 4].map((k) => <option key={k} value={k}>{k}</option>)}
                   </select>
                 </label>
               )}
               {!labelled(sel.type) && !isFlipFlop(sel.type) && sel.type !== 'CONST0' && sel.type !== 'CONST1' && (
-                <label className="text-[12px] flex items-center gap-2">
+                <label className="text-[0.75rem] flex items-center gap-2">
                   {g.delay}
-                  <input type="number" min={1} max={5} value={sel.delay} onChange={(e) => updateNode(sel.id, { delay: Math.max(1, Math.min(5, Number(e.target.value) || 1)) })} className="h-8 w-16 px-2 rounded-[4px] border text-[13px]" style={btnStyle} />
+                  <input type="number" min={1} max={5} value={sel.delay} onChange={(e) => updateNode(sel.id, { delay: Math.max(1, Math.min(5, Number(e.target.value) || 1)) })} className="h-8 w-16 px-2 rounded-[0.25rem] border text-[0.8125rem]" style={btnStyle} />
                 </label>
               )}
               <button type="button" className={btn} style={btnStyle} onClick={removeSelected}><Trash2 size={13} /> {g.delete}</button>
@@ -750,23 +750,23 @@ export default function GateEditor() {
           ) : null}
 
           <div className="flex flex-col gap-2">
-            <label className="text-[12px] flex items-center gap-2">
+            <label className="text-[0.75rem] flex items-center gap-2">
               {g.moduleName}
-              <input value={name} onChange={(e) => setName(e.target.value)} className="h-8 flex-1 px-2 rounded-[4px] border text-[13px] font-mono" style={btnStyle} />
+              <input value={name} onChange={(e) => setName(e.target.value)} className="h-8 flex-1 px-2 rounded-[0.25rem] border text-[0.8125rem] font-mono" style={btnStyle} />
             </label>
             <div className="flex gap-2 flex-wrap">
               <button type="button" className={btn} style={btnStyle} onClick={openInDe2} data-testid="gate-open-de2" disabled={ins.length === 0 || outs.length + displays.length === 0}><Cpu size={13} /> {g.openDe2}</button>
               <OpenInSchematicButton className={btn} labelClassName="" getFiles={() => [{ name: `${name || 'gate_design'}.sv`, content: verilog }]} />
               <button type="button" className={btn} style={btnStyle} onClick={copyCode}><Copy size={13} /> {copied ? g.copied : g.copy}</button>
             </div>
-            <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{g.de2Note}</p>
-            <pre data-testid="gate-verilog" className="text-[11.5px] leading-snug p-2 rounded-[4px] border overflow-auto max-h-[260px] font-mono" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-panel)' }}>{verilog}</pre>
+            <p className="text-[0.6875rem]" style={{ color: 'var(--text-muted)' }}>{g.de2Note}</p>
+            <pre data-testid="gate-verilog" className="text-[0.7188rem] leading-snug p-2 rounded-[0.25rem] border overflow-auto max-h-[16.25rem] font-mono" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-panel)' }}>{verilog}</pre>
           </div>
 
           <div>
-            <h2 className="text-[12px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>{g.truthTable}</h2>
+            <h2 className="text-[0.75rem] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>{g.truthTable}</h2>
             {table ? (
-              <table data-testid="gate-truth-table" className="text-[12px] font-mono border-collapse">
+              <table data-testid="gate-truth-table" className="text-[0.75rem] font-mono border-collapse">
                 <thead>
                   <tr>
                     {table.ins.map((n) => <th key={n.id} className="px-2 py-0.5 text-left">{n.label}</th>)}
@@ -790,7 +790,7 @@ export default function GateEditor() {
                 </tbody>
               </table>
             ) : (
-              <p className="text-[12px]" style={{ color: 'var(--text-muted)' }}>{sequential ? g.tableSequential : g.tableNeedsInputs}</p>
+              <p className="text-[0.75rem]" style={{ color: 'var(--text-muted)' }}>{sequential ? g.tableSequential : g.tableNeedsInputs}</p>
             )}
           </div>
         </aside>

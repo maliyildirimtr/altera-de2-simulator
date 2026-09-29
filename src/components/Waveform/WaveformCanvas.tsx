@@ -266,7 +266,7 @@ export function WaveformCanvas({
           style={{ top: markerMenu.y, left: markerMenu.x }}
           onMouseLeave={() => setMarkerMenu(null)}
         >
-          <div className="px-3 py-1 text-[10px] text-gray-400 border-b border-[#333] mb-1">{t("Marker")}</div>
+          <div className="px-3 py-1 text-[0.625rem] text-gray-400 border-b border-[#333] mb-1">{t("Marker")}</div>
           <button
             className="w-full text-left px-3 py-1 text-xs text-red-400 hover:bg-[#2a2d3e]"
             onClick={() => { onRemoveMarker(markerMenu.id); setMarkerMenu(null); }}
@@ -304,7 +304,7 @@ export function WaveformCanvas({
                   width: Math.abs(cursorB - currentTime) * scale,
                 }}
               >
-                <div className="bg-amber-500/90 text-white text-[9px] font-mono px-1.5 py-0.5 rounded whitespace-nowrap shadow-xs">
+                <div className="bg-amber-500/90 text-white text-[0.5625rem] font-mono px-1.5 py-0.5 rounded whitespace-nowrap shadow-xs">
                   ΔT = {formatTime(Math.abs(cursorB - currentTime), ts)}
                 </div>
               </div>
@@ -315,7 +315,7 @@ export function WaveformCanvas({
                 className="absolute top-0 bottom-0 border-l pointer-events-none"
                 style={{ left: t * scale, borderColor: 'rgba(148, 163, 184, 0.25)' }}
               >
-                <span className="text-[9px] text-slate-400 font-mono ml-1 top-1 absolute tabular-nums">
+                <span className="text-[0.5625rem] text-slate-400 font-mono ml-1 top-1 absolute tabular-nums">
                   {formatTime(t, ts)}
                 </span>
               </div>
@@ -335,7 +335,7 @@ export function WaveformCanvas({
                   }}
                 >
                   <div
-                    className="text-[10px] font-bold px-1 py-0.5 rounded-sm shadow-xs whitespace-nowrap leading-none font-mono"
+                    className="text-[0.625rem] font-bold px-1 py-0.5 rounded-sm shadow-xs whitespace-nowrap leading-none font-mono"
                     style={{ backgroundColor: mk.color, color: '#000' }}
                   >
                     {mk.label}
@@ -408,7 +408,7 @@ export function WaveformCanvas({
               className="absolute top-0 bottom-6 border-l border-white/20 z-10 pointer-events-none"
               style={{ left: hoverTime * scale }}
             >
-              <div className="absolute -top-1 -translate-x-1/2 bg-slate-900/90 text-slate-300 text-[9px] px-1 py-0.5 rounded border border-slate-700 whitespace-nowrap font-mono tabular-nums">
+              <div className="absolute -top-1 -translate-x-1/2 bg-slate-900/90 text-slate-300 text-[0.5625rem] px-1 py-0.5 rounded border border-slate-700 whitespace-nowrap font-mono tabular-nums">
                 {formatTime(hoverTime, ts)}
               </div>
             </div>
@@ -420,7 +420,7 @@ export function WaveformCanvas({
               className="absolute top-0 bottom-0 border-l border-amber-500 z-20 pointer-events-none transition-all duration-75 ease-out"
               style={{ left: cursorB * scale }}
             >
-              <div className="absolute top-[2px] -translate-x-1/2 bg-amber-500 text-white text-[10px] px-1.5 py-0.5 font-mono font-bold whitespace-nowrap rounded-sm shadow-xs flex items-center gap-1">
+              <div className="absolute top-[0.125rem] -translate-x-1/2 bg-amber-500 text-white text-[0.625rem] px-1.5 py-0.5 font-mono font-bold whitespace-nowrap rounded-sm shadow-xs flex items-center gap-1">
                 <span>B</span>
                 <span className="tabular-nums">{formatTime(cursorB, ts)}</span>
                 <button
@@ -437,7 +437,7 @@ export function WaveformCanvas({
             className="absolute top-0 bottom-0 border-l border-yellow-400 z-20 pointer-events-none transition-all duration-75 ease-out"
             style={{ left: currentTime * scale }}
           >
-            <div className="absolute top-[2px] -translate-x-1/2 bg-yellow-400 text-black text-[10px] px-1.5 py-0.5 font-mono font-bold whitespace-nowrap rounded-sm shadow-xs tabular-nums">
+            <div className="absolute top-[0.125rem] -translate-x-1/2 bg-yellow-400 text-black text-[0.625rem] px-1.5 py-0.5 font-mono font-bold whitespace-nowrap rounded-sm shadow-xs tabular-nums">
               {formatTime(currentTime, ts)}
             </div>
           </div>
@@ -460,7 +460,7 @@ export function WaveformCanvas({
                   />
                   {showLabel && (
                     <div
-                      className="absolute top-1 text-slate-400 text-[9px] font-mono whitespace-nowrap tabular-nums"
+                      className="absolute top-1 text-slate-400 text-[0.5625rem] font-mono whitespace-nowrap tabular-nums"
                       style={{ left: t * scale + 2 }}
                     >
                       {formatTime(t, ts)}
@@ -476,7 +476,7 @@ export function WaveformCanvas({
                 style={{ left: mk.time * scale + 2 }}
               >
                 <span
-                  className="text-[9px] font-bold font-mono"
+                  className="text-[0.5625rem] font-bold font-mono"
                   style={{ color: mk.color }}
                 >
                   {mk.label}

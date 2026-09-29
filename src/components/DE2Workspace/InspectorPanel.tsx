@@ -179,13 +179,13 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
     >
       {/* Header */}
       <div
-        className="h-[36px] px-3 flex items-center justify-between border-b border-[var(--border-subtle)] shrink-0"
+        className="h-[2.25rem] px-3 flex items-center justify-between border-b border-[var(--border-subtle)] shrink-0"
         style={{ backgroundColor: 'var(--bg-panel-header)' }}
       >
         <div className="flex items-center gap-2">
           <Cpu size={14} className="text-[var(--accent-primary)]" />
           <span
-            className="text-[11px] font-bold uppercase tracking-wider select-none"
+            className="text-[0.6875rem] font-bold uppercase tracking-wider select-none"
             style={{ color: 'var(--text-muted)' }}
           >
             {t("Inspector")}
@@ -193,7 +193,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
         </div>
         <button
           onClick={onToggle}
-          className="w-6 h-6 rounded-[4px] flex items-center justify-center transition-colors border border-transparent hover:border-[var(--border-subtle)] hover:bg-[var(--bg-hover)]"
+          className="w-6 h-6 rounded-[0.25rem] flex items-center justify-center transition-colors border border-transparent hover:border-[var(--border-subtle)] hover:bg-[var(--bg-hover)]"
           style={{ color: 'var(--text-secondary)' }}
           title={t("Collapse Inspector")}
           aria-label={t("Collapse Inspector")}
@@ -209,13 +209,13 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
         <div data-testid="inspector-pins-section">
           <button
             onClick={() => toggleSection('pins')}
-            className="w-full h-[36px] px-3 flex items-center justify-between text-xs font-semibold transition-colors hover:bg-[var(--bg-hover)] select-none border-b border-[var(--border-subtle)]"
+            className="w-full h-[2.25rem] px-3 flex items-center justify-between text-xs font-semibold transition-colors hover:bg-[var(--bg-hover)] select-none border-b border-[var(--border-subtle)]"
             style={{ backgroundColor: 'var(--bg-panel-header)', color: 'var(--text-primary)' }}
           >
             <span className="flex items-center gap-1.5">
               <span>{t("Pin Mapping")}</span>
               <span
-                className="text-[10px] font-mono font-normal px-1.5 py-0.2 rounded border"
+                className="text-[0.625rem] font-mono font-normal px-1.5 py-0.2 rounded border"
                 style={{
                   backgroundColor: 'var(--bg-surface)',
                   borderColor: 'var(--border-subtle)',
@@ -232,7 +232,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
             <div className="p-3 space-y-2.5" style={{ backgroundColor: 'var(--bg-panel)' }}>
               <div className="flex items-center justify-between text-xs mb-1">
                 <span
-                  className="text-[10px] uppercase font-bold tracking-wider select-none"
+                  className="text-[0.625rem] uppercase font-bold tracking-wider select-none"
                   style={{ color: 'var(--text-muted)' }}
                 >
                   {t("HDL Port → Board")}
@@ -242,7 +242,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                     data-testid="copy-qsf-btn"
                     data-copied-text={copiedQsfText}
                     onClick={handleCopyQsf}
-                    className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-[4px] border transition-colors"
+                    className="flex items-center gap-1 text-[0.6875rem] px-2 py-0.5 rounded-[0.25rem] border transition-colors"
                     style={{
                       backgroundColor: 'var(--bg-surface)',
                       borderColor: 'var(--border-subtle)',
@@ -257,7 +257,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                     data-testid="download-qsf-btn"
                     onClick={handleDownloadQsf}
                     disabled={!pinMappings.some(p => p.portName && p.physicalPin)}
-                    className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-[4px] border transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex items-center gap-1 text-[0.6875rem] px-2 py-0.5 rounded-[0.25rem] border transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{
                       backgroundColor: 'var(--bg-surface)',
                       borderColor: 'var(--border-subtle)',
@@ -272,7 +272,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                   <button
                     data-testid="add-pin-btn"
                     onClick={addPin}
-                    className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-[4px] border transition-colors font-medium"
+                    className="flex items-center gap-1 text-[0.6875rem] px-2 py-0.5 rounded-[0.25rem] border transition-colors font-medium"
                     style={{
                       backgroundColor: 'var(--accent-subtle)',
                       borderColor: 'var(--accent-border)',
@@ -293,7 +293,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                   backgroundColor: 'var(--bg-input)',
                   borderColor: 'var(--border-subtle)',
                 }}
-                className="overflow-y-auto border rounded-[4px]"
+                className="overflow-y-auto border rounded-[0.25rem]"
               >
                 {pinMappings.length > 0 ? (
                   <div className="divide-y divide-[var(--border-subtle)]/70">
@@ -318,7 +318,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                                 borderColor: 'var(--border-subtle)',
                                 color: 'var(--accent-primary)',
                               }}
-                              className="flex-1 min-w-0 border rounded-[3px] px-2 py-1 text-xs font-mono focus:outline-none focus:border-[var(--accent-primary)]"
+                              className="flex-1 min-w-0 border rounded-[0.1875rem] px-2 py-1 text-xs font-mono focus:outline-none focus:border-[var(--accent-primary)]"
                             />
                             {/* Physical pin */}
                             <input
@@ -332,7 +332,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                                 borderColor: 'var(--border-subtle)',
                                 color: 'var(--text-primary)',
                               }}
-                              className="w-24 border rounded-[3px] px-2 py-1 text-xs font-mono focus:outline-none focus:border-[var(--accent-primary)]"
+                              className="w-24 border rounded-[0.1875rem] px-2 py-1 text-xs font-mono focus:outline-none focus:border-[var(--accent-primary)]"
                             />
                             {/* Delete */}
                             <button
@@ -369,7 +369,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                                 borderColor: 'var(--border-subtle)',
                                 color: isAssigned ? 'var(--text-primary)' : 'var(--text-muted)',
                               }}
-                              className="flex-1 border rounded-[3px] px-2 py-1 text-[11px] font-mono focus:outline-none focus:border-[var(--accent-primary)]"
+                              className="flex-1 border rounded-[0.1875rem] px-2 py-1 text-[0.6875rem] font-mono focus:outline-none focus:border-[var(--accent-primary)]"
                             >
                               {VIRTUAL_BOARD_OPTIONS.map(opt => (
                                 <option key={opt} value={opt}>
@@ -414,7 +414,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
         <div>
           <button
             onClick={() => toggleSection('clock')}
-            className="w-full h-[36px] px-3 flex items-center justify-between text-xs font-semibold transition-colors hover:bg-[var(--bg-hover)] select-none border-b border-[var(--border-subtle)]"
+            className="w-full h-[2.25rem] px-3 flex items-center justify-between text-xs font-semibold transition-colors hover:bg-[var(--bg-hover)] select-none border-b border-[var(--border-subtle)]"
             style={{ backgroundColor: 'var(--bg-panel-header)', color: 'var(--text-primary)' }}
           >
             <span className="flex items-center gap-2">
@@ -430,7 +430,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
               <div
                 data-testid="clock-indicator"
                 data-clock={clockState}
-                className="flex items-center justify-between rounded-[4px] p-2.5 border"
+                className="flex items-center justify-between rounded-[0.25rem] p-2.5 border"
                 style={{
                   backgroundColor: 'var(--bg-input)',
                   borderColor: 'var(--border-subtle)',
@@ -449,7 +449,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                 <button
                   onClick={() => tickClock()}
                   disabled={!canSimulate || isSimRunning}
-                  className="px-2.5 py-1 rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] text-xs font-medium transition-colors flex items-center gap-1.5 shadow-xs"
+                  className="px-2.5 py-1 rounded-[0.25rem] border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] text-xs font-medium transition-colors flex items-center gap-1.5 shadow-xs"
                   title={t("Pulse Clock Signal")}
                 >
                   <Clock size={11} className="text-[var(--text-muted)]" />
@@ -467,7 +467,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                       else startAutoSimulation();
                     }}
                     disabled={!canSimulate}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-xs font-medium border transition-colors shadow-xs ${
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[0.25rem] text-xs font-medium border transition-colors shadow-xs ${
                       isSimRunning
                         ? 'bg-rose-500/10 text-rose-500 border-rose-500/25 hover:bg-rose-500/20'
                         : 'bg-[var(--bg-surface)] text-[var(--text-primary)] border-[var(--border-subtle)] hover:bg-[var(--bg-hover)]'
@@ -487,7 +487,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
 
                 {/* Frequency Slider */}
                 <div className="pt-1">
-                  <div className="flex justify-between text-[11px] text-[var(--text-muted)] mb-1.5">
+                  <div className="flex justify-between text-[0.6875rem] text-[var(--text-muted)] mb-1.5">
                     <span>{t("Frequency")}</span>
                     <span className="font-mono text-[var(--text-primary)] font-semibold">
                       {simFrequency} Hz
@@ -512,7 +512,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
         <div>
           <button
             onClick={() => toggleSection('reset')}
-            className="w-full h-[36px] px-3 flex items-center justify-between text-xs font-semibold transition-colors hover:bg-[var(--bg-hover)] select-none border-b border-[var(--border-subtle)]"
+            className="w-full h-[2.25rem] px-3 flex items-center justify-between text-xs font-semibold transition-colors hover:bg-[var(--bg-hover)] select-none border-b border-[var(--border-subtle)]"
             style={{ backgroundColor: 'var(--bg-panel-header)', color: 'var(--text-primary)' }}
           >
             <span className="flex items-center gap-2">
@@ -524,12 +524,12 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
 
           {openSections.reset && (
             <div className="p-3 space-y-2.5 text-xs" style={{ backgroundColor: 'var(--bg-panel)' }}>
-              <p className="text-[11px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+              <p className="text-[0.6875rem] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
                 Resets all switches to 0, push buttons to unpressed (active-low 1), clears LED and HEX outputs, and resets clock.
               </p>
               <button
                 onClick={resetBoard}
-                className="w-full h-[30px] flex items-center justify-center gap-1.5 px-3 rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] font-medium transition-colors shadow-xs"
+                className="w-full h-[1.875rem] flex items-center justify-center gap-1.5 px-3 rounded-[0.25rem] border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] font-medium transition-colors shadow-xs"
               >
                 <RotateCcw size={13} />
                 {t("Reset Board State")}
@@ -542,7 +542,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
         <div>
           <button
             onClick={() => toggleSection('io')}
-            className="w-full h-[36px] px-3 flex items-center justify-between text-xs font-semibold transition-colors hover:bg-[var(--bg-hover)] select-none border-b border-[var(--border-subtle)]"
+            className="w-full h-[2.25rem] px-3 flex items-center justify-between text-xs font-semibold transition-colors hover:bg-[var(--bg-hover)] select-none border-b border-[var(--border-subtle)]"
             style={{ backgroundColor: 'var(--bg-panel-header)', color: 'var(--text-primary)' }}
           >
             <span className="flex items-center gap-2">
@@ -561,7 +561,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
               {/* Inputs */}
               <div>
                 <span
-                  className="text-[10px] font-bold uppercase tracking-wider block mb-1 select-none"
+                  className="text-[0.625rem] font-bold uppercase tracking-wider block mb-1 select-none"
                   style={{ color: 'var(--text-muted)' }}
                 >
                   {t("Active Inputs")}
@@ -572,7 +572,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                       {activeSwitches.map(sw => (
                         <span
                           key={sw}
-                          className="px-1.5 py-0.5 rounded-[3px] bg-[var(--accent-subtle)] border border-[var(--accent-border)] text-[var(--accent-primary)] font-mono text-[10px] font-medium"
+                          className="px-1.5 py-0.5 rounded-[0.1875rem] bg-[var(--accent-subtle)] border border-[var(--accent-border)] text-[var(--accent-primary)] font-mono text-[0.625rem] font-medium"
                         >
                           {sw}=1
                         </span>
@@ -580,14 +580,14 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                       {pressedKeys.map(k => (
                         <span
                           key={k}
-                          className="px-1.5 py-0.5 rounded-[3px] bg-amber-500/10 border border-amber-500/25 text-amber-600 dark:text-amber-400 font-mono text-[10px] font-medium"
+                          className="px-1.5 py-0.5 rounded-[0.1875rem] bg-amber-500/10 border border-amber-500/25 text-amber-600 dark:text-amber-400 font-mono text-[0.625rem] font-medium"
                         >
                           {k}=0 (pressed)
                         </span>
                       ))}
                     </>
                   ) : (
-                    <span className="italic text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                    <span className="italic text-[0.6875rem]" style={{ color: 'var(--text-muted)' }}>
                       {t("All default (SW=0, KEY=1)")}
                     </span>
                   )}
@@ -597,7 +597,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
               {/* Outputs */}
               <div className="pt-2 border-t border-[var(--border-subtle)]/70">
                 <span
-                  className="text-[10px] font-bold uppercase tracking-wider block mb-1 select-none"
+                  className="text-[0.625rem] font-bold uppercase tracking-wider block mb-1 select-none"
                   style={{ color: 'var(--text-muted)' }}
                 >
                   {t("Active Outputs")}
@@ -608,7 +608,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                       {activeLedR.map(led => (
                         <span
                           key={led}
-                          className="px-1.5 py-0.5 rounded-[3px] bg-rose-500/10 border border-rose-500/25 text-rose-600 dark:text-rose-400 font-mono text-[10px] font-medium"
+                          className="px-1.5 py-0.5 rounded-[0.1875rem] bg-rose-500/10 border border-rose-500/25 text-rose-600 dark:text-rose-400 font-mono text-[0.625rem] font-medium"
                         >
                           {led}
                         </span>
@@ -616,14 +616,14 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                       {activeLedG.map(led => (
                         <span
                           key={led}
-                          className="px-1.5 py-0.5 rounded-[3px] bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 font-mono text-[10px] font-medium"
+                          className="px-1.5 py-0.5 rounded-[0.1875rem] bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 font-mono text-[0.625rem] font-medium"
                         >
                           {led}
                         </span>
                       ))}
                     </>
                   ) : (
-                    <span className="italic text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                    <span className="italic text-[0.6875rem]" style={{ color: 'var(--text-muted)' }}>
                       {t("No active LEDs")}
                     </span>
                   )}

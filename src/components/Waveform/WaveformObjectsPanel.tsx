@@ -72,13 +72,13 @@ export const WaveformObjectsPanel: React.FC<WaveformObjectsPanelProps> = ({
         <div className="flex items-center gap-1.5 min-w-0">
           <Layers size={13} className="text-blue-500 shrink-0" />
           <span
-            className="text-[11px] font-bold uppercase tracking-wider truncate"
+            className="text-[0.6875rem] font-bold uppercase tracking-wider truncate"
             style={{ color: 'var(--text-muted)' }}
           >
             Signals & Objects
           </span>
           <span
-            className="text-[10px] px-1.5 py-0.2 rounded font-mono shrink-0 border"
+            className="text-[0.625rem] px-1.5 py-0.2 rounded font-mono shrink-0 border"
             style={{
               backgroundColor: 'var(--bg-surface)',
               borderColor: 'var(--border-subtle)',
@@ -93,7 +93,7 @@ export const WaveformObjectsPanel: React.FC<WaveformObjectsPanelProps> = ({
           <button
             onClick={onClose}
             title={t("Collapse Objects Panel (Alt+O)")}
-            className="p-1 rounded-[4px] hover:bg-[var(--bg-hover)] transition-colors"
+            className="p-1 rounded-[0.25rem] hover:bg-[var(--bg-hover)] transition-colors"
             style={{ color: 'var(--text-muted)' }}
           >
             <X size={13} />
@@ -116,7 +116,7 @@ export const WaveformObjectsPanel: React.FC<WaveformObjectsPanelProps> = ({
             value={filterQuery}
             onChange={(e) => setFilterQuery(e.target.value)}
             placeholder={t("Filter signals...")}
-            className="w-full text-xs pl-7 pr-6 py-1 rounded-[4px] border font-mono transition-colors"
+            className="w-full text-xs pl-7 pr-6 py-1 rounded-[0.25rem] border font-mono transition-colors"
             style={{
               backgroundColor: 'var(--bg-input)',
               borderColor: 'var(--border-subtle)',
