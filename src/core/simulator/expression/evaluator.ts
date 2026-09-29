@@ -138,7 +138,9 @@ function setLValue(target: LValue, value: number, isBlocking: boolean, ctx: Eval
   const targetObj = isBlocking ? ctx.state : ctx.nextState;
   
   if (target.type === 'Identifier') {
-    targetObj[target.name] = value;
+    // A declared vector keeps only its own bits: a 4-bit counter wraps 15 → 0.
+    const w = ctx.widths?.[target.name];
+    targetObj[target.name] = w && w < 32 ? (value & maskOf(w)) >>> 0 : value;
   } else if (target.type === 'BitSelect') {
     const name = target.name;
     const high = evaluateExpr(target.high, ctx);

@@ -123,6 +123,7 @@ import * as Gates from '../../../gates/circuit';
 import * as Num from '../../../logic/numbers';
 import * as Fsm from '../../../fsm/fsm';
 import { autoLayout } from '../../../gates/layout';
+import { verilogToCircuit } from '../../../gates/fromVerilog';
 import { exerciseCircuit } from '../../Gates/GateExercisePanel';
 import { getExercise } from '../../../exercises/exercises';
 import { gradeSubmission } from '../../../exercises/grader';
@@ -3559,6 +3560,47 @@ endmodule`);
     }
   }
   pass('FSM to gates: D flip-flops with minimised next-state and output logic follow the machine (binary, Gray, one-hot)');
+}
+
+{
+  // Verilog → gates: every bundled example that fits becomes a circuit that
+  // behaves like the DE2 engine's run of the same source.
+  const dir = path.join(process.cwd(), 'src/examples/source');
+  let converted = 0;
+  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.sv') && !x.endsWith('_tb.sv') && !x.startsWith('de2_lcd'))) {
+    const src = fs.readFileSync(path.join(dir, f), 'utf8');
+    const { circuit: c } = verilogToCircuit(src);
+    converted += 1;
+    assert.deepStrictEqual(Gates.signalWidths(c).mismatched, [], `${f}: widths agree`);
+    const eng = compileVerilog(src);
+    const ins = c.nodes.filter((n) => n.type === 'IN');
+    const clk = c.nodes.find((n) => n.type === 'CLK');
+    const outs = c.nodes.filter((n) => n.type === 'OUT');
+    let seq = Gates.EMPTY_SEQ;
+    let st: Record<string, number> = {};
+    let rnd = 3;
+    const rand = (w: number) => { rnd = (rnd * 1103515245 + 12345) & 0x7fffffff; return (rnd >> 7) & ((1 << w) - 1); };
+    for (let t = 0; t < 60; t += 1) {
+      const iv: Record<string, number> = {};
+      const ev: Record<string, number> = {};
+      for (const n of ins) { const v = rand(n.width ?? 1); iv[n.id] = v; ev[n.label] = v; }
+      for (const level of clk ? [0, 1] : [0]) {
+        if (clk) { iv[clk.id] = level; ev[clk.label] = level; }
+        const r = Gates.settle(c, iv, seq);
+        seq = r.seq;
+        st = eng.evaluate(ev, clk ? st : {});
+        if (t > 2 && (!clk || level === 1)) for (const o of outs) assert.strictEqual(r.ev.values[o.id] ?? 0, st[o.label] ?? 0, `${f}: ${o.label} at step ${t}`);
+      }
+    }
+  }
+  assert.ok(converted >= 20, `${converted} examples converted`);
+  assert.throws(() => verilogToCircuit('module m(input logic [3:0] a, b, output logic [7:0] p); assign p = a * b; endmodule'), /operator "\*"/);
+  assert.throws(() => verilogToCircuit('module m(input logic a, output logic y); always_comb begin if (a) y = 1; end endmodule'), /latch/);
+  // The same engine fixes this needed: bus-slice ports of instances, and settling long chains.
+  const rca = compileVerilog(fs.readFileSync(path.join(dir, 'ripple_carry_adder_4bit.sv'), 'utf8'));
+  const r = rca.evaluate({ a: 7, b: 12, cin: 0 }, {});
+  assert.deepStrictEqual([r.sum, r.cout], [3, 1], 'instances connected to bus bits work on the DE2 engine');
+  pass(`Verilog to gates: ${converted} examples convert and match the DE2 engine; unsupported constructs are reported`);
 }
 
 console.log(`--- DE2 Board Renderer Regression: PASS (${checks.length} checks) ---`);

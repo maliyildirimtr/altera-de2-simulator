@@ -304,6 +304,16 @@ export function elaborateEngine(modules: Record<string, any>, topModule: string)
       for (const [p, net] of Object.entries(inst.connections || {})) {
         resolvedConnections[p] = dict[net as string] || (net as string);
       }
+      // A port connected to part of a bus (a[0], sum[3:2]): copy the bits in
+      // for an input, or write them back into the bus for an output.
+      const sub = modules[inst.type];
+      for (const [p, info] of Object.entries((inst.sliceConnections || {}) as Record<string, { parentNet: string; high: number; low: number }>)) {
+        const sliceNet = resolvedConnections[p];
+        const parent = dict[info.parentNet] || info.parentNet;
+        const range = info.high === info.low ? `[${info.high}]` : `[${info.high}:${info.low}]`;
+        if (sub?.inputs.includes(p)) combinedRawAssignLogic += `assign ${sliceNet} = ${parent}${range};\n`;
+        else if (sub?.outputs.includes(p)) combinedRawAssignLogic += `assign ${parent}${range} = ${sliceNet};\n`;
+      }
       const newPrefix = instPrefix ? `${instPrefix}_${inst.name}` : inst.name;
       flatten(inst.type, newPrefix, resolvedConnections);
     }
@@ -347,20 +357,31 @@ export function elaborateEngine(modules: Record<string, any>, topModule: string)
       }
       commitNextState(ctx);
 
-      // 2. Combinational Logic Propagation Loop
-      for (let iter = 0; iter < 3; iter++) {
-        for (const assign of moduleAST.continuousAssigns) {
-          evaluateStmt(assign, ctx);
-        }
-        for (const block of moduleAST.alwaysBlocks) {
-          if (block.edge !== 'posedge' && block.edge !== 'negedge') {
-            if (isEdgeActive(block, state)) {
-              evaluateStmt(block.body, ctx);
+      // 2. Combinational Logic Propagation Loop: repeat until nothing changes
+      //    (a long chain written in reverse order needs one pass per level),
+      //    bounded so a combinational loop cannot hang the page.
+      const settleComb = () => {
+        for (let iter = 0; iter < 64; iter++) {
+          const before = Object.assign(Object.create(null), state) as Record<string, number>;
+          for (const assign of moduleAST.continuousAssigns) {
+            evaluateStmt(assign, ctx);
+          }
+          for (const block of moduleAST.alwaysBlocks) {
+            if (block.edge !== 'posedge' && block.edge !== 'negedge') {
+              if (isEdgeActive(block, state)) {
+                evaluateStmt(block.body, ctx);
+              }
             }
           }
+          commitNextState(ctx);
+          let changed = false;
+          for (const k in state) {
+            if (before[k] !== state[k] && !(Number.isNaN(before[k]) && Number.isNaN(state[k]))) { changed = true; break; }
+          }
+          if (!changed && iter >= 1) break;
         }
-        commitNextState(ctx);
-      }
+      };
+      settleComb();
 
       // 3. Edges on internal nets, e.g. a ripple counter whose flip-flops are
       //    clocked by another flip-flop's output. Blocks clocked by top-level
@@ -379,13 +400,7 @@ export function elaborateEngine(modules: Record<string, any>, topModule: string)
           for (const block of internalClocked) state[`__prev_${block.signal}`] = state[block.signal!] ?? 0;
           if (!fired) break;
           commitNextState(ctx);
-          for (let iter = 0; iter < 3; iter++) {
-            for (const assign of moduleAST.continuousAssigns) evaluateStmt(assign, ctx);
-            for (const block of moduleAST.alwaysBlocks) {
-              if (block.edge !== 'posedge' && block.edge !== 'negedge' && isEdgeActive(block, state)) evaluateStmt(block.body, ctx);
-            }
-            commitNextState(ctx);
-          }
+          settleComb();
         }
       }
 

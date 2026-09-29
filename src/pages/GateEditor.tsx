@@ -59,6 +59,7 @@ import { useLocation } from 'react-router-dom';
 import { downloadText } from '../utils/svgExport';
 import { De2PinDialog } from '../components/Gates/De2PinDialog';
 import { autoLayout } from '../gates/layout';
+import { VerilogImportDialog } from '../components/Gates/VerilogImportDialog';
 import { GateExercisePanel } from '../components/Gates/GateExercisePanel';
 import { EXERCISES } from '../exercises/exercises';
 
@@ -1112,6 +1113,7 @@ export default function GateEditor() {
     : e;
 
   const [pinDialog, setPinDialog] = useState(false);
+  const [verilogDialog, setVerilogDialog] = useState(false);
   // Exercise mode: the task shown in the side panel (#/gates?exercise=id opens one).
   const [exerciseId, setExerciseId] = useState<string | null>(() => {
     try {
@@ -1451,6 +1453,7 @@ export default function GateEditor() {
                 { id: 'open', icon: <FileUp size={14} />, label: g.openFile, run: () => { setMenu(null); fileRef.current?.click(); } },
                 { id: 'save', icon: <FileDown size={14} />, label: g.saveFile, run: saveFile },
                 { id: 'share', icon: <Link2 size={14} />, label: g.shareLink, run: () => void copyShareLink() },
+                { id: 'verilog', icon: <FileUp size={14} />, label: g.fromVerilog, run: () => { setMenu(null); setVerilogDialog(true); } },
               ].map((it) => (
                 <button key={it.id} type="button" role="menuitem" data-testid={`gate-file-${it.id}`} onClick={it.run} className="flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-[0.25rem] text-left text-[0.7812rem] hover:bg-[var(--accent-subtle)]" style={{ color: 'var(--text-primary)' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>{it.icon}</span> {it.label}
@@ -1881,6 +1884,18 @@ export default function GateEditor() {
           </div>
         </aside>
       </div>
+      {verilogDialog && (
+        <VerilogImportDialog
+          text={g}
+          lang={lang}
+          onClose={() => setVerilogDialog(false)}
+          onDone={(c, nm) => {
+            setVerilogDialog(false);
+            if (circuitRef.current.nodes.length && !window.confirm(g.openShared)) return;
+            loadDesign({ format: FILE_FORMAT, version: 1, name: nm, circuit: autoLayout(c, { width: CANVAS_W, height: CANVAS_H, size: localSize, ports: { out: outPort, in: inPort } }), tests: '' });
+          }}
+        />
+      )}
       {pinDialog && (
         <De2PinDialog
           circuit={circuit}
