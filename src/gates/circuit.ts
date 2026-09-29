@@ -40,6 +40,12 @@ export interface Wire {
   fromPin?: number;
   to: string;
   pin: number;
+  /**
+   * Hand-drawn route (drawing only, no effect on logic): alternating x and y
+   * coordinates of the bends, starting and ending with an x — the x values
+   * are vertical segments, the y values horizontal ones.
+   */
+  bends?: number[];
 }
 
 export interface Circuit {

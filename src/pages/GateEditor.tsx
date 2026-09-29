@@ -99,6 +99,54 @@ function outPort(n: GateNode, pin = 0): { x: number; y: number } {
   return { x: n.x + w, y: n.y + (h * (pin + 1)) / (count + 1) };
 }
 
+type Pt = { x: number; y: number };
+
+/** Automatic route: one vertical segment half way between the ports. */
+function autoBends(a: Pt, b: Pt): number[] {
+  return [Math.max(a.x + 18, (a.x + b.x) / 2)];
+}
+
+/** Corner points of an orthogonal route through `bends` (see Wire.bends). */
+export function routePoints(a: Pt, b: Pt, bends?: number[]): Pt[] {
+  const list = bends && bends.length % 2 === 1 ? bends : autoBends(a, b);
+  const pts: Pt[] = [a];
+  let cur = a;
+  list.forEach((v, i) => {
+    cur = i % 2 === 0 ? { x: v, y: cur.y } : { x: cur.x, y: v };
+    pts.push(cur);
+  });
+  pts.push({ x: cur.x, y: b.y }, b);
+  return pts;
+}
+
+/** Removes zero-length and straight-through bends so a route stays tidy. */
+export function simplifyBends(a: Pt, b: Pt, bends: number[]): number[] {
+  // Clean the polyline: drop repeated points and points on a straight line.
+  const raw = routePoints(a, b, bends);
+  const pts: Pt[] = [];
+  for (const p of raw) {
+    const last = pts[pts.length - 1];
+    if (last && last.x === p.x && last.y === p.y) continue;
+    pts.push(p);
+  }
+  for (let i = 1; i < pts.length - 1; ) {
+    const [p0, p1, p2] = [pts[i - 1], pts[i], pts[i + 1]];
+    if ((p0.x === p1.x && p1.x === p2.x) || (p0.y === p1.y && p1.y === p2.y)) pts.splice(i, 1);
+    else i++;
+  }
+  const corners = pts.slice(1, -1);
+  if (!corners.length) return autoBends(a, b);
+  // The route must leave `a` and reach `b` horizontally.
+  if (corners[0].x === a.x) corners.unshift({ ...a });
+  if (corners[corners.length - 1].x === b.x) corners.push({ ...b });
+  if (corners.length % 2 !== 0) return bends;
+  return corners.slice(0, -1).map((c, j) => (j % 2 === 0 ? c.x : c.y));
+}
+
+function pointsPath(pts: Pt[]): string {
+  return pts.map((p, i) => `${i ? 'L' : 'M'}${p.x},${p.y}`).join(' ');
+}
+
 function wirePath(a: { x: number; y: number }, b: { x: number; y: number }): string {
   const mid = Math.max(a.x + 18, (a.x + b.x) / 2);
   return `M${a.x},${a.y} H${mid} V${b.y} H${b.x}`;
@@ -208,6 +256,8 @@ export default function GateEditor() {
   const svgRef = useRef<SVGSVGElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ id: string; dx: number; dy: number; moved: boolean } | null>(null);
+  /** Dragging one segment of a wire: index into its bends. */
+  const wireDrag = useRef<{ id: string; index: number } | null>(null);
 
   useEffect(() => {
     const t = window.setTimeout(() => {
@@ -393,6 +443,12 @@ export default function GateEditor() {
   const onMove = (e: React.PointerEvent) => {
     const p = toPoint(e);
     if (pending) setMouse(p);
+    const wd = wireDrag.current;
+    if (wd) {
+      const v = Math.round((wd.index % 2 === 0 ? Math.min(CANVAS_W - 4, Math.max(4, p.x)) : Math.min(CANVAS_H - 4, Math.max(4, p.y))) / 10) * 10;
+      setCircuit((c) => ({ ...c, wires: c.wires.map((w) => (w.id === wd.id && w.bends ? { ...w, bends: w.bends.map((b, i) => (i === wd.index ? v : b)) } : w)) }));
+      return;
+    }
     const dr = drag.current;
     if (!dr) return;
     dr.moved = true;
@@ -403,6 +459,20 @@ export default function GateEditor() {
     setCircuit((c) => ({ ...c, nodes: c.nodes.map((n) => (n.id === dr.id ? { ...n, x, y } : n)) }));
   };
   const onUp = () => {
+    const wd = wireDrag.current;
+    if (wd) {
+      // Tidy the route: merge bends that ended up on a straight line.
+      setCircuit((c) => ({
+        ...c,
+        wires: c.wires.map((w) => {
+          if (w.id !== wd.id || !w.bends) return w;
+          const a = byId.get(w.from);
+          const b = byId.get(w.to);
+          return a && b ? { ...w, bends: simplifyBends(outPort(a, w.fromPin ?? 0), inPort(b, w.pin), w.bends) } : w;
+        }),
+      }));
+    }
+    wireDrag.current = null;
     drag.current = null;
   };
 
@@ -671,11 +741,54 @@ export default function GateEditor() {
                 if (!a || !b) return null;
                 const v = shown(sig(w.from, w.fromPin ?? 0));
                 const isSel = selected?.kind === 'wire' && selected.id === w.id;
-                const dpath = wirePath(outPort(a, w.fromPin ?? 0), inPort(b, w.pin));
+                const pa = outPort(a, w.fromPin ?? 0);
+                const pb = inPort(b, w.pin);
+                const bends = w.bends && w.bends.length % 2 === 1 ? w.bends : autoBends(pa, pb);
+                const pts = routePoints(pa, pb, bends);
+                const dpath = pointsPath(pts);
+                // Segment k runs pts[k] -> pts[k+1]. Segments 1..n-2 belong to
+                // bends[k-1] and can be dragged; the two at the ports cannot.
+                const segs = pts.slice(0, -1).map((p0, k) => ({ p0, p1: pts[k + 1], index: k >= 1 && k <= bends.length ? k - 1 : -1 }));
+                const startDrag = (e: React.PointerEvent, index: number) => {
+                  e.stopPropagation();
+                  setSelected({ kind: 'wire', id: w.id });
+                  if (index < 0) return;
+                  if (!w.bends) setCircuit((c) => ({ ...c, wires: c.wires.map((x) => (x.id === w.id ? { ...x, bends } : x)) }));
+                  wireDrag.current = { id: w.id, index };
+                  try {
+                    (svgRef.current as Element | null)?.setPointerCapture?.(e.pointerId);
+                  } catch {
+                    /* capture is optional */
+                  }
+                };
+                const addBend = (e: React.MouseEvent, k: number) => {
+                  e.stopPropagation();
+                  const pt = toPoint(e);
+                  const x = Math.round(pt.x / 10) * 10;
+                  const y = Math.round(pt.y / 10) * 10;
+                  const s0 = segs[k];
+                  const vertical = s0.p0.x === s0.p1.x;
+                  let next: number[];
+                  if (k === 0) next = [x, pa.y, ...bends];
+                  else if (k === segs.length - 1) next = [...bends, pb.y, x];
+                  else next = [...bends.slice(0, k), vertical ? y : x, bends[k - 1], ...bends.slice(k)];
+                  setCircuit((c) => ({ ...c, wires: c.wires.map((x2) => (x2.id === w.id ? { ...x2, bends: next } : x2)) }));
+                  setSelected({ kind: 'wire', id: w.id });
+                };
                 return (
                   <g key={w.id} data-wire={w.id} data-value={v}>
-                    <path d={dpath} fill="none" stroke="transparent" strokeWidth={12} onPointerDown={(e) => { e.stopPropagation(); setSelected({ kind: 'wire', id: w.id }); }} style={{ cursor: 'pointer' }} />
-                    <path d={dpath} fill="none" stroke={isSel ? '#3b82f6' : v ? on : off} strokeWidth={isSel ? 3 : 2.2} pointerEvents="none" />
+                    {segs.map((sg, k) => {
+                      const vertical = sg.p0.x === sg.p1.x;
+                      const cursor = sg.index < 0 ? 'pointer' : vertical ? 'ew-resize' : 'ns-resize';
+                      return (
+                        <line key={k} data-wire-seg={`${w.id}:${k}`} x1={sg.p0.x} y1={sg.p0.y} x2={sg.p1.x} y2={sg.p1.y} stroke="transparent" strokeWidth={12}
+                          onPointerDown={(e) => startDrag(e, sg.index)} onDoubleClick={(e) => addBend(e, k)} style={{ cursor: isSel ? cursor : 'pointer' }} />
+                      );
+                    })}
+                    <path d={dpath} fill="none" stroke={isSel ? '#3b82f6' : v ? on : off} strokeWidth={isSel ? 3 : 2.2} strokeLinejoin="round" pointerEvents="none" />
+                    {isSel && segs.filter((sg) => sg.index >= 0).map((sg) => (
+                      <rect key={`h${sg.index}`} x={(sg.p0.x + sg.p1.x) / 2 - 4} y={(sg.p0.y + sg.p1.y) / 2 - 4} width={8} height={8} rx={1.5} fill="#fff" stroke="#3b82f6" strokeWidth={1.5} pointerEvents="none" />
+                    ))}
                   </g>
                 );
               })}
@@ -760,7 +873,14 @@ export default function GateEditor() {
               <button type="button" className={btn} style={btnStyle} onClick={removeSelected}><Trash2 size={13} /> {g.delete}</button>
             </div>
           ) : selected?.kind === 'wire' ? (
-            <button type="button" className={btn} style={btnStyle} onClick={removeSelected}><Trash2 size={13} /> {g.deleteWire}</button>
+            <div className="flex flex-col gap-2">
+              <h2 className="text-[0.75rem] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{g.selected}: {g.wire}</h2>
+              <p className="text-[0.7188rem]" style={{ color: 'var(--text-secondary)' }}>{g.wireHint}</p>
+              <div className="flex gap-2 flex-wrap">
+                <button type="button" className={btn} style={btnStyle} data-testid="gate-wire-auto" onClick={() => setCircuit((c) => ({ ...c, wires: c.wires.map((w) => (w.id === selected.id ? { id: w.id, from: w.from, to: w.to, pin: w.pin, ...(w.fromPin ? { fromPin: w.fromPin } : {}) } : w)) }))}><RotateCcw size={13} /> {g.wireAuto}</button>
+                <button type="button" className={btn} style={btnStyle} onClick={removeSelected}><Trash2 size={13} /> {g.deleteWire}</button>
+              </div>
+            </div>
           ) : null}
 
           <div className="flex flex-col gap-2">
