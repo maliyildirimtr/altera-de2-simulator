@@ -8,8 +8,10 @@ import {
   CheckCircle2,
   Activity,
   Workflow,
+  Monitor,
 } from 'lucide-react';
 import { LogicAnalyzer } from './LogicAnalyzer';
+import { VgaPs2Panel } from './VgaPs2Panel';
 import { FsmView } from './FsmView';
 import { requestReveal, subscribeDiagnostics, type Diagnostic } from '../../core/simulator/diagnostics';
 import { useI18n } from '../../i18n/I18nProvider';
@@ -44,7 +46,7 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
 }) => {
   const t = useT();
   const { lang } = useI18n();
-  const [activeTab, setActiveTab] = useState<'console' | 'problems' | 'analyzer' | 'fsm'>('console');
+  const [activeTab, setActiveTab] = useState<'console' | 'problems' | 'analyzer' | 'fsm' | 'io'>('console');
   // Line-numbered problems from the last compile; a click jumps to the line.
   const [problems, setProblems] = useState<Diagnostic[]>([]);
   useEffect(() => subscribeDiagnostics(setProblems), []);
@@ -129,6 +131,18 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
           >
             <Workflow size={13} />
             <span className="font-medium">{t("FSM")}</span>
+          </button>
+          <button
+            data-testid="console-tab-io"
+            onClick={() => {
+              setActiveTab('io');
+              onToggle();
+            }}
+            className="flex items-center gap-1.5 transition-colors hover:text-[var(--text-primary)]"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            <Monitor size={13} />
+            <span className="font-medium">{t("VGA / PS/2")}</span>
           </button>
         </div>
         <button
@@ -232,6 +246,19 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
             <Workflow size={13} />
             <span>{t("FSM")}</span>
           </button>
+
+          <button
+            data-testid="console-tab-io"
+            onClick={() => setActiveTab('io')}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-[0.25rem] transition-colors ${
+              activeTab === 'io'
+                ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold shadow-xs'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+            }`}
+          >
+            <Monitor size={13} />
+            <span>{t("VGA / PS/2")}</span>
+          </button>
         </div>
 
         <div className="flex items-center gap-1">
@@ -290,6 +317,7 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
         {activeTab === 'analyzer' && <LogicAnalyzer />}
 
         {activeTab === 'fsm' && <FsmView source={compiledSource} />}
+        {activeTab === 'io' && <VgaPs2Panel />}
 
         {activeTab === 'problems' && (
           <div>

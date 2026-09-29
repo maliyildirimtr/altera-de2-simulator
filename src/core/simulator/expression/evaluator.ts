@@ -9,6 +9,12 @@ export interface EvalContext {
    * A net missing here is treated as 1 bit, the engine's historic default.
    */
   widths?: Record<string, number>;
+  /**
+   * When set, the value each net had before its first write in this pass, so
+   * a settle loop can tell whether a pass changed anything without copying
+   * the whole state.
+   */
+  trace?: Map<string, number | undefined>;
 }
 
 /** Self-determined width of an expression, when it is known; null otherwise. */
@@ -28,7 +34,10 @@ export function exprWidth(expr: Expr, ctx: EvalContext): number | null {
       return total;
     }
     case 'Unary':
-      return expr.operator === '!' ? 1 : exprWidth(expr.right, ctx);
+      return expr.operator === '!' || expr.operator.startsWith('R') ? 1 : exprWidth(expr.right, ctx);
+    case 'Binary':
+      if (['&&', '||', '==', '!=', '<', '>', '<=', '>='].includes(expr.operator)) return 1;
+      return null;
     default:
       return null;
   }
@@ -75,6 +84,18 @@ export function evaluateExpr(expr: Expr, ctx: EvalContext): number {
           return (~right) & 1;
         }
         case '!': return (!right) ? 1 : 0;
+        case 'R&': {
+          const w = exprWidth(expr.right, ctx) ?? 1;
+          const m = maskOf(w);
+          return ((right & m) >>> 0) === (m >>> 0) ? 1 : 0;
+        }
+        case 'R|': return right !== 0 ? 1 : 0;
+        case 'R^': {
+          let v = right >>> 0;
+          let p = 0;
+          while (v) { p ^= v & 1; v >>>= 1; }
+          return p;
+        }
         case '-': return -right;
         case '+': return right;
         default: throw new Error(`Unknown unary operator: ${expr.operator}`);
@@ -86,6 +107,9 @@ export function evaluateExpr(expr: Expr, ctx: EvalContext): number {
       const right = evaluateExpr(expr.right, ctx);
       switch (expr.operator) {
         case '+': return (left + right) | 0;
+        case '*': return Math.imul(left, right);
+        case '&&': return left !== 0 && right !== 0 ? 1 : 0;
+        case '||': return left !== 0 || right !== 0 ? 1 : 0;
         case '-': return (left - right) | 0;
         case '&': return left & right;
         case '|': return left | right;
@@ -136,7 +160,8 @@ export function evaluateExpr(expr: Expr, ctx: EvalContext): number {
 
 function setLValue(target: LValue, value: number, isBlocking: boolean, ctx: EvalContext) {
   const targetObj = isBlocking ? ctx.state : ctx.nextState;
-  
+  if (isBlocking && ctx.trace && !ctx.trace.has(target.name)) ctx.trace.set(target.name, ctx.state[target.name]);
+
   if (target.type === 'Identifier') {
     // A declared vector keeps only its own bits: a 4-bit counter wraps 15 → 0.
     const w = ctx.widths?.[target.name];
@@ -213,8 +238,10 @@ export function evaluateStmt(stmt: Stmt, ctx: EvalContext) {
 }
 
 export function commitNextState(ctx: EvalContext) {
-  for (const [k, v] of Object.entries(ctx.nextState)) {
-    ctx.state[k] = v;
+  const trace = ctx.trace;
+  for (const k in ctx.nextState) {
+    if (trace && !trace.has(k)) trace.set(k, ctx.state[k]);
+    ctx.state[k] = ctx.nextState[k];
   }
   ctx.nextState = Object.create(null); // Reset nextState
 }

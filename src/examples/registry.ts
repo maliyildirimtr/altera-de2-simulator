@@ -7,6 +7,8 @@ import metadataText from './metadata.json?raw';
 import de2InteractiveIoSrc from './source/de2_interactive_io.sv?raw';
 import de2LcdHelloSrc from './source/de2_lcd_hello.sv?raw';
 import de2LcdCustomSrc from './source/de2_lcd_custom.sv?raw';
+import de2VgaPatternSrc from './source/de2_vga_pattern.sv?raw';
+import de2Ps2KeyboardSrc from './source/de2_ps2_keyboard.sv?raw';
 
 // Raw SystemVerilog Source Imports
 import basicGatesSrc from './source/basic_gates.sv?raw';
@@ -596,6 +598,68 @@ export const BASE_EXAMPLES: LearningExample[] = [
       filename: 'de2_lcd_custom.sv',
       source: de2LcdCustomSrc,
       topModule: 'de2_lcd_custom',
+    },
+    tools: {
+      schematic: false,
+      waveform: false,
+      de2: true,
+    },
+  },
+  {
+    id: 'de2_vga_pattern',
+    title: 'DE2 VGA Test Pattern',
+    description:
+      'A real 640x480 @ 60 Hz VGA signal: 25 MHz pixel clock, sync counters and 10-bit colour. SW1..SW0 pick colour bars, a checkerboard, a gradient or a frame with a cross; SW2 inverts. Open the VGA / PS/2 tab and press Draw frame.',
+    difficulty: 'intermediate',
+    category: 'fpga',
+    topics: ['DE2 Board', 'VGA', 'Video timing', 'Counters'],
+    learningObjectives: [
+      'Generate horizontal and vertical sync from pixel and line counters',
+      'Use a clock enable for a 25 MHz pixel clock from CLOCK_50',
+      'Blank the colour outside the visible 640x480 area',
+    ],
+    topModule: 'de2_vga_pattern',
+    source: {
+      filename: 'de2_vga_pattern.sv',
+      language: 'systemverilog',
+      code: de2VgaPatternSrc,
+    },
+    de2: {
+      supported: true,
+      filename: 'de2_vga_pattern.sv',
+      source: de2VgaPatternSrc,
+      topModule: 'de2_vga_pattern',
+    },
+    tools: {
+      schematic: false,
+      waveform: false,
+      de2: true,
+    },
+  },
+  {
+    id: 'de2_ps2_keyboard',
+    title: 'DE2 PS/2 Keyboard',
+    description:
+      'Receives keyboard scan codes on PS2_CLK/PS2_DAT and shows the last two bytes on HEX3..HEX0 (F0 = key released) and whether a key is held on LEDG0. Open the VGA / PS/2 tab, click the keyboard area and type.',
+    difficulty: 'intermediate',
+    category: 'fpga',
+    topics: ['DE2 Board', 'PS/2', 'Serial protocol', 'Synchroniser'],
+    learningObjectives: [
+      'Synchronise a slow external clock with two flip-flops and detect its falling edge',
+      'Shift in an 11-bit PS/2 frame (start, data LSB first, parity, stop)',
+      'Read make and break (F0) scan codes',
+    ],
+    topModule: 'de2_ps2_keyboard',
+    source: {
+      filename: 'de2_ps2_keyboard.sv',
+      language: 'systemverilog',
+      code: de2Ps2KeyboardSrc,
+    },
+    de2: {
+      supported: true,
+      filename: 'de2_ps2_keyboard.sv',
+      source: de2Ps2KeyboardSrc,
+      topModule: 'de2_ps2_keyboard',
     },
     tools: {
       schematic: false,

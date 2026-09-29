@@ -11,6 +11,8 @@ import {
   type LcdState,
 } from '../core/peripherals/lcdController';
 import { collectLcdBus } from '../core/peripherals/lcdSignals';
+import { createPs2, ps2Tick, type Ps2State } from '../core/peripherals/ps2Keyboard';
+import { createVgaMonitor, vgaSample, type VgaMonitor } from '../core/peripherals/vgaMonitor';
 import { parseBitRef, readSignal, writeSignal } from '../core/simulator/vectorSignals';
 import { expandTarget, parseVirtualComponent } from '../board/virtualComponents';
 import { autoMapPort } from '../utils/parser/pinParser';
@@ -123,6 +125,11 @@ interface BoardState {
 
   runSimulationCycle: () => void;
   tickClock: () => void;
+  /**
+   * Runs `cycles` clock cycles with the engine alone, much faster than
+   * ticking: for sending PS/2 bytes and drawing VGA frames.
+   */
+  runFast: (cycles: number) => void;
   
   // Actions
   toggleSwitch: (index: number) => void;
@@ -172,6 +179,150 @@ function evaluateIfLive(): void {
   if (s.boardLive) s.runSimulationCycle();
 }
 
+/**
+ * The engine inputs for the board's current switches, keys, clock level and
+ * PS/2 lines (step 1 of a simulation cycle).
+ */
+function collectInputs(state: BoardState): Record<string, number> {
+  const inputs: Record<string, number> = {};
+  const declaredInputs = new Set(state.engine?.inputs ?? []);
+  const portWidth = (portName: string): number =>
+    state.engine?.portWidths?.[portName] ?? 1;
+
+  /*
+   * When a bit is packed into a declared vector, the OTHER bits of that
+   * vector must start from the board rather than from zero. A .qsf that
+   * names only KEY[0] still leaves KEY[3:1] physically connected to three
+   * buttons, and KEY is ACTIVE-LOW — so zeroing them would report three
+   * buttons held down. Seeding from the bank makes the whole declared port
+   * read the board, which is both correct and what a student expects.
+   */
+  const packBank = (values: number[], idle: number, width: number): number => {
+    let packed = 0;
+    for (let bit = 0; bit < Math.min(Math.max(width, 1), 32); bit += 1) {
+      if (values[bit] ?? idle) packed |= 1 << bit;
+    }
+    return packed;
+  };
+  const seedBank = (base: string, values: number[], idle: number): void => {
+    if (inputs[base] === undefined && declaredInputs.has(base)) {
+      inputs[base] = packBank(values, idle, portWidth(base));
+    }
+  };
+
+  for (const mapping of state.pinMappings) {
+    const target = parseVirtualComponent(mapping.virtualComponent);
+    if (!target) continue;
+
+    if (target.family === 'CLOCK_50') {
+      writeSignal(inputs, declaredInputs, mapping.portName, state.clockState, state.simState);
+      continue;
+    }
+    if (target.family !== 'SW' && target.family !== 'KEY') continue;
+
+    // KEY's idle value is 1 (released); an unset switch is 0.
+    const values = target.family === 'SW' ? state.switches : state.keys;
+    const idle = target.family === 'SW' ? 0 : 1;
+
+    for (const { signal, index } of expandTarget(target, mapping.portName, portWidth(mapping.portName))) {
+      const ref = parseBitRef(signal);
+      if (ref) seedBank(ref.base, values, idle);
+      writeSignal(inputs, declaredInputs, signal, values[index] ?? idle, state.simState);
+    }
+  }
+
+  // Also map CLOCK_50 direct input if top module declares it
+  inputs['CLOCK_50'] = state.clockState;
+  inputs['clk'] = state.clockState;
+  inputs['CLK'] = state.clockState;
+
+  /*
+   * Any engine input still undriven gets one more chance to be recognised
+   * as DE2 hardware BEFORE falling back to a raw default.
+   *
+   * This matters far more than it looks. An undriven input used to default
+   * to 0, and KEY is ACTIVE-LOW — so a design whose reset is `~KEY0` was
+   * held permanently in reset the moment its pin mapping was missing or
+   * blank, with no diagnostic anywhere. That is what kept the LCD example's
+   * sequencer pinned at step 0: LCD_EN stayed high, no enable edge ever
+   * fell, and because LCD_ON/LCD_BLON are level-sensitive the panel lit up
+   * with nothing on it.
+   *
+   * Mappings go missing easily: the workspace only auto-assigns ports when
+   * `pinMappings.length === 0`, so a table left over from a previous design
+   * suppresses auto-mapping entirely, and `autoMapPort` returning null
+   * stores an empty virtualComponent.
+   *
+   * So a port literally NAMED after a DE2 input is now driven by that
+   * input's board state whether or not the mapping table says so — which is
+   * what a student naming a port `KEY0` expects, and it makes the board the
+   * single source for every recognised input. Only genuinely unrecognised
+   * names fall back to the previous value.
+   */
+  if (state.engine?.inputs) {
+    for (const inputName of state.engine.inputs) {
+      if (inputs[inputName] !== undefined) continue;
+
+      const implied = parseVirtualComponent(autoMapPort(inputName));
+      if (implied && (implied.family === 'SW' || implied.family === 'KEY')) {
+        const values = implied.family === 'SW' ? state.switches : state.keys;
+        const idle = implied.family === 'SW' ? 0 : 1;
+        for (const { signal, index } of expandTarget(implied, inputName, portWidth(inputName))) {
+          const ref = parseBitRef(signal);
+          if (ref) seedBank(ref.base, values, idle);
+          writeSignal(inputs, declaredInputs, signal, values[index] ?? idle, state.simState);
+        }
+        if (inputs[inputName] !== undefined) continue;
+      }
+      if (implied && implied.family === 'CLOCK_50') {
+        inputs[inputName] = state.clockState;
+        continue;
+      }
+
+      inputs[inputName] = state.simState[inputName] ?? 0;
+    }
+  }
+
+  // PS/2 keyboard lines, when the design has them.
+  for (const name of state.engine?.inputs ?? []) {
+    const up = name.toUpperCase();
+    if (up === 'PS2_CLK') inputs[name] = ps2.clk;
+    else if (up === 'PS2_DAT' || up === 'PS2_DATA') inputs[name] = ps2.dat;
+  }
+  return inputs;
+}
+
+/** Keyboard and monitor on the board's PS/2 and VGA connectors. Mutable, outside React state. */
+export const ps2: Ps2State = createPs2();
+export const vga: VgaMonitor = createVgaMonitor();
+
+/** Samples the VGA pins of an evaluated state into the monitor, when the design has them. */
+function sampleVga(state: BoardState, sim: Record<string, number>): void {
+  const find = (...names: string[]) => {
+    for (const n of names) if (sim[n] !== undefined) return sim[n];
+    return undefined;
+  };
+  const hs = find('VGA_HS', 'vga_hs', 'VGA_HSYNC');
+  const vs = find('VGA_VS', 'vga_vs', 'VGA_VSYNC');
+  if (hs === undefined || vs === undefined) return;
+  vga.bits = state.engine?.portWidths?.['VGA_R'] ?? state.engine?.portWidths?.['vga_r'] ?? 10;
+  const blank = find('VGA_BLANK', 'VGA_BLANK_N', 'vga_blank', 'vga_blank_n');
+  vgaSample(vga, {
+    hs: hs ? 1 : 0,
+    vs: vs ? 1 : 0,
+    r: find('VGA_R', 'vga_r') ?? 0,
+    g: find('VGA_G', 'vga_g') ?? 0,
+    b: find('VGA_B', 'vga_b') ?? 0,
+    blank: blank === undefined ? null : blank ? 1 : 0,
+  });
+}
+
+/** Clears the keyboard queue and the monitor picture (compile, reset). */
+export function resetPeripherals(): void {
+  Object.assign(ps2, createPs2(ps2.half));
+  Object.assign(vga, createVgaMonitor());
+}
+
 export const useBoardStore = create<BoardState>((set, get) => ({
   lcd: createLcdState(),
   lcdDebug: { ...INITIAL_LCD_DEBUG },
@@ -207,6 +358,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   compileState: 'idle',
   setEngine: (engine) => {
     clearSimulationTimer();
+    resetPeripherals();
     set({
       engine,
       compileState: engine ? 'ready' : 'idle',
@@ -301,104 +453,8 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       //    seeding from the previous state so bits no pin covers keep their
       //    value — without that, mapping only KEY0 would drive KEY1..KEY3 to
       //    0, which for an active-low input means "held down".
-      const inputs: Record<string, number> = {};
-      const declaredInputs = new Set(state.engine?.inputs ?? []);
-      const portWidth = (portName: string): number =>
-        state.engine?.portWidths?.[portName] ?? 1;
-
-      /*
-       * When a bit is packed into a declared vector, the OTHER bits of that
-       * vector must start from the board rather than from zero. A .qsf that
-       * names only KEY[0] still leaves KEY[3:1] physically connected to three
-       * buttons, and KEY is ACTIVE-LOW — so zeroing them would report three
-       * buttons held down. Seeding from the bank makes the whole declared port
-       * read the board, which is both correct and what a student expects.
-       */
-      const packBank = (values: number[], idle: number, width: number): number => {
-        let packed = 0;
-        for (let bit = 0; bit < Math.min(Math.max(width, 1), 32); bit += 1) {
-          if (values[bit] ?? idle) packed |= 1 << bit;
-        }
-        return packed;
-      };
-      const seedBank = (base: string, values: number[], idle: number): void => {
-        if (inputs[base] === undefined && declaredInputs.has(base)) {
-          inputs[base] = packBank(values, idle, portWidth(base));
-        }
-      };
-
-      for (const mapping of state.pinMappings) {
-        const target = parseVirtualComponent(mapping.virtualComponent);
-        if (!target) continue;
-
-        if (target.family === 'CLOCK_50') {
-          writeSignal(inputs, declaredInputs, mapping.portName, state.clockState, state.simState);
-          continue;
-        }
-        if (target.family !== 'SW' && target.family !== 'KEY') continue;
-
-        // KEY's idle value is 1 (released); an unset switch is 0.
-        const values = target.family === 'SW' ? state.switches : state.keys;
-        const idle = target.family === 'SW' ? 0 : 1;
-
-        for (const { signal, index } of expandTarget(target, mapping.portName, portWidth(mapping.portName))) {
-          const ref = parseBitRef(signal);
-          if (ref) seedBank(ref.base, values, idle);
-          writeSignal(inputs, declaredInputs, signal, values[index] ?? idle, state.simState);
-        }
-      }
-
-      // Also map CLOCK_50 direct input if top module declares it
-      inputs['CLOCK_50'] = state.clockState;
-      inputs['clk'] = state.clockState;
-      inputs['CLK'] = state.clockState;
-
-      /*
-       * Any engine input still undriven gets one more chance to be recognised
-       * as DE2 hardware BEFORE falling back to a raw default.
-       *
-       * This matters far more than it looks. An undriven input used to default
-       * to 0, and KEY is ACTIVE-LOW — so a design whose reset is `~KEY0` was
-       * held permanently in reset the moment its pin mapping was missing or
-       * blank, with no diagnostic anywhere. That is what kept the LCD example's
-       * sequencer pinned at step 0: LCD_EN stayed high, no enable edge ever
-       * fell, and because LCD_ON/LCD_BLON are level-sensitive the panel lit up
-       * with nothing on it.
-       *
-       * Mappings go missing easily: the workspace only auto-assigns ports when
-       * `pinMappings.length === 0`, so a table left over from a previous design
-       * suppresses auto-mapping entirely, and `autoMapPort` returning null
-       * stores an empty virtualComponent.
-       *
-       * So a port literally NAMED after a DE2 input is now driven by that
-       * input's board state whether or not the mapping table says so — which is
-       * what a student naming a port `KEY0` expects, and it makes the board the
-       * single source for every recognised input. Only genuinely unrecognised
-       * names fall back to the previous value.
-       */
-      if (state.engine?.inputs) {
-        for (const inputName of state.engine.inputs) {
-          if (inputs[inputName] !== undefined) continue;
-
-          const implied = parseVirtualComponent(autoMapPort(inputName));
-          if (implied && (implied.family === 'SW' || implied.family === 'KEY')) {
-            const values = implied.family === 'SW' ? state.switches : state.keys;
-            const idle = implied.family === 'SW' ? 0 : 1;
-            for (const { signal, index } of expandTarget(implied, inputName, portWidth(inputName))) {
-              const ref = parseBitRef(signal);
-              if (ref) seedBank(ref.base, values, idle);
-              writeSignal(inputs, declaredInputs, signal, values[index] ?? idle, state.simState);
-            }
-            if (inputs[inputName] !== undefined) continue;
-          }
-          if (implied && implied.family === 'CLOCK_50') {
-            inputs[inputName] = state.clockState;
-            continue;
-          }
-
-          inputs[inputName] = state.simState[inputName] ?? 0;
-        }
-      }
+      const inputs = collectInputs(state);
+      const portWidth = (portName: string): number => state.engine?.portWidths?.[portName] ?? 1;
 
       // 2. Evaluate Engine — both AST compiled evaluate and Graph-Based Topological Simulation
       let newState = state.engine.evaluate(inputs, { ...state.simState });
@@ -536,11 +592,54 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     const state = get();
     if (!state.engine) return;
     const newClock = state.clockState === 0 ? 1 : 0;
+    // The keyboard moves on once per clock cycle, before the rising edge.
+    if (newClock === 1) ps2Tick(ps2);
     set({
       boardLive: true,
       clockState: newClock,
       simState: { ...state.simState, 'CLOCK_50': newClock, 'clk': newClock, 'CLK': newClock },
     });
+    get().runSimulationCycle();
+    if (newClock === 1) sampleVga(get(), get().simState);
+  },
+
+  runFast: (cycles) => {
+    const state = get();
+    const engine = state.engine;
+    if (!engine || state.compileState !== 'ready') return;
+    const n = Math.max(0, Math.min(2_000_000, Math.round(cycles)));
+    // Only the engine runs here: no graph view, no LCD, no waveform history.
+    // Switches and keys hold their positions for the whole run.
+    const inputs = collectInputs(state);
+    const clockPorts = new Set(['CLOCK_50', 'clk', 'CLK']);
+    for (const m of state.pinMappings) if (m.virtualComponent === 'CLOCK_50') clockPorts.add(m.portName);
+    const ps2Ports = (engine.inputs ?? []).filter((x) => /^PS2_(CLK|DAT|DATA)$/i.test(x));
+    let sim = state.simState;
+    let clk = state.clockState;
+    // When the clock is only ever a rising edge, its low half changes
+    // nothing but the remembered level: record that instead of evaluating.
+    const driven = [...clockPorts].filter((c) => (engine.inputs ?? []).includes(c));
+    const skipLow = driven.length > 0 && driven.every((c) => engine.posedgeOnly?.includes(c));
+    let own = false;
+    try {
+      for (let i = 0; i < n * 2; i++) {
+        clk = clk ? 0 : 1;
+        if (clk === 0 && skipLow) {
+          if (!own) { sim = { ...sim }; own = true; }
+          for (const c of driven) { sim[c] = 0; sim[`__prev_${c}`] = 0; }
+          continue;
+        }
+        if (clk === 1) ps2Tick(ps2);
+        for (const c of clockPorts) inputs[c] = clk;
+        for (const p of ps2Ports) inputs[p] = /CLK/i.test(p) ? ps2.clk : ps2.dat;
+        sim = engine.evaluate(inputs, sim);
+        own = true;
+        if (clk === 1) sampleVga(state, sim);
+      }
+    } catch (err) {
+      console.warn('[boardStore] runFast error:', err);
+    }
+    set({ boardLive: true, clockState: clk, simState: { ...sim, 'CLOCK_50': clk, 'clk': clk, 'CLK': clk } });
     get().runSimulationCycle();
   },
 
@@ -564,6 +663,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
 
   resetBoard: () => {
     clearSimulationTimer();
+    resetPeripherals();
     set({
       switches: [...INITIAL_SWITCHES],
       keys: [...INITIAL_KEYS],

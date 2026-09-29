@@ -55,7 +55,7 @@ export class Parser {
   }
 
   private conditional(): Expr {
-    let expr = this.bitwiseOr();
+    let expr = this.logicalOr();
 
     if (this.match('Operator', '?')) {
       const trueBranch = this.parseExpr();
@@ -64,6 +64,24 @@ export class Parser {
       expr = { type: 'Conditional', condition: expr, trueBranch, falseBranch };
     }
 
+    return expr;
+  }
+
+  private logicalOr(): Expr {
+    let expr = this.logicalAnd();
+    while (this.match('Operator', '||')) {
+      const right = this.logicalAnd();
+      expr = { type: 'Binary', operator: '||', left: expr, right };
+    }
+    return expr;
+  }
+
+  private logicalAnd(): Expr {
+    let expr = this.bitwiseOr();
+    while (this.match('Operator', '&&')) {
+      const right = this.bitwiseOr();
+      expr = { type: 'Binary', operator: '&&', left: expr, right };
+    }
     return expr;
   }
 
@@ -99,8 +117,8 @@ export class Parser {
 
   private equality(): Expr {
     let expr = this.relational();
-    while (this.match('Operator', '==') || this.match('Operator', '!=')) {
-      const operator = this.previous().value;
+    while (this.match('Operator', '==') || this.match('Operator', '!=') || this.match('Operator', '===') || this.match('Operator', '!==')) {
+      const operator = this.previous().value.slice(0, 2);
       const right = this.relational();
       expr = { type: 'Binary', operator, left: expr, right };
     }
@@ -119,8 +137,8 @@ export class Parser {
 
   private shift(): Expr {
     let expr = this.addition();
-    while (this.match('Operator', '<<') || this.match('Operator', '>>')) {
-      const operator = this.previous().value;
+    while (this.match('Operator', '<<') || this.match('Operator', '>>') || this.match('Operator', '<<<') || this.match('Operator', '>>>')) {
+      const operator = this.previous().value.slice(0, 2);
       const right = this.addition();
       expr = { type: 'Binary', operator, left: expr, right };
     }
@@ -128,11 +146,20 @@ export class Parser {
   }
 
   private addition(): Expr {
-    let expr = this.unary();
+    let expr = this.multiplication();
     while (this.match('Operator', '+') || this.match('Operator', '-')) {
       const operator = this.previous().value;
-      const right = this.unary();
+      const right = this.multiplication();
       expr = { type: 'Binary', operator, left: expr, right };
+    }
+    return expr;
+  }
+
+  private multiplication(): Expr {
+    let expr = this.unary();
+    while (this.match('Operator', '*')) {
+      const right = this.unary();
+      expr = { type: 'Binary', operator: '*', left: expr, right };
     }
     return expr;
   }
@@ -140,6 +167,12 @@ export class Parser {
   private unary(): Expr {
     if (this.match('Operator', '~') || this.match('Operator', '!') || this.match('Operator', '-') || this.match('Operator', '+')) {
       const operator = this.previous().value;
+      const right = this.unary();
+      return { type: 'Unary', operator, right };
+    }
+    // Reduction operators: &bus, |bus, ^bus (one bit from all bits of a vector).
+    if (this.match('Operator', '&') || this.match('Operator', '|') || this.match('Operator', '^')) {
+      const operator = `R${this.previous().value}`;
       const right = this.unary();
       return { type: 'Unary', operator, right };
     }

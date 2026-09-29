@@ -1,5 +1,5 @@
 import { Parser } from './expression/parser';
-import { evaluateStmt, createSafeState, isEdgeActive, commitNextState } from './expression/evaluator';
+import { evaluateStmt, isEdgeActive, commitNextState } from './expression/evaluator';
 import { buildConstantTable } from './namedConstants';
 import type { EvalContext } from './expression/evaluator';
 
@@ -16,6 +16,12 @@ export interface VerilogModule {
    * this message instead of failing silently.
    */
   transpileError?: string;
+  /**
+   * Top-level inputs used only as rising-edge clocks: never read by any
+   * expression and never a negedge clock. For these the low half of a clock
+   * cycle changes nothing, so a fast runner may skip evaluating it.
+   */
+  posedgeOnly?: string[];
 }
 
 
@@ -338,7 +344,9 @@ export function elaborateEngine(modules: Record<string, any>, topModule: string)
        * in comparisons, arithmetic and case items with no special handling
        * anywhere in the evaluator.
        */
-      const state = createSafeState({ ...combinedConstants, ...st });
+      const state: Record<string, number> = Object.create(null);
+      for (const k in combinedConstants) state[k] = combinedConstants[k];
+      for (const k in st) state[k] = st[k];
 
       // Inputs
       for (const i of topInputs) {
@@ -362,7 +370,10 @@ export function elaborateEngine(modules: Record<string, any>, topModule: string)
       //    bounded so a combinational loop cannot hang the page.
       const settleComb = () => {
         for (let iter = 0; iter < 64; iter++) {
-          const before = Object.assign(Object.create(null), state) as Record<string, number>;
+          // Only nets written in this pass can have changed: their values
+          // before the pass are recorded on first write.
+          const trace = new Map<string, number | undefined>();
+          ctx.trace = trace;
           for (const assign of moduleAST.continuousAssigns) {
             evaluateStmt(assign, ctx);
           }
@@ -374,9 +385,11 @@ export function elaborateEngine(modules: Record<string, any>, topModule: string)
             }
           }
           commitNextState(ctx);
+          ctx.trace = undefined;
           let changed = false;
-          for (const k in state) {
-            if (before[k] !== state[k] && !(Number.isNaN(before[k]) && Number.isNaN(state[k]))) { changed = true; break; }
+          for (const [k, was] of trace) {
+            const now = state[k];
+            if (was !== now && !(Number.isNaN(was) && Number.isNaN(now))) { changed = true; break; }
           }
           if (!changed && iter >= 1) break;
         }
@@ -421,7 +434,23 @@ export function elaborateEngine(modules: Record<string, any>, topModule: string)
       return state;
     };
 
-    return { inputs: topInputs, outputs: topOutputs, evaluate, modules, topModule };
+    // Inputs read anywhere, and inputs used as negedge clocks.
+    const read = new Set<string>();
+    const walk = (node: unknown): void => {
+      if (!node || typeof node !== 'object') return;
+      if (Array.isArray(node)) { node.forEach(walk); return; }
+      const o = node as Record<string, unknown>;
+      if ((o.type === 'Identifier' || o.type === 'BitSelect') && typeof o.name === 'string') read.add(o.name);
+      for (const k in o) if (k !== 'target' || (o.target as { type?: string })?.type === 'BitSelect') walk(o[k]);
+    };
+    moduleAST.continuousAssigns.forEach(walk);
+    for (const b of moduleAST.alwaysBlocks) {
+      walk(b.body);
+      if (b.edge !== 'posedge' && b.signal) read.add(b.signal);
+    }
+    const posedgeOnly = topInputs.filter((i) => !read.has(i) && moduleAST.alwaysBlocks.some((b) => b.edge === 'posedge' && b.signal === i));
+
+    return { inputs: topInputs, outputs: topOutputs, evaluate, modules, topModule, posedgeOnly };
   } catch (err) {
     console.error("Transpilation Error:", err);
     const fallbackEvaluate = (_inputs: Record<string, number>, state: Record<string, number>) => state;

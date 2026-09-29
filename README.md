@@ -8,12 +8,13 @@ Browser-based learning tools for digital logic and Electrical & Electronics Engi
 
 | Route | Tool | Current behavior |
 |---|---|---|
-| `#/de2-simulator` | DE2 Simulator | Runs a supported Verilog/SystemVerilog subset in a safe TypeScript evaluator. Switches and buttons drive HDL inputs; LEDs and seven-segment displays show mapped outputs. The board is drawn as an SVG illustration of the original Terasic DE2 in a 2D or 2.5D view. The 16×2 LCD is driven by the design through an HD44780-style controller (commands, custom CGRAM characters, display shift). |
+| `#/de2-simulator` | DE2 Simulator | Runs a supported Verilog/SystemVerilog subset in a safe TypeScript evaluator. Switches and buttons drive HDL inputs; LEDs and seven-segment displays show mapped outputs. The board is drawn as an SVG illustration of the original Terasic DE2 in a 2D or 2.5D view. The 16×2 LCD is driven by the design through an HD44780-style controller (commands, custom CGRAM characters, display shift). The VGA / PS/2 tab rebuilds the picture from VGA_HS/VGA_VS/VGA_R/G/B like a monitor and sends real PS/2 scan codes on PS2_CLK/PS2_DAT from the keyboard. |
 | `#/waveform` | Waveform | Compiles source and a testbench with local Icarus Verilog WebAssembly in a worker, parses VCD output, and renders interactive timing diagrams. |
 | `#/schematic` | Schematic | Synthesizes HDL with local Yosys WebAssembly and renders an interactive DigitalJS circuit in `SchematicViewport`. |
 | `#/gates` | Gate designer | Draw gate-level circuits with plexers, arithmetic, flip-flops, multi-bit buses (splitter, merger, constant), register, RAM and ROM. Truth table, timing view, tests, blocks, exercise mode, and Verilog with a DE2 pin-assignment dialog. |
 | `#/fsm` | FSM designer | Draw Moore or Mealy state machines, simulate them step by step, see the state table and encoding (binary, Gray, one-hot), and generate Verilog, including a DE2 version stepped by KEY1. |
 | `#/kmap` | Karnaugh | Minimal sum of products and product of sums, and circuits in AND-OR, NAND-only, OR-AND or NOR-only form. |
+| `#/quiz` | Quiz | Generated questions on number systems, Boolean algebra and Karnaugh maps, checked and explained at once, with a score. |
 | `#/examples` | Examples | Provides 14 curated examples. All open in Schematic and Waveform; 7 also include DE2 mappings. |
 | `#/` | Home | Platform overview and tool entry points. |
 
@@ -41,6 +42,8 @@ Monaco, jQuery, jQuery UI, DigitalJS, Yosys, and the Icarus assets are bundled o
 
 - The DE2 evaluator supports educational combinational and sequential examples, not the full IEEE 1364/1800 language. Unsupported constructs fail closed.
 - The DE2 LCD controller is functional, not timed: busy-flag reads (RW = 1) are ignored.
+- A VGA frame (640x480 at 60 Hz) is 840 000 CLOCK_50 cycles; the VGA / PS/2 tab draws one frame in several seconds, not in real time.
+- Offline use: production builds register a service worker (`pwa/sw.template.js`, emitted as `/sw.js` by `vite.config.ts`), so the app opens without a network after the first visit. Compiler WASM files are cached the first time they are used.
 - The 3D board view is not implemented. It appears in the view selector as disabled.
 - VHDL is not supported.
 - Icarus WebAssembly has a cold-start cost on the first waveform compile and does not provide every SystemVerilog feature.

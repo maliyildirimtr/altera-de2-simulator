@@ -43,7 +43,9 @@ import {
 } from '../../../board/boardViewMode';
 import type { BoardViewMode } from '../../../board/boardViewMode';
 import { isSegmentLit } from '../../../board/useBoardSelectors';
-import { useBoardStore } from '../../../store/boardStore';
+import { useBoardStore, ps2 as ps2Dev, vga as vgaMon } from '../../../store/boardStore';
+import * as Ps2 from '../../../core/peripherals/ps2Keyboard';
+import * as Vga from '../../../core/peripherals/vgaMonitor';
 import { compileVerilog } from '../../../core/simulator/verilogEngine';
 import { DE2BoardRenderer, boardRenderSize } from '../DE2BoardRenderer';
 import {
@@ -1580,8 +1582,9 @@ assert.strictEqual(
  * not available in a constant either. It now fails loudly and by name instead
  * of silently becoming 0, which is the whole point of this layer.
  */
+assert.strictEqual(buildConstantTable('localparam SCALED = 4 * 2;').SCALED, 8, 'multiplication is part of the grammar');
 assert.throws(
-  () => buildConstantTable('localparam SCALED = 4 * 2;'),
+  () => buildConstantTable('localparam SCALED = 4 / 2;'),
   (err: unknown) =>
     err instanceof NamedConstantError &&
     err.constantName === 'SCALED' &&
@@ -3572,7 +3575,7 @@ endmodule`);
   // behaves like the DE2 engine's run of the same source.
   const dir = path.join(process.cwd(), 'src/examples/source');
   let converted = 0;
-  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.sv') && !x.endsWith('_tb.sv') && !x.startsWith('de2_lcd'))) {
+  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.sv') && !x.endsWith('_tb.sv') && !x.startsWith('de2_lcd') && !x.startsWith('de2_ps2'))) {
     const src = fs.readFileSync(path.join(dir, f), 'utf8');
     const { circuit: c } = verilogToCircuit(src);
     converted += 1;
@@ -3693,6 +3696,82 @@ endmodule`, det.sequential);
   assert.ok(!doubleTap(tap(4000), 'a') && !doubleTap(tap(4100), 'b'), 'taps on different targets are not');
   assert.ok(!doubleTap(tap(5000, 10, 'mouse'), 'k') && !doubleTap(tap(5100, 10, 'mouse'), 'k'), 'the mouse keeps its own dblclick');
   pass('touch: double tap adds bends and states where dblclick does not fire');
+}
+
+{
+  // Engine operators used by video and serial designs: && || * === and reductions.
+  const e = compileVerilog(`module ops(input logic [3:0] a, input logic [3:0] b, output logic l_and, output logic l_or, output logic [7:0] prod, output logic r_and, output logic r_or, output logic r_xor, output logic same);
+    assign l_and = (a > 4'd2) && (b < 4'd5);
+    assign l_or  = (a == 4'd0) || (b == 4'd15);
+    assign prod  = a * b;
+    assign r_and = &a;
+    assign r_or  = |b;
+    assign r_xor = ^a;
+    assign same  = a === b;
+endmodule`);
+  assert.ok(!e.transpileError, e.transpileError);
+  for (let a = 0; a < 16; a++) for (let b = 0; b < 16; b += 3) {
+    const st = e.evaluate({ a, b }, {});
+    const par = [0, 1, 2, 3].reduce((p, i) => p ^ ((a >> i) & 1), 0);
+    assert.deepStrictEqual([st.l_and, st.l_or, st.prod, st.r_and, st.r_or, st.r_xor, st.same],
+      [+(a > 2 && b < 5), +(a === 0 || b === 15), a * b, +(a === 15), +(b !== 0), par, +(a === b)], `a=${a} b=${b}`);
+  }
+  pass('engine: logical && and ||, multiplication, === and reduction operators');
+}
+{
+  // PS/2: frames, scan codes, and the keyboard example receiving them.
+  assert.deepStrictEqual(Ps2.ps2Frame(0x1c), [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1], 'start, LSB first, odd parity, stop');
+  assert.deepStrictEqual(Ps2.tapCodes('KeyA'), [0x1c, 0xf0, 0x1c]);
+  assert.deepStrictEqual(Ps2.scanCodes('ArrowUp', true), [0xe0, 0xf0, 0x75]);
+  const dev = Ps2.createPs2(4);
+  Ps2.ps2Enqueue(dev, [0xa5]);
+  const bits: number[] = [];
+  let prevClk = 1;
+  for (let i = 0; i < Ps2.ps2Cycles(1, 4); i++) {
+    const { clk, dat } = Ps2.ps2Tick(dev);
+    if (prevClk === 1 && clk === 0) bits.push(dat);
+    prevClk = clk;
+  }
+  assert.deepStrictEqual(bits, Ps2.ps2Frame(0xa5), 'the host reads the frame on falling clock edges');
+  assert.ok(dev.clk === 1 && dev.dat === 1 && !dev.frame, 'the lines idle high afterwards');
+
+  const e = compileVerilog(fs.readFileSync(path.join(process.cwd(), 'src/examples/source/de2_ps2_keyboard.sv'), 'utf8'));
+  assert.ok(!e.transpileError, e.transpileError);
+  assert.deepStrictEqual(e.posedgeOnly, ['CLOCK_50'], 'CLOCK_50 is only a rising-edge clock');
+  store().setEngine(e);
+  store().runFast(10);
+  Ps2.ps2Enqueue(ps2Dev, [0x1c]);
+  store().runFast(Ps2.ps2Cycles(1, ps2Dev.half));
+  assert.strictEqual(store().simState.last, 0x1c, 'the make code arrives');
+  assert.strictEqual(store().simState.held, 1, 'a key is held');
+  Ps2.ps2Enqueue(ps2Dev, [0xf0, 0x1c]);
+  store().runFast(Ps2.ps2Cycles(2, ps2Dev.half));
+  assert.deepStrictEqual([store().simState.prev, store().simState.last, store().simState.held], [0xf0, 0x1c, 0], 'break code F0 1C releases it');
+  pass('PS/2: scan codes go out as real frames and the keyboard example decodes make and break codes');
+}
+{
+  // VGA monitor: rebuild a picture from sync pulses alone.
+  const m = Vga.createVgaMonitor();
+  m.bits = 1;
+  const W = 20, H = 12;
+  for (let f = 0; f < 3; f++) for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const vis = x < 12 && y < 8;
+    Vga.vgaSample(m, { hs: x >= 15 && x < 17 ? 0 : 1, vs: y >= 9 && y < 10 ? 0 : 1, r: vis && x === y ? 1 : 0, g: vis ? 1 : 0, b: 0, blank: vis ? 1 : 0 });
+  }
+  const fr = m.frame!;
+  assert.ok(fr && m.frames >= 2);
+  assert.deepStrictEqual([fr.width, fr.height, fr.crop], [12, 8, 'blank'], 'VGA_BLANK marks the visible area');
+  const px = (x: number, y: number) => Array.from(fr.pixels.slice((y * fr.width + x) * 4, (y * fr.width + x) * 4 + 3));
+  assert.deepStrictEqual(px(3, 3), [255, 255, 0]);
+  assert.deepStrictEqual(px(4, 3), [0, 255, 0]);
+
+  // The VGA example keeps real 640x480 timing: HS every 1600 CLOCK_50 cycles.
+  const e = compileVerilog(fs.readFileSync(path.join(process.cwd(), 'src/examples/source/de2_vga_pattern.sv'), 'utf8'));
+  assert.ok(!e.transpileError, e.transpileError);
+  store().setEngine(e);
+  store().runFast(1600 * 3 + 10);
+  assert.ok(Math.abs(vgaMon.lastLine - 1600) <= 1, `line length ${vgaMon.lastLine}`);
+  pass('VGA: the monitor finds lines, frames and the visible area from the sync pins; the example keeps 640x480 timing');
 }
 
 console.log(`--- DE2 Board Renderer Regression: PASS (${checks.length} checks) ---`);

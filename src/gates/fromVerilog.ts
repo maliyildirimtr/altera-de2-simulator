@@ -212,7 +212,7 @@ export function verilogToCircuit(source: string): { circuit: Circuit; name: stri
     // Instances of other modules: taken out of the text, connected below.
     interface Instance { mod: ModuleSrc; conns: Map<string, string>; outputs?: (p: string) => Net[] }
     const instances: Instance[] = [];
-    let logic = mod.body.replace(/\b(\w+)\s+(?:#\s*\([^)]*\)\s*)?(\w+)\s*\(([\s\S]*?)\)\s*;/g, (whole, type: string, _inst: string, args: string) => {
+    let logic = mod.body.replace(/\b(\w+)\s+(?:#\s*\([^)]*\)\s*)?(\w+)\s*\(([^;]*?)\)\s*;/g, (whole, type: string, _inst: string, args: string) => {
       const sub = modules.get(type);
       if (!sub) return whole;
       const conns = new Map<string, string>();
