@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Boxes, ChevronDown, ClipboardPaste, Copy, CopyPlus, Cpu, FileDown, FileUp, FlaskConical, Link2, Move, Pause, Play, Plus, Redo2, RotateCcw, RotateCw, Timer, Trash2, Undo2, X, Zap } from 'lucide-react';
+import { Boxes, ChevronDown, ClipboardPaste, Copy, CopyPlus, Cpu, FileDown, FileUp, FlaskConical, GraduationCap, Link2, Move, Pause, Play, Plus, Redo2, RotateCcw, RotateCw, Timer, Trash2, Undo2, X, Zap } from 'lucide-react';
 import {
   ARITH,
   CLOCKED,
@@ -58,6 +58,8 @@ import { decodeJson, encodeJson, MAX_SHARE_URL_LENGTH } from '../services/shareL
 import { useLocation } from 'react-router-dom';
 import { downloadText } from '../utils/svgExport';
 import { De2PinDialog } from '../components/Gates/De2PinDialog';
+import { GateExercisePanel } from '../components/Gates/GateExercisePanel';
+import { EXERCISES } from '../exercises/exercises';
 
 const STORAGE_KEY = 'logiclab_gates_v1';
 const W = 72;
@@ -1106,6 +1108,30 @@ export default function GateEditor() {
     : e;
 
   const [pinDialog, setPinDialog] = useState(false);
+  // Exercise mode: the task shown in the side panel (#/gates?exercise=id opens one).
+  const [exerciseId, setExerciseId] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('logiclab_gates_exercise');
+    } catch {
+      return null;
+    }
+  });
+  useEffect(() => {
+    try {
+      if (exerciseId) localStorage.setItem('logiclab_gates_exercise', exerciseId);
+      else localStorage.removeItem('logiclab_gates_exercise');
+    } catch {
+      /* ignore */
+    }
+  }, [exerciseId]);
+  useEffect(() => {
+    const id = new URLSearchParams(location.search).get('exercise');
+    if (id && EXERCISES.some((x) => x.id === id)) {
+      setExerciseId(id);
+      navigate(location.pathname, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]);
   const openInDe2 = () => {
     const st = useBoardStore.getState();
     st.setHdlCode(toDe2Verilog(flat, name));
@@ -1399,6 +1425,9 @@ export default function GateEditor() {
           </div>
         </div>
         <span className="flex-1" />
+        <button type="button" className={btn} data-testid="gate-exercise-toggle" aria-pressed={!!exerciseId} style={{ ...btnStyle, ...(exerciseId ? { backgroundColor: 'var(--accent-subtle)', borderColor: 'var(--accent-primary)' } : {}) }} onClick={() => setExerciseId(exerciseId ? null : EXERCISES[0].id)}>
+            <GraduationCap size={14} /> {g.exercise}
+          </button>
         <label className="flex items-center gap-1.5 text-[0.75rem]">
           {g.presets}
           <select className="h-8 px-2 rounded-[0.25rem] border text-[0.75rem]" style={btnStyle} value="" onChange={(e) => e.target.value && loadPreset(e.target.value)} data-testid="gate-preset">
@@ -1596,6 +1625,18 @@ export default function GateEditor() {
 
         {/* Side panel */}
         <aside className="lg:w-[22.5rem] shrink-0 border-t lg:border-t-0 lg:border-l overflow-y-auto p-3 flex flex-col gap-3" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
+          {exerciseId && (
+            <GateExercisePanel
+              flat={flat}
+              lang={lang}
+              text={g}
+              active={exerciseId}
+              onPick={setExerciseId}
+              onStart={(c, nm) => loadDesign({ format: FILE_FORMAT, version: 1, name: nm, circuit: c, tests: '' })}
+              btn={btn}
+              btnStyle={btnStyle}
+            />
+          )}
           {multi.length > 1 ? (
             <div className="flex flex-col gap-2" data-testid="gate-multi-panel">
               <h2 className="text-[0.75rem] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{fmt(g.selectedCount, { n: multi.length })}</h2>

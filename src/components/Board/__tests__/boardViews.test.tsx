@@ -122,6 +122,9 @@ import { buildLabReport } from '../../../report/labReport';
 import * as Gates from '../../../gates/circuit';
 import * as Num from '../../../logic/numbers';
 import * as Fsm from '../../../fsm/fsm';
+import { exerciseCircuit } from '../../Gates/GateExercisePanel';
+import { getExercise } from '../../../exercises/exercises';
+import { gradeSubmission } from '../../../exercises/grader';
 import { defaultSpec, generateTestbench, readPorts, resizeSpec, setValue } from '../../../waveform/stimulus';
 import { minimize, parseExpression, sopText, tableOf, variablesOf } from '../../../logic/boolean';
 import { ISO, project, faceTransform, sevenSegmentShapes } from '../boardGeometry';
@@ -3433,6 +3436,30 @@ endmodule`);
   const r = eng.evaluate({ SW10: 1, SW0: 1, SW1: 1 }, {});
   assert.deepStrictEqual([r.LEDG3, r.LEDR0], [1, 1], '1 + 1 + 1 = 11 on the assigned LEDs');
   pass('gate designer DE2 pin assignment: chosen places, conflicts fall back to automatic, Verilog follows');
+}
+
+{
+  // Gate designer exercise mode: start from the task's ports, draw, grade through the Verilog.
+  const grade = (id: string, c: Gates.Circuit) => { const ex = getExercise(id)!; return gradeSubmission(ex.reference, Gates.toVerilog(c, id), ex.sequential); };
+  const ao = exerciseCircuit('and_or')!;
+  assert.deepStrictEqual(ao.nodes.map((n) => `${n.type}:${n.label}`), ['IN:a', 'IN:b', 'IN:c', 'OUT:y']);
+  const empty = grade('and_or', ao);
+  assert.ok(empty.kind === 'graded' && empty.passed < empty.total, 'an unwired circuit does not pass');
+  ao.nodes.push({ id: 'g1', type: 'AND', x: 300, y: 50, label: '', delay: 1 }, { id: 'g2', type: 'OR', x: 500, y: 120, label: '', delay: 1 });
+  ao.wires.push(
+    { id: 'w1', from: 'in_a', to: 'g1', pin: 0 }, { id: 'w2', from: 'in_b', to: 'g1', pin: 1 },
+    { id: 'w3', from: 'g1', to: 'g2', pin: 0 }, { id: 'w4', from: 'in_c', to: 'g2', pin: 1 }, { id: 'w5', from: 'g2', to: 'out_y', pin: 0 },
+  );
+  const ok = grade('and_or', ao);
+  assert.ok(ok.kind === 'graded' && ok.passed === ok.total && ok.total === 8, 'a correct gate circuit passes every row');
+  // A clocked task: a 1-bit register with enable is a D flip-flop with enable.
+  const df = exerciseCircuit('dff_en')!;
+  assert.ok(df.nodes.some((n) => n.type === 'CLK' && n.label === 'clk'));
+  df.nodes.push({ id: 'r', type: 'REG', x: 400, y: 100, label: '', delay: 1, width: 1 });
+  df.wires.push({ id: 'a', from: 'in_d', to: 'r', pin: 0 }, { id: 'b', from: 'in_clk', to: 'r', pin: 1 }, { id: 'c', from: 'in_en', to: 'r', pin: 2 }, { id: 'e', from: 'r', to: 'out_q', pin: 0 });
+  const seq = grade('dff_en', df);
+  assert.ok(seq.kind === 'graded' && seq.passed === seq.total, 'the clocked task passes cycle by cycle');
+  pass('gate designer exercises: task ports, grading of drawn circuits (combinational and clocked)');
 }
 
 console.log(`--- DE2 Board Renderer Regression: PASS (${checks.length} checks) ---`);

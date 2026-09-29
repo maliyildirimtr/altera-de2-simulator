@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Editor from '@monaco-editor/react';
 import '../lib/monacoSetup';
-import { CheckCircle2, Circle, Lightbulb, Play, RotateCcw } from 'lucide-react';
+import { CheckCircle2, Circle, Lightbulb, Play, RotateCcw, Shapes } from 'lucide-react';
 import { EXERCISES, getExercise, type Exercise } from '../exercises/exercises';
 import { expectedTable, gradeSubmission, type GradeResult, type Port, type TruthRow } from '../exercises/grader';
 import { lintVerilog, type Diagnostic } from '../core/simulator/diagnostics';
@@ -478,6 +478,15 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
                 label={t.openSchematic}
                 getFiles={() => [{ name: `${exercise.id}.sv`, content: code }]}
               />
+              <button
+                type="button"
+                data-testid="exercise-gates"
+                onClick={() => navigate(`/gates?exercise=${exercise.id}`)}
+                className={btn}
+                style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-primary)' }}
+              >
+                <Shapes size={13} /> {t.solveWithGates}
+              </button>
             </div>
           </div>
           <div className="flex-1 min-h-[15rem] relative" data-testid="exercise-editor">
