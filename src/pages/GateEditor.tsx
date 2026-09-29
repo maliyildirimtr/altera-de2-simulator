@@ -222,9 +222,77 @@ function outPort(n: GateNode, pin = 0): { x: number; y: number } {
 
 type Pt = { x: number; y: number };
 
-/** Automatic route: one vertical segment half way between the ports. */
-function autoBends(a: Pt, b: Pt): number[] {
-  return [Math.max(a.x + 18, (a.x + b.x) / 2)];
+/** Unit vector pointing out of the part at one of its pins, after rotation. */
+function pinDir(n: GateNode, dir: 'i' | 'o', k: number): Pt {
+  const side = localPin(n, dir, k).side;
+  const v = side === 'L' ? { x: -1, y: 0 } : side === 'R' ? { x: 1, y: 0 } : side === 'T' ? { x: 0, y: -1 } : { x: 0, y: 1 };
+  const a = (rotOf(n) * Math.PI) / 180;
+  const [c, sn] = [Math.round(Math.cos(a)), Math.round(Math.sin(a))];
+  return { x: v.x * c - v.y * sn, y: v.x * sn + v.y * c };
+}
+
+const RIGHT: Pt = { x: 1, y: 0 };
+const LEFT: Pt = { x: -1, y: 0 };
+/** Length of the straight stub a wire keeps where it leaves or enters a pin. */
+const STUB = 18;
+
+/**
+ * Automatic route. A wire leaves its output pin and reaches its input pin
+ * along the direction the pin faces (so a pin on the top of a rotated part is
+ * left upwards), then joins the two stubs with at most two corners.
+ */
+function autoBends(a: Pt, b: Pt, da: Pt = RIGHT, db: Pt = LEFT): number[] {
+  // The common case keeps its historic shape: one vertical segment half way.
+  if (da.x === 1 && db.x === -1) return [Math.max(a.x + STUB, (a.x + b.x) / 2)];
+  const p1 = { x: a.x + da.x * STUB, y: a.y + da.y * STUB };
+  const q1 = { x: b.x + db.x * STUB, y: b.y + db.y * STUB };
+  const xm = (p1.x + q1.x) / 2;
+  const ym = (p1.y + q1.y) / 2;
+  // A route never doubles back over a stub: each corner choice is checked
+  // against the direction the wire leaves `a` and the one it must arrive in.
+  const ahead = (d: Pt) => (q1.x - p1.x) * d.x + (q1.y - p1.y) * d.y >= 0;
+  const viaX = [{ x: xm, y: p1.y }, { x: xm, y: q1.y }];
+  const viaY = [{ x: p1.x, y: ym }, { x: q1.x, y: ym }];
+  let mid: Pt[];
+  if (da.y === 0 && db.y === 0) mid = ahead(da) ? viaX : viaY;
+  else if (da.x === 0 && db.x === 0) mid = ahead(da) ? viaY : viaX;
+  else if (da.y === 0) {
+    // Horizontal out, vertical in: one corner if it runs forward and enters from the right side.
+    const fits = (q1.x - p1.x) * da.x >= 0 && (q1.y - p1.y) * -db.y >= 0;
+    mid = fits ? [{ x: q1.x, y: p1.y }] : viaX;
+  } else {
+    const fits = (q1.y - p1.y) * da.y >= 0 && (q1.x - p1.x) * -db.x >= 0;
+    mid = fits ? [{ x: p1.x, y: q1.y }] : viaY;
+  }
+  return encodeRoute(a, b, [a, p1, ...mid, q1, b]) ?? [Math.max(a.x + STUB, (a.x + b.x) / 2)];
+}
+
+/** Drops repeated points and points in the middle of a straight run. */
+function cleanRoute(raw: Pt[]): Pt[] {
+  const pts: Pt[] = [];
+  for (const p of raw) {
+    const last = pts[pts.length - 1];
+    if (last && last.x === p.x && last.y === p.y) continue;
+    pts.push(p);
+  }
+  for (let i = 1; i < pts.length - 1; ) {
+    const [p0, p1, p2] = [pts[i - 1], pts[i], pts[i + 1]];
+    if ((p0.x === p1.x && p1.x === p2.x) || (p0.y === p1.y && p1.y === p2.y)) pts.splice(i, 1);
+    else i++;
+  }
+  return pts;
+}
+
+/** Turns an orthogonal polyline from a to b into Wire.bends, or null if it cannot be encoded. */
+function encodeRoute(a: Pt, b: Pt, raw: Pt[]): number[] | null {
+  const corners = cleanRoute(raw).slice(1, -1);
+  if (!corners.length) return null;
+  // The encoding leaves `a` and reaches `b` horizontally; a vertical end is a
+  // zero-length horizontal step.
+  if (corners[0].x === a.x) corners.unshift({ ...a });
+  if (corners[corners.length - 1].x === b.x) corners.push({ ...b });
+  if (corners.length % 2 !== 0) return null;
+  return corners.slice(0, -1).map((c, j) => (j % 2 === 0 ? c.x : c.y));
 }
 
 /** Corner points of an orthogonal route through `bends` (see Wire.bends). */
@@ -242,26 +310,9 @@ export function routePoints(a: Pt, b: Pt, bends?: number[]): Pt[] {
 
 /** Removes zero-length and straight-through bends so a route stays tidy. */
 export function simplifyBends(a: Pt, b: Pt, bends: number[]): number[] {
-  // Clean the polyline: drop repeated points and points on a straight line.
-  const raw = routePoints(a, b, bends);
-  const pts: Pt[] = [];
-  for (const p of raw) {
-    const last = pts[pts.length - 1];
-    if (last && last.x === p.x && last.y === p.y) continue;
-    pts.push(p);
-  }
-  for (let i = 1; i < pts.length - 1; ) {
-    const [p0, p1, p2] = [pts[i - 1], pts[i], pts[i + 1]];
-    if ((p0.x === p1.x && p1.x === p2.x) || (p0.y === p1.y && p1.y === p2.y)) pts.splice(i, 1);
-    else i++;
-  }
-  const corners = pts.slice(1, -1);
-  if (!corners.length) return autoBends(a, b);
-  // The route must leave `a` and reach `b` horizontally.
-  if (corners[0].x === a.x) corners.unshift({ ...a });
-  if (corners[corners.length - 1].x === b.x) corners.push({ ...b });
-  if (corners.length % 2 !== 0) return bends;
-  return corners.slice(0, -1).map((c, j) => (j % 2 === 0 ? c.x : c.y));
+  const pts = cleanRoute(routePoints(a, b, bends));
+  if (pts.length <= 2) return autoBends(a, b);
+  return encodeRoute(a, b, pts) ?? bends;
 }
 
 function pointsPath(pts: Pt[]): string {
@@ -1353,7 +1404,7 @@ export default function GateEditor() {
                 const isSel = selected?.kind === 'wire' && selected.id === w.id;
                 const pa = outPort(a, w.fromPin ?? 0);
                 const pb = inPort(b, w.pin);
-                const bends = w.bends && w.bends.length % 2 === 1 ? w.bends : autoBends(pa, pb);
+                const bends = w.bends && w.bends.length % 2 === 1 ? w.bends : autoBends(pa, pb, pinDir(a, 'o', w.fromPin ?? 0), pinDir(b, 'i', w.pin));
                 const pts = routePoints(pa, pb, bends);
                 const dpath = pointsPath(pts);
                 // Segment k runs pts[k] -> pts[k+1]. Segments 1..n-2 belong to
