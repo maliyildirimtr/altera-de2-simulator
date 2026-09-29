@@ -57,6 +57,7 @@ import { markWorkspaceDirty, markWorkspaceUser } from '../services/exampleHandof
 import { decodeJson, encodeJson, MAX_SHARE_URL_LENGTH } from '../services/shareLink';
 import { useLocation } from 'react-router-dom';
 import { downloadText } from '../utils/svgExport';
+import { De2PinDialog } from '../components/Gates/De2PinDialog';
 
 const STORAGE_KEY = 'logiclab_gates_v1';
 const W = 72;
@@ -1104,6 +1105,7 @@ export default function GateEditor() {
     : e.startsWith('columns:') ? fmt(g.testColumns, { line: e.slice(8) })
     : e;
 
+  const [pinDialog, setPinDialog] = useState(false);
   const openInDe2 = () => {
     const st = useBoardStore.getState();
     st.setHdlCode(toDe2Verilog(flat, name));
@@ -1749,6 +1751,7 @@ export default function GateEditor() {
             </label>
             <div className="flex gap-2 flex-wrap">
               <button type="button" className={btn} style={btnStyle} onClick={openInDe2} data-testid="gate-open-de2" disabled={ins.length === 0 || outs.length + displays.length === 0}><Cpu size={13} /> {g.openDe2}</button>
+              <button type="button" className={btn} style={btnStyle} onClick={() => setPinDialog(true)} data-testid="gate-pin-open" disabled={ins.length === 0 && outs.length + displays.length === 0}>{g.pinAssign}</button>
               <OpenInSchematicButton className={btn} labelClassName="" getFiles={() => [{ name: `${name || 'gate_design'}.sv`, content: verilog }]} />
               <button type="button" className={btn} style={btnStyle} onClick={copyCode}><Copy size={13} /> {copied ? g.copied : g.copy}</button>
             </div>
@@ -1832,6 +1835,17 @@ export default function GateEditor() {
           </div>
         </aside>
       </div>
+      {pinDialog && (
+        <De2PinDialog
+          circuit={circuit}
+          flat={flat}
+          text={g}
+          onChange={(id, place) => setCircuit((c) => ({ ...c, nodes: c.nodes.map((n) => (n.id === id ? { ...n, de2: place } : n)) }))}
+          onAllAuto={() => setCircuit((c) => ({ ...c, nodes: c.nodes.map((n) => (n.de2 ? { ...n, de2: undefined } : n)) }))}
+          onClose={() => setPinDialog(false)}
+          onRun={() => { setPinDialog(false); openInDe2(); }}
+        />
+      )}
     </div>
   );
 }

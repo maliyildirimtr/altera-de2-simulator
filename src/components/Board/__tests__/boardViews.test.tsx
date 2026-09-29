@@ -3416,4 +3416,23 @@ endmodule`);
   pass('FSM designer: conditions, checks, stepping and Verilog (binary, Gray, one-hot, DE2 on KEY1) agree');
 }
 
+{
+  // DE2 pin assignment from the gate designer: chosen places first, then automatic.
+  const fa = JSON.parse(JSON.stringify(Gates.PRESETS.full_adder.circuit)) as Gates.Circuit;
+  const byLabel = (l: string) => fa.nodes.find((n) => n.label === l)!;
+  byLabel('a').de2 = 'SW10';
+  byLabel('b').de2 = 'SW10'; // taken: falls back to automatic
+  byLabel('sum').de2 = 'LEDG3';
+  const slots = Gates.de2Assignment(fa);
+  assert.deepStrictEqual([slots[byLabel('a').id]?.start, slots[byLabel('a').id]?.chosen], [10, true]);
+  assert.deepStrictEqual([slots[byLabel('b').id]?.bank, slots[byLabel('b').id]?.start, slots[byLabel('b').id]?.chosen], ['SW', 0, false]);
+  assert.strictEqual(slots[byLabel('sum').id]?.bank, 'LEDG');
+  const code = Gates.toDe2Verilog(fa, 'fa');
+  const eng = compileVerilog(code);
+  assert.ok(eng.inputs.includes('SW10') && eng.outputs.includes('LEDG3'), 'the DE2 ports follow the assignment');
+  const r = eng.evaluate({ SW10: 1, SW0: 1, SW1: 1 }, {});
+  assert.deepStrictEqual([r.LEDG3, r.LEDR0], [1, 1], '1 + 1 + 1 = 11 on the assigned LEDs');
+  pass('gate designer DE2 pin assignment: chosen places, conflicts fall back to automatic, Verilog follows');
+}
+
 console.log(`--- DE2 Board Renderer Regression: PASS (${checks.length} checks) ---`);
