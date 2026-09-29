@@ -20,7 +20,11 @@ export type GateType =
   // arithmetic
   | 'HA' | 'FA' | 'ADD' | 'SUB' | 'MUL' | 'DIV' | 'SHIFT' | 'CMP' | 'NEG' | 'SEXT' | 'BITCNT'
   // flip-flops (rising edge)
-  | 'DFF' | 'TFF' | 'JKFF' | 'SRFF';
+  | 'DFF' | 'TFF' | 'JKFF' | 'SRFF'
+  // buses: constant, splitter, merger
+  | 'CONST' | 'SPLIT' | 'MERGE'
+  // memory: register, RAM, ROM
+  | 'REG' | 'RAM' | 'ROM';
 
 export interface GateNode {
   id: string;
@@ -41,6 +45,19 @@ export interface GateNode {
   rot?: number;
   /** Drawing only (blocks): side and position (0–1 along the side) of moved pins, by key i0…, o0…. */
   pinLayout?: Record<string, { side: 'L' | 'R' | 'T' | 'B'; pos: number }>;
+  /**
+   * Bus width in bits (1–16): IN, CONST, SPLIT, MERGE, REG, and the data
+   * width of RAM and ROM. OUT and TUNNEL take the width of what drives them.
+   */
+  width?: number;
+  /** RAM / ROM: address width in bits (1–6). */
+  addrBits?: number;
+  /** CONST: its value. */
+  value?: number;
+  /** ROM: contents, one word per address (missing words read 0). */
+  data?: number[];
+  /** DE2 mode: board resource the part is assigned to (SW3, KEY1, LEDR5, LEDG0, HEX2); automatic when unset. */
+  de2?: string;
   /** BLOCK: id of the block in the library, and its pin names (inputs, outputs). */
   ref?: string;
   pinsIn?: string[];
@@ -67,7 +84,7 @@ export interface Circuit {
   wires: Wire[];
 }
 
-export type PartCategory = 'io' | 'wires' | 'logic' | 'plexers' | 'arithmetic' | 'flipflops';
+export type PartCategory = 'io' | 'wires' | 'logic' | 'plexers' | 'arithmetic' | 'flipflops' | 'memory';
 
 interface PartSpec {
   category: PartCategory;
@@ -122,6 +139,13 @@ export const PARTS: Record<GateType, PartSpec> = {
   TFF: { category: 'flipflops', ins: ['T', 'C'], outs: FF_OUTS, clock: 1 },
   JKFF: { category: 'flipflops', ins: ['J', 'C', 'K'], outs: FF_OUTS, clock: 1 },
   SRFF: { category: 'flipflops', ins: ['S', 'C', 'R'], outs: FF_OUTS, clock: 1 },
+  CONST: { category: 'wires', ins: [], outs: [''] },
+  // Splitter and merger pins depend on the width (see inputNames/outputNames).
+  SPLIT: { category: 'wires', ins: ['D'], outs: [] },
+  MERGE: { category: 'wires', ins: [], outs: ['D'] },
+  REG: { category: 'memory', ins: ['D', 'C', 'EN'], outs: ['Q'], clock: 1 },
+  RAM: { category: 'memory', ins: ['A', 'D', 'WE', 'C'], outs: ['Q'], clock: 3 },
+  ROM: { category: 'memory', ins: ['A'], outs: ['D'] },
 };
 
 /** Two-input gates whose input count can be raised to 4. */
@@ -136,11 +160,104 @@ export const SINKS: GateType[] = ['OUT', 'LED'];
 export const PALETTE: Array<{ category: PartCategory; types: GateType[] }> = [
   { category: 'logic', types: GATE_TYPES },
   { category: 'io', types: ['OUT', 'LED', 'IN', 'CLK', 'BTN', 'SEG7'] },
-  { category: 'wires', types: ['TUNNEL', 'CONST0', 'CONST1'] },
+  { category: 'wires', types: ['TUNNEL', 'CONST0', 'CONST1', 'CONST', 'SPLIT', 'MERGE'] },
   { category: 'plexers', types: ['MUX2', 'MUX4', 'DEMUX2', 'DEMUX4', 'DEC2', 'DEC3', 'BITSEL', 'PENC4'] },
   { category: 'arithmetic', types: ['HA', 'FA', 'ADD', 'SUB', 'MUL', 'DIV', 'SHIFT', 'CMP', 'NEG', 'SEXT', 'BITCNT'] },
   { category: 'flipflops', types: FLIP_FLOPS },
+  { category: 'memory', types: ['REG', 'RAM', 'ROM'] },
 ];
+
+/* ── Buses ──────────────────────────────────────────────────────────── */
+
+/** Parts with a bus width setting. */
+export const WIDE: GateType[] = ['IN', 'CONST', 'SPLIT', 'MERGE', 'REG', 'RAM', 'ROM'];
+/** Clocked parts that hold a value (flip-flops, register, RAM). */
+export const CLOCKED: GateType[] = [...FLIP_FLOPS, 'REG', 'RAM'];
+export const MAX_WIDTH = 16;
+export const MAX_ADDR = 6;
+
+const DEFAULT_WIDTH: Partial<Record<GateType, number>> = { CONST: 4, SPLIT: 4, MERGE: 4, REG: 4, RAM: 4, ROM: 4 };
+
+/** Bus width of a part (1 for everything that has no width setting). */
+export function dataWidth(n: Pick<GateNode, 'type' | 'width'>): number {
+  if (!WIDE.includes(n.type)) return 1;
+  return Math.max(n.type === 'SPLIT' || n.type === 'MERGE' ? 2 : 1, Math.min(MAX_WIDTH, Math.round(n.width ?? DEFAULT_WIDTH[n.type] ?? 1)));
+}
+export function addrWidth(n: Pick<GateNode, 'addrBits'>): number {
+  return Math.max(1, Math.min(MAX_ADDR, Math.round(n.addrBits ?? 3)));
+}
+export const maskOf = (w: number) => (w >= 31 ? 0x7fffffff : (1 << w) - 1);
+
+/**
+ * Width a pin expects or drives, in bits; 0 means "any" (it takes the width
+ * of what drives it: outputs, tunnels, block pins).
+ */
+export function pinWidth(n: GateNode, dir: 'i' | 'o', k: number): number {
+  const w = dataWidth(n);
+  switch (n.type) {
+    case 'IN':
+    case 'CONST': return dir === 'o' ? w : 1;
+    case 'OUT':
+    case 'TUNNEL':
+    case 'BUF':
+    case 'BLOCK': return 0;
+    case 'SPLIT': return dir === 'i' ? w : 1;
+    case 'MERGE': return dir === 'o' ? w : 1;
+    case 'REG': return (dir === 'i' && k === 0) || dir === 'o' ? w : 1;
+    case 'RAM': return dir === 'o' || k === 1 ? w : k === 0 ? addrWidth(n) : 1;
+    case 'ROM': return dir === 'o' ? w : addrWidth(n);
+    default: return 1;
+  }
+}
+
+/**
+ * Width of every signal, and the wires whose ends disagree. A pin of width
+ * "any" (tunnel, buffer, block pin) takes the width of its driver.
+ */
+export function signalWidths(c: Circuit): { widths: Record<string, number>; mismatched: string[] } {
+  const byId = new Map(c.nodes.map((n) => [n.id, n]));
+  const into = new Map<string, Wire>();
+  c.wires.forEach((w) => into.set(`${w.to}:${w.pin}`, w));
+  const widths: Record<string, number> = {};
+  const busy = new Set<string>();
+  const widthOf = (id: string, pin: number): number => {
+    const key = sig(id, pin);
+    if (key in widths) return widths[key];
+    const n = byId.get(id);
+    if (!n) return 1;
+    let w = pinWidth(n, 'o', pin);
+    if (w === 0) {
+      // Pass-through parts take the width of their own input.
+      const src = n.type === 'BLOCK' ? undefined : into.get(`${id}:0`);
+      if (src && !busy.has(key)) {
+        busy.add(key);
+        w = widthOf(src.from, src.fromPin ?? 0);
+        busy.delete(key);
+      } else w = 1;
+    }
+    widths[key] = w;
+    return w;
+  };
+  for (const n of c.nodes) outputNames(n).forEach((_, pin) => widthOf(n.id, pin));
+  // Tunnels without an input read their namesake with one.
+  const named = new Map<string, number>();
+  for (const n of c.nodes) if (n.type === 'TUNNEL' && into.has(`${n.id}:0`) && n.label.trim()) named.set(n.label.trim(), widths[n.id] ?? 1);
+  for (const n of c.nodes) if (n.type === 'TUNNEL' && !into.has(`${n.id}:0`)) widths[n.id] = named.get(n.label.trim()) ?? 1;
+  const mismatched: string[] = [];
+  for (const w of c.wires) {
+    const to = byId.get(w.to);
+    if (!to || !byId.has(w.from)) continue;
+    const want = pinWidth(to, 'i', w.pin);
+    if (want && want !== (widths[sig(w.from, w.fromPin ?? 0)] ?? 1)) mismatched.push(w.id);
+  }
+  return { widths, mismatched };
+}
+
+/** A number as the editor shows a bus value: decimal, and hex for wider buses. */
+export function formatBus(v: number, width: number): string {
+  if (width <= 1) return String(v);
+  return width > 4 ? `0x${v.toString(16).toUpperCase()}` : String(v);
+}
 
 export function isFlipFlop(type: GateType): boolean {
   return FLIP_FLOPS.includes(type);
@@ -153,7 +270,7 @@ export function isGate(type: GateType): boolean {
 /** Multi-bit arithmetic blocks (Digital's Arithmetic menu). */
 export const ARITH: GateType[] = ['ADD', 'SUB', 'MUL', 'DIV', 'SHIFT', 'CMP', 'NEG', 'SEXT', 'BITCNT'];
 
-type Shape = Pick<GateNode, 'type'> & Partial<Pick<GateNode, 'inputs' | 'bits' | 'dir' | 'pinsIn' | 'pinsOut'>>;
+type Shape = Pick<GateNode, 'type'> & Partial<Pick<GateNode, 'inputs' | 'bits' | 'dir' | 'pinsIn' | 'pinsOut' | 'width'>>;
 
 export function bitWidth(n: Shape): number {
   return Math.max(n.type === 'SHIFT' ? 2 : 1, Math.min(4, n.bits ?? 4));
@@ -180,6 +297,7 @@ export function arithPins(n: Shape): { ins: string[]; outs: string[] } {
 }
 
 export function inputNames(n: Shape): string[] {
+  if (n.type === 'MERGE') return Array.from({ length: dataWidth(n) }, (_, i) => String(i));
   if (MULTI_INPUT.includes(n.type)) {
     const k = Math.max(2, Math.min(4, n.inputs ?? 2));
     return Array(k).fill('');
@@ -190,6 +308,7 @@ export function inputNames(n: Shape): string[] {
 }
 
 export function outputNames(n: Shape): string[] {
+  if (n.type === 'SPLIT') return Array.from({ length: dataWidth(n) }, (_, i) => String(i));
   if (ARITH.includes(n.type)) return arithPins(n).outs;
   if (n.type === 'BLOCK') return n.pinsOut ?? [];
   return PARTS[n.type].outs;
@@ -273,9 +392,14 @@ export const SEG7_PATTERNS = [
 export function computeNode(n: GateNode, ins: number[], q = 0, sourceValue = 0): number[] {
   const [a = 0, b = 0, c = 0, d = 0, e = 0, f = 0] = ins;
   switch (n.type) {
-    case 'IN':
+    case 'IN': return [dataWidth(n) > 1 ? (sourceValue & maskOf(dataWidth(n))) >>> 0 : sourceValue ? 1 : 0];
     case 'BTN':
     case 'CLK': return [sourceValue ? 1 : 0];
+    case 'CONST': return [((n.value ?? 0) & maskOf(dataWidth(n))) >>> 0];
+    case 'SPLIT': return Array.from({ length: dataWidth(n) }, (_, i) => (a >>> i) & 1);
+    case 'MERGE': return [ins.reduce((v, b, i) => v | ((b & 1) << i), 0) >>> 0];
+    case 'REG': return [q];
+    case 'ROM': return [((n.data?.[a] ?? 0) & maskOf(dataWidth(n))) >>> 0];
     case 'CONST0': return [0];
     case 'CONST1': return [1];
     case 'OUT':
@@ -375,7 +499,8 @@ export function evaluate(c: Circuit, inputs: Record<string, number>, q: Record<s
   const readPin = (id: string, pin: number, stack: string[]): number => {
     const w = into.get(`${id}:${pin}`);
     if (!w || !byId.has(w.from)) {
-      floating.push({ node: id, pin });
+      // A register's EN may be left open on purpose (it then loads every edge).
+      if (!(pin === 2 && byId.get(id)?.type === 'REG')) floating.push({ node: id, pin });
       return 0;
     }
     return visit(w.from, stack)[w.fromPin ?? 0] ?? 0;
@@ -390,8 +515,13 @@ export function evaluate(c: Circuit, inputs: Record<string, number>, q: Record<s
     }
     state[id] = 1;
     let v: number[];
-    if (isFlipFlop(n.type)) v = computeNode(n, [], q[id] ?? 0);
-    else {
+    if (isFlipFlop(n.type) || n.type === 'REG') v = computeNode(n, [], q[id] ?? 0);
+    else if (n.type === 'RAM') {
+      // Reading is combinational in the address; the data and write pins
+      // only matter at the clock edge, like a flip-flop's.
+      const addr = readPin(id, 0, [...stack, id]);
+      v = [q[`${id}@${addr}`] ?? 0];
+    } else {
       const ins = inputNames(n).map((_, pin) => readPin(id, pin, [...stack, id]));
       v = computeNode(n, ins, 0, inputs[id]);
       outs[`${id}@in`] = ins;
@@ -401,8 +531,8 @@ export function evaluate(c: Circuit, inputs: Record<string, number>, q: Record<s
     return v;
   };
   c.nodes.forEach((n) => visit(n.id, []));
-  // Flip-flop inputs are read after the settle (they do not feed back).
-  c.nodes.filter((n) => isFlipFlop(n.type)).forEach((n) => {
+  // Flip-flop, register and RAM inputs are read after the settle (they do not feed back).
+  c.nodes.filter((n) => CLOCKED.includes(n.type)).forEach((n) => {
     outs[`${n.id}@in`] = inputNames(n).map((_, pin) => readPin(n.id, pin, [n.id]));
   });
 
@@ -450,9 +580,13 @@ export const EMPTY_SEQ: SeqState = { q: {}, clk: {} };
  * flip-flops (ripple counters). Returns the settled evaluation and state.
  */
 export function settle(c: Circuit, inputs: Record<string, number>, seq: SeqState = EMPTY_SEQ): { ev: Evaluation; seq: SeqState } {
-  const ffs = c.nodes.filter((n) => isFlipFlop(n.type));
+  const ffs = c.nodes.filter((n) => CLOCKED.includes(n.type));
   let q: Record<string, number> = {};
   ffs.forEach((f) => { q[f.id] = seq.q[f.id] ?? 0; });
+  // RAM words are stored as `id@address`.
+  const rams = new Set(ffs.filter((f) => f.type === 'RAM').map((f) => `${f.id}@`));
+  if (rams.size) for (const [k, v] of Object.entries(seq.q)) if (rams.has(k.slice(0, k.indexOf('@') + 1))) q[k] = v;
+  const enabled = (f: GateNode) => f.type !== 'REG' || !wireInto(c, f.id, 2);
   const clk: Record<string, number> = { ...seq.clk };
   // A flip-flop seen for the first time takes the clock level of the circuit
   // at rest (every CLK low), so the first clock pulse after adding it counts
@@ -475,7 +609,20 @@ export function settle(c: Circuit, inputs: Record<string, number>, seq: SeqState
       const prev = clk[f.id];
       clk[f.id] = level;
       if (prev === 0 && level === 1) {
-        const nq = nextState(f, ins, q[f.id] ?? 0);
+        if (f.type === 'RAM') {
+          // Write D to address A while WE is high.
+          if (ins[2]) {
+            const key = `${f.id}@${ins[0] ?? 0}`;
+            const word = ((ins[1] ?? 0) & maskOf(dataWidth(f))) >>> 0;
+            if ((next[key] ?? 0) !== word) {
+              next[key] = word;
+              changed = true;
+            }
+          }
+          continue;
+        }
+        // A register loads while EN is high; an unconnected EN means always.
+        const nq = f.type === 'REG' ? (ins[2] || enabled(f) ? ((ins[0] ?? 0) & maskOf(dataWidth(f))) >>> 0 : q[f.id] ?? 0) : nextState(f, ins, q[f.id] ?? 0);
         if (nq !== next[f.id]) {
           next[f.id] = nq;
           changed = true;
@@ -552,12 +699,13 @@ export function simulateTiming(
     const ins = inputNames(n).map((_, pin) => input(n.id, pin));
     if (SINKS.includes(n.type)) return set(n.id, ins[0] ?? 0, t);
     if (n.type === 'SEG7') return set(n.id, (ins[0] ?? 0) | ((ins[1] ?? 0) << 1) | ((ins[2] ?? 0) << 2) | ((ins[3] ?? 0) << 3), t);
-    if (isFlipFlop(n.type)) return;
+    if (n.type === 'RAM') return set(n.id, q[`${n.id}@${ins[0] ?? 0}`] ?? 0, t);
+    if (CLOCKED.includes(n.type)) return;
     computeNode(n, ins, 0, after[n.id]).forEach((v, pin) => set(sig(n.id, pin), v, t));
   };
 
   let end = 0;
-  c.nodes.filter((n) => SOURCES.includes(n.type)).forEach((n) => set(n.id, after[n.id] ? 1 : 0, 0));
+  c.nodes.filter((n) => SOURCES.includes(n.type)).forEach((n) => set(n.id, computeNode(n, [], 0, after[n.id] ?? 0)[0] ?? 0, 0));
   for (let t = 0; t <= maxTime; t++) {
     for (let pass = 0; pass < 2; pass++) {
       const due = queue.get(t);
@@ -602,19 +750,24 @@ export function ioNodes(c: Circuit): { ins: GateNode[]; outs: GateNode[]; displa
 }
 
 export function isSequential(c: Circuit): boolean {
-  return c.nodes.some((n) => isFlipFlop(n.type));
+  return c.nodes.some((n) => CLOCKED.includes(n.type));
 }
 
 export function truthTable(c: Circuit, maxInputs = 6): { ins: GateNode[]; outs: GateNode[]; rows: Array<{ in: number[]; out: number[] }> } | null {
   if (isSequential(c)) return null;
   const { ins, outs, displays } = ioNodes(c);
   const shown = [...outs, ...displays];
-  if (ins.length === 0 || ins.length > maxInputs) return null;
+  // A bus input counts once per bit.
+  const widths = ins.map((n) => dataWidth(n));
+  const total = widths.reduce((x, y) => x + y, 0);
+  if (ins.length === 0 || total > maxInputs) return null;
   const rows = [];
-  for (let combo = 0; combo < 1 << ins.length; combo++) {
+  for (let combo = 0; combo < 1 << total; combo++) {
     const iv: Record<string, number> = {};
+    let shift = total;
     const bits = ins.map((n, i) => {
-      const b = (combo >> (ins.length - 1 - i)) & 1;
+      shift -= widths[i];
+      const b = (combo >> shift) & maskOf(widths[i]);
       iv[n.id] = b;
       return b;
     });
@@ -635,6 +788,7 @@ export function sanitizeName(raw: string, fallback: string): string {
 }
 
 const NET_PREFIX: Partial<Record<GateType, string>> = {
+  CONST: 'k', SPLIT: 'split', MERGE: 'bus', REG: 'reg', RAM: 'ram', ROM: 'rom',
   ADD: 'add', SUB: 'sub', MUL: 'mul', DIV: 'div', SHIFT: 'shift', CMP: 'cmp', NEG: 'neg', SEXT: 'sext', BITCNT: 'cnt', MUX2: 'mux', MUX4: 'mux', DEMUX2: 'demux', DEMUX4: 'demux', DEC2: 'dec', DEC3: 'dec', BITSEL: 'bitsel', PENC4: 'penc', HA: 'ha', FA: 'fa', DFF: 'dff', TFF: 'tff', JKFF: 'jk', SRFF: 'sr', CONST0: 'c0', CONST1: 'c1',
 };
 
@@ -643,6 +797,89 @@ const OUT_SUFFIX: Partial<Record<GateType, string[]>> = {
 };
 
 type Mode = 'generic' | 'de2';
+
+/* ── DE2 pin assignment ─────────────────────────────────────────────── */
+
+export type De2Bank = 'SW' | 'KEY' | 'LEDR' | 'LEDG' | 'HEX' | 'CLOCK_50';
+export const DE2_BANKS: Record<Exclude<De2Bank, 'CLOCK_50'>, number> = { SW: 18, KEY: 4, LEDR: 18, LEDG: 9, HEX: 8 };
+
+/** Where one part sits on the board: `width` consecutive resources from `start`. */
+export interface De2Slot {
+  bank: De2Bank;
+  start: number;
+  width: number;
+  /** True when the part's own choice (GateNode.de2) was used. */
+  chosen: boolean;
+}
+
+/** Banks a part may use, best first. */
+export function de2Banks(n: GateNode): Exclude<De2Bank, 'CLOCK_50'>[] {
+  switch (n.type) {
+    case 'IN': return ['SW', 'KEY'];
+    case 'BTN': return ['KEY', 'SW'];
+    case 'OUT': return ['LEDR', 'LEDG'];
+    case 'LED': return ['LEDG', 'LEDR'];
+    case 'SEG7': return ['HEX'];
+    default: return [];
+  }
+}
+
+export function parseDe2(text: string | undefined): { bank: Exclude<De2Bank, 'CLOCK_50'>; index: number } | null {
+  const m = /^(SW|KEY|LEDR|LEDG|HEX)(\d+)$/.exec((text ?? '').trim().toUpperCase());
+  if (!m) return null;
+  const bank = m[1] as Exclude<De2Bank, 'CLOCK_50'>;
+  const index = parseInt(m[2], 10);
+  return index < DE2_BANKS[bank] ? { bank, index } : null;
+}
+
+/**
+ * Board resources for every input, output and display. Parts with a valid
+ * choice of their own (GateNode.de2) get it first; the rest take the first
+ * free run of their preferred bank, top to bottom. A part that does not fit
+ * anywhere is left out (it becomes a plain port). `widths` gives an output's
+ * bus width.
+ */
+export function de2Assignment(c: Circuit, widths: Record<string, number> = signalWidths(c).widths): Record<string, De2Slot | null> {
+  const { ins, outs, displays } = ioNodes(c);
+  const into = (id: string) => wireInto(c, id, 0);
+  const widthOf = (n: GateNode) => {
+    if (n.type === 'IN') return dataWidth(n);
+    if (n.type === 'OUT') {
+      const w = into(n.id);
+      return w ? widths[sig(w.from, w.fromPin ?? 0)] ?? 1 : 1;
+    }
+    return 1;
+  };
+  const used: Record<string, boolean[]> = Object.fromEntries(Object.entries(DE2_BANKS).map(([b, k]) => [b, Array(k).fill(false)]));
+  const free = (bank: Exclude<De2Bank, 'CLOCK_50'>, start: number, width: number) =>
+    start >= 0 && start + width <= DE2_BANKS[bank] && used[bank].slice(start, start + width).every((x) => !x);
+  const take = (bank: Exclude<De2Bank, 'CLOCK_50'>, start: number, width: number) => { for (let k = 0; k < width; k++) used[bank][start + k] = true; };
+  const out: Record<string, De2Slot | null> = {};
+  const all = [...ins, ...outs, ...displays];
+  for (const n of all) {
+    if (n.type === 'CLK') { out[n.id] = { bank: 'CLOCK_50', start: 0, width: 1, chosen: false }; continue; }
+    const want = parseDe2(n.de2);
+    const width = widthOf(n);
+    if (want && de2Banks(n).includes(want.bank) && free(want.bank, want.index, width)) {
+      take(want.bank, want.index, width);
+      out[n.id] = { bank: want.bank, start: want.index, width, chosen: true };
+    }
+  }
+  for (const n of all) {
+    if (n.id in out) continue;
+    const width = widthOf(n);
+    out[n.id] = null;
+    for (const bank of de2Banks(n)) {
+      const start = used[bank].findIndex((_, k) => free(bank, k, width));
+      if (start >= 0) {
+        take(bank, start, width);
+        out[n.id] = { bank, start, width, chosen: false };
+        break;
+      }
+    }
+  }
+  return out;
+}
 
 interface Built {
   code: string;
@@ -665,60 +902,71 @@ function buildVerilog(c: Circuit, moduleName: string, mode: Mode): Built {
   const body: string[] = [];
   const notes: string[] = [];
 
-  // Board resources in DE2 mode.
-  let sw = 0;
-  let key = 0;
-  let led = 0;
-  let ledg = 0;
-  let hex = 0;
+  const { widths } = signalWidths(c);
+  const widthOfSig = (key: string) => widths[key] ?? 1;
+  const vecDecl = (w: number) => (w > 1 ? `[${w - 1}:0] ` : '');
+  const slots = mode === 'de2' ? de2Assignment(c, widths) : {};
+  const bankPins = (bank: De2Bank, start: number, width: number) => Array.from({ length: width }, (_, k) => `${bank}${start + k}`);
   let clockPort: string | null = null;
 
   for (const [i, n] of ins.entries()) {
     const fallback = n.type === 'CLK' ? 'clk' : n.type === 'BTN' ? `btn${i}` : `in${i}`;
     const label = sanitizeName(n.label, fallback);
-    if (mode === 'de2') {
-      if (n.type === 'CLK') {
+    const w = dataWidth(n);
+    const slot = slots[n.id];
+    if (mode === 'de2' && slot) {
+      if (slot.bank === 'CLOCK_50') {
         if (!clockPort) {
           clockPort = unique('CLOCK_50');
           ports.push(`    input  logic ${clockPort}`);
           notes.push(`//   CLOCK_50 = ${label} (use Run or Clock step on the board)`);
         }
         names.set(n.id, clockPort);
-      } else if (n.type === 'BTN' && key < 4) {
-        const p = unique(`KEY${key}`);
-        ports.push(`    input  logic ${p}`);
-        const net = unique(label);
-        body.push(`    logic ${net};`, `    assign ${net} = ~${p};  // DE2 keys are active-low`);
-        notes.push(`//   KEY${key} = ${label} (pressed = 1)`);
-        names.set(n.id, net);
-        key++;
-      } else {
-        const p = unique(`SW${sw}`);
-        ports.push(`    input  logic ${p}`);
-        notes.push(`//   SW${sw}  = ${label}`);
-        names.set(n.id, p);
-        sw++;
+        continue;
       }
+      const pins = bankPins(slot.bank, slot.start, w).map((x) => unique(x));
+      pins.forEach((x) => ports.push(`    input  logic ${x}`));
+      const activeLow = slot.bank === 'KEY';
+      if (w === 1 && !activeLow) {
+        names.set(n.id, pins[0]);
+      } else {
+        const net = unique(label);
+        const bits = pins.map((x) => (activeLow ? `~${x}` : x));
+        body.push(`    logic ${vecDecl(w)}${net};`, `    assign ${net} = ${w > 1 ? `{${[...bits].reverse().join(', ')}}` : bits[0]};${activeLow ? '  // DE2 keys are active-low' : ''}`);
+        names.set(n.id, net);
+      }
+      const range = w > 1 ? `${pins[w - 1]}..${pins[0]}` : pins[0];
+      notes.push(`//   ${range} = ${label}${activeLow ? ' (pressed = 1)' : ''}`);
     } else {
       const p = unique(label);
-      ports.push(`    input  logic ${p}`);
+      ports.push(`    input  logic ${vecDecl(w)}${p}`);
       names.set(n.id, p);
     }
   }
 
-  const outPorts: Array<{ node: GateNode; port: string }> = [];
+  const outPorts: Array<{ node: GateNode; ports: string[] }> = [];
   for (const [i, n] of outs.entries()) {
     const label = sanitizeName(n.label, `out${i}`);
-    // DE2: outputs on the red LEDs, LED parts on the green ones (LEDG0..8).
-    const p = unique(mode === 'de2' ? (n.type === 'LED' && ledg < 9 ? `LEDG${ledg++}` : `LEDR${led++}`) : label);
-    if (mode === 'de2') notes.push(`//   ${p} = ${label}`);
-    ports.push(`    output logic ${p}`);
-    outPorts.push({ node: n, port: p });
+    const w0 = wireInto(c, n.id, 0);
+    const w = w0 ? widthOfSig(sig(w0.from, w0.fromPin ?? 0)) : 1;
+    const slot = slots[n.id];
+    if (mode === 'de2' && slot) {
+      // DE2: one scalar port per LED, bit 0 on the lowest-numbered one.
+      const pins = bankPins(slot.bank, slot.start, w).map((x) => unique(x));
+      pins.forEach((x) => ports.push(`    output logic ${x}`));
+      notes.push(`//   ${w > 1 ? `${pins[w - 1]}..${pins[0]}` : pins[0]} = ${label}`);
+      outPorts.push({ node: n, ports: pins });
+    } else {
+      const p = unique(label);
+      ports.push(`    output logic ${vecDecl(w)}${p}`);
+      outPorts.push({ node: n, ports: [p] });
+    }
   }
   const segPorts: Array<{ node: GateNode; port: string }> = [];
   for (const [i, n] of displays.entries()) {
     const label = sanitizeName(n.label, `hex${i}`);
-    const p = unique(mode === 'de2' && hex < 8 ? `HEX${hex++}` : label);
+    const slot = slots[n.id];
+    const p = unique(mode === 'de2' && slot ? `HEX${slot.start}` : label);
     if (mode === 'de2') notes.push(`//   ${p} = ${label} (7-segment)`);
     ports.push(`    output logic [6:0] ${p}`);
     segPorts.push({ node: n, port: p });
@@ -737,11 +985,21 @@ function buildVerilog(c: Circuit, moduleName: string, mode: Mode): Built {
 
   const src = (nid: string, pin: number) => {
     const w = wireInto(c, nid, pin);
-    return w ? names.get(sig(w.from, w.fromPin ?? 0)) ?? "1'b0" : "1'b0";
+    const zero = () => {
+      const node = c.nodes.find((x) => x.id === nid);
+      const pw = node ? pinWidth(node, 'i', pin) : 1;
+      return pw > 1 ? `${pw}'d0` : "1'b0";
+    };
+    return w ? names.get(sig(w.from, w.fromPin ?? 0)) ?? zero() : zero();
   };
 
-  const internal = parts.flatMap((n) => outputNames(n).map((_, pin) => names.get(sig(n.id, pin))!));
-  if (internal.length) body.push(`    logic ${internal.join(', ')};`);
+  // Internal nets, grouped by width.
+  const byWidth = new Map<number, string[]>();
+  for (const n of parts) outputNames(n).forEach((_, pin) => {
+    const w = widthOfSig(sig(n.id, pin));
+    byWidth.set(w, [...(byWidth.get(w) ?? []), names.get(sig(n.id, pin))!]);
+  });
+  for (const [w, list] of [...byWidth.entries()].sort((a, b) => a[0] - b[0])) body.push(`    logic ${vecDecl(w)}${list.join(', ')};`);
   body.push('');
 
   const ops: Partial<Record<GateType, string>> = { AND: ' & ', OR: ' | ', NAND: ' & ', NOR: ' | ', XOR: ' ^ ', XNOR: ' ^ ' };
@@ -750,6 +1008,62 @@ function buildVerilog(c: Circuit, moduleName: string, mode: Mode): Built {
     const i = (pin: number) => src(n.id, pin);
     switch (n.type) {
       case 'CONST0': body.push(`    assign ${net()} = 1'b0;`); break;
+      case 'CONST': {
+        const w = dataWidth(n);
+        body.push(`    assign ${net()} = ${w}'d${((n.value ?? 0) & maskOf(w)) >>> 0};  // constant`);
+        break;
+      }
+      case 'SPLIT': {
+        const w = dataWidth(n);
+        const from = wireInto(c, n.id, 0) ? i(0) : null;
+        body.push(`    // splitter: ${w}-bit bus to single bits`);
+        for (let k = 0; k < w; k++) body.push(`    assign ${net(k)} = ${from ? `${from}[${k}]` : "1'b0"};`);
+        break;
+      }
+      case 'MERGE': {
+        const w = dataWidth(n);
+        body.push(`    assign ${net()} = {${Array.from({ length: w }, (_, k) => i(w - 1 - k)).join(', ')}};  // merger: bits to a ${w}-bit bus`);
+        break;
+      }
+      case 'REG': {
+        const clk = wireInto(c, n.id, 1) ? i(1) : null;
+        const en = wireInto(c, n.id, 2) ? i(2) : null;
+        const q = net();
+        if (!clk) {
+          body.push(`    // register ${q}: clock input not connected, it keeps its value`);
+          break;
+        }
+        body.push(`    // ${dataWidth(n)}-bit register${en ? ' with enable' : ''}`, `    always_ff @(posedge ${clk}) begin`);
+        if (en) body.push(`        if (${en}) begin`, `            ${q} <= ${i(0)};`, '        end');
+        else body.push(`        ${q} <= ${i(0)};`);
+        body.push('    end');
+        break;
+      }
+      case 'ROM': {
+        const w = dataWidth(n);
+        const aw = addrWidth(n);
+        body.push(`    // ROM, ${1 << aw} words of ${w} bits`, '    always_comb begin', `        case (${i(0)})`);
+        for (let k = 0; k < 1 << aw; k++) body.push(`            ${aw}'d${k}: ${net()} = ${w}'h${(((n.data?.[k] ?? 0) & maskOf(w)) >>> 0).toString(16).toUpperCase()};`);
+        body.push(`            default: ${net()} = ${w}'d0;`, '        endcase', '    end');
+        break;
+      }
+      case 'RAM': {
+        const w = dataWidth(n);
+        const aw = addrWidth(n);
+        const words = Array.from({ length: 1 << aw }, (_, k) => unique(`${net()}_m${k}`));
+        const clk = wireInto(c, n.id, 3) ? i(3) : null;
+        body.push(`    // RAM, ${1 << aw} words of ${w} bits: written on the clock edge while WE is high, read at any time`);
+        body.push(`    logic ${vecDecl(w)}${words.join(', ')};`);
+        if (clk) {
+          body.push(`    always_ff @(posedge ${clk}) begin`, `        if (${i(2)}) begin`, `            case (${i(0)})`);
+          words.forEach((m, k) => body.push(`                ${aw}'d${k}: ${m} <= ${i(1)};`));
+          body.push('            endcase', '        end', '    end');
+        } else body.push('    // clock input not connected: nothing is ever written');
+        body.push('    always_comb begin', `        case (${i(0)})`);
+        words.forEach((m, k) => body.push(`            ${aw}'d${k}: ${net()} = ${m};`));
+        body.push(`            default: ${net()} = ${w}'d0;`, '        endcase', '    end');
+        break;
+      }
       case 'CONST1': body.push(`    assign ${net()} = 1'b1;`); break;
       case 'NOT': body.push(`    assign ${net()} = ~${i(0)};  // NOT`); break;
       case 'BUF': body.push(`    assign ${net()} = ${i(0)};  // buffer`); break;
@@ -896,7 +1210,11 @@ function buildVerilog(c: Circuit, moduleName: string, mode: Mode): Built {
     }
   }
   if (parts.length) body.push('');
-  for (const { node, port } of outPorts) body.push(`    assign ${port} = ${src(node.id, 0)};`);
+  for (const { node, ports: list } of outPorts) {
+    const from = src(node.id, 0);
+    if (list.length === 1) body.push(`    assign ${list[0]} = ${from};`);
+    else list.forEach((p, k) => body.push(`    assign ${p} = ${wireInto(c, node.id, 0) ? `${from}[${k}]` : "1'b0"};`));
+  }
   for (const { node, port } of segPorts) {
     const v = unique(`${port}_value`);
     body.push('', `    // 7-segment decoder, segments a..g = ${port}[0..6], active-low as on the DE2`);
@@ -1057,9 +1375,9 @@ export interface TestResult {
 /**
  * Runs a test table against the circuit. The first line names the signals
  * (inputs and outputs, by label, in any order); each further line gives one
- * value per signal. Inputs: 0, 1 or C (a clock pulse 0 → 1 → 0 after the
- * other inputs are applied). Outputs: 0, 1 or X (not checked); a 7-segment
- * display takes a hex digit. Rows run in order from reset, so sequential
+ * value per signal. Inputs: 0, 1, a bus value (12, 0x1F, 0b101) or C (a
+ * clock pulse 0 → 1 → 0 after the other inputs are applied). Outputs: a
+ * value or X (not checked); a 7-segment display takes a hex digit. Rows run in order from reset, so sequential
  * circuits can be tested step by step. Lines starting with # are comments.
  */
 export function runTests(c: Circuit, text: string): TestResult {
@@ -1089,7 +1407,7 @@ export function runTests(c: Circuit, text: string): TestResult {
       if (t === 'C') {
         pulses.push(n.id);
         next[n.id] = 0;
-      } else next[n.id] = t === '1' ? 1 : 0;
+      } else next[n.id] = (parseNumber(t) ?? 0) & maskOf(dataWidth(n));
     });
     let r = settle(c, next, seq);
     for (const pulse of [1, 0]) {
@@ -1106,7 +1424,9 @@ export function runTests(c: Circuit, text: string): TestResult {
       if (SOURCES.includes(n.type)) return { name: col.name, input: true, want, got: null, ok: true };
       const v = r.ev.values[n.id] ?? 0;
       const got = n.type === 'SEG7' ? v.toString(16).toUpperCase() : String(v);
-      const ok = want === 'X' || want === got;
+      // A 7-segment display is written as a hex digit; other outputs as a
+      // number in decimal, 0x hex or 0b binary.
+      const ok = want === 'X' || want === got || (n.type === 'SEG7' ? parseInt(want, 16) === v : parseNumber(want) === v);
       return { name: col.name, input: false, want, got, ok };
     });
     const ok = cells.every((cell) => cell.ok);
@@ -1117,6 +1437,16 @@ export function runTests(c: Circuit, text: string): TestResult {
   return result;
 }
 
+/** Reads 12, 0x1F, 0b101 (or a bare hex digit A–F); null when it is not a number. */
+export function parseNumber(t: string): number | null {
+  const x = t.trim().toLowerCase();
+  if (/^0x[0-9a-f]+$/.test(x)) return parseInt(x.slice(2), 16);
+  if (/^0b[01]+$/.test(x)) return parseInt(x.slice(2), 2);
+  if (/^\d+$/.test(x)) return parseInt(x, 10);
+  if (/^[a-f]$/.test(x)) return parseInt(x, 16);
+  return null;
+}
+
 /** A starting table: every input combination (up to 6 inputs), outputs to fill in. */
 export function testTemplate(c: Circuit): string {
   const { ins, outs, displays } = ioNodes(c);
@@ -1124,9 +1454,15 @@ export function testTemplate(c: Circuit): string {
   const inNames = names(ins);
   const outNames = [...names(outs), ...names(displays)];
   const lines = [`${inNames.join(' ')} | ${outNames.join(' ')}`];
-  const count = ins.length <= 6 ? 1 << ins.length : 4;
+  const widths = ins.map((n) => dataWidth(n));
+  const total = widths.reduce((x, y) => x + y, 0);
+  const count = total <= 6 ? 1 << total : 4;
   for (let combo = 0; combo < count; combo++) {
-    const bits = ins.map((n, i) => (n.type === 'CLK' ? 'C' : String((combo >> (ins.length - 1 - i)) & 1)));
+    let shift = total;
+    const bits = ins.map((n, i) => {
+      shift -= widths[i];
+      return n.type === 'CLK' ? 'C' : String(total <= 6 ? (combo >> shift) & maskOf(widths[i]) : 0);
+    });
     lines.push(`${bits.join(' ')} | ${outNames.map(() => 'X').join(' ')}`);
   }
   return lines.join('\n');
@@ -1224,6 +1560,45 @@ export const PRESETS: Record<string, { title: { en: string; tr: string }; circui
         wire('t0', 'q0'), wire('t1', 'q1'), wire('t2', 'q2'), wire('t3', 'q3'),
         wire('t0', 'h', 0), wire('t1', 'h', 1), wire('t2', 'h', 2), wire('t3', 'h', 3),
       ],
+    },
+  },
+  reg_counter: {
+    title: { en: '4-bit register counter (buses)', tr: '4 bit yazmaçlı sayıcı (bus)' },
+    circuit: {
+      nodes: [
+        node('clk', 'CLK', 40, 60, 'clk'),
+        { ...node('r', 'REG', 200, 40), width: 4 },
+        { ...node('sq', 'SPLIT', 360, 20), width: 4 },
+        { ...node('k', 'CONST', 200, 250), width: 4, value: 1 },
+        { ...node('sk', 'SPLIT', 360, 220), width: 4 },
+        node('c0', 'CONST0', 360, 360),
+        { ...node('add', 'ADD', 480, 60), bits: 4 },
+        { ...node('m', 'MERGE', 680, 40), width: 4 },
+        node('q', 'OUT', 820, 60, 'q'),
+        node('h', 'SEG7', 840, 200, 'hex0'),
+      ],
+      wires: [
+        wire('clk', 'r', 1), wire('m', 'r', 0), wire('r', 'sq'), wire('k', 'sk'),
+        wire('sq', 'add', 0, 0), wire('sq', 'add', 1, 1), wire('sq', 'add', 2, 2), wire('sq', 'add', 3, 3),
+        wire('sk', 'add', 4, 0), wire('sk', 'add', 5, 1), wire('sk', 'add', 6, 2), wire('sk', 'add', 7, 3), wire('c0', 'add', 8),
+        wire('add', 'm', 0, 0), wire('add', 'm', 1, 1), wire('add', 'm', 2, 2), wire('add', 'm', 3, 3),
+        wire('r', 'q'),
+        wire('sq', 'h', 0, 0), wire('sq', 'h', 1, 1), wire('sq', 'h', 2, 2), wire('sq', 'h', 3, 3),
+      ],
+    },
+  },
+  ram: {
+    title: { en: 'RAM 8 × 4: write with the button', tr: 'RAM 8 × 4: butonla yaz' },
+    circuit: {
+      nodes: [
+        { ...node('a', 'IN', 40, 40, 'addr'), width: 3 },
+        { ...node('d', 'IN', 40, 140, 'data'), width: 4 },
+        node('we', 'IN', 40, 240, 'we'),
+        node('wr', 'BTN', 40, 340, 'write'),
+        { ...node('mem', 'RAM', 300, 150), width: 4, addrBits: 3 },
+        node('q', 'OUT', 520, 170, 'q'),
+      ],
+      wires: [wire('a', 'mem', 0), wire('d', 'mem', 1), wire('we', 'mem', 2), wire('wr', 'mem', 3), wire('mem', 'q')],
     },
   },
 };

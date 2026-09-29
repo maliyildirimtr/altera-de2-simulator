@@ -3,7 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { Boxes, ChevronDown, ClipboardPaste, Copy, CopyPlus, Cpu, FileDown, FileUp, FlaskConical, Link2, Move, Pause, Play, Plus, Redo2, RotateCcw, RotateCw, Timer, Trash2, Undo2, X, Zap } from 'lucide-react';
 import {
   ARITH,
+  CLOCKED,
   EMPTY_SEQ,
+  MAX_ADDR,
+  MAX_WIDTH,
+  PARTS,
+  WIDE,
+  addrWidth,
+  dataWidth,
+  formatBus,
+  maskOf,
+  parseNumber,
+  signalWidths,
   bitWidth,
   MULTI_INPUT,
   PALETTE,
@@ -118,7 +129,7 @@ function load(): Saved {
 
 /* ── Geometry ──────────────────────────────────────────────────────── */
 
-const BLOCK_TITLE: Partial<Record<GateType, string>> = { MUX2: 'MUX', MUX4: 'MUX', DEMUX2: 'DEMUX', DEMUX4: 'DEMUX', DEC2: 'DEC', DEC3: 'DEC', BITSEL: 'BIT', PENC4: 'PRI', ADD: 'ADD', SUB: 'SUB', MUL: 'MUL', DIV: 'DIV', SHIFT: 'SHIFT', CMP: 'CMP', NEG: 'NEG', SEXT: 'SEXT', BITCNT: 'CNT', BLOCK: 'BLK', HA: 'HA', FA: 'FA', DFF: 'D', TFF: 'T', JKFF: 'JK', SRFF: 'SR' };
+const BLOCK_TITLE: Partial<Record<GateType, string>> = { MUX2: 'MUX', MUX4: 'MUX', DEMUX2: 'DEMUX', DEMUX4: 'DEMUX', DEC2: 'DEC', DEC3: 'DEC', BITSEL: 'BIT', PENC4: 'PRI', ADD: 'ADD', SUB: 'SUB', MUL: 'MUL', DIV: 'DIV', SHIFT: 'SHIFT', CMP: 'CMP', NEG: 'NEG', SEXT: 'SEXT', BITCNT: 'CNT', BLOCK: 'BLK', HA: 'HA', FA: 'FA', DFF: 'D', TFF: 'T', JKFF: 'JK', SRFF: 'SR', REG: 'REG', RAM: 'RAM', ROM: 'ROM' };
 
 /** Plexers drawn as a trapezoid (wide side = the side with more signals). */
 const TRAPEZOID: GateType[] = ['MUX2', 'MUX4', 'BITSEL', 'DEMUX2', 'DEMUX4'];
@@ -127,8 +138,14 @@ function isBlock(t: GateType): boolean {
   return t in BLOCK_TITLE;
 }
 
-function nodeSize(n: Pick<GateNode, 'type' | 'inputs'>): { w: number; h: number } {
+function nodeSize(n: Pick<GateNode, 'type' | 'inputs' | 'width'> & { label?: string }): { w: number; h: number } {
   if (isGate(n.type)) return { w: W, h: Math.max(H, inputNames(n).length * 16 + 12) };
+  if (n.type === 'SPLIT' || n.type === 'MERGE') return { w: 30, h: Math.max(H, dataWidth(n) * 16 + 12) };
+  if (n.type === 'CONST') return { w: 60, h: 36 };
+  // Inputs and outputs grow with their name (and a bus value box).
+  if (n.type === 'IN' || n.type === 'OUT' || n.type === 'LED' || n.type === 'BTN' || n.type === 'CLK') {
+    return { w: Math.max(W, 52 + (n.label ?? '').length * 7.2 + (n.type === 'IN' && dataWidth(n) > 1 ? 6 : 0)), h: H };
+  }
   if (n.type === 'SEG7') return { w: 64, h: 104 };
   if (n.type === 'CONST0' || n.type === 'CONST1') return { w: 44, h: 36 };
   if (n.type === 'TUNNEL') return { w: 76, h: 32 };
@@ -383,6 +400,9 @@ function PartIcon({ type }: { type: GateType }) {
     case 'CLK': return <svg width="26" height="18" viewBox="0 0 26 18" aria-hidden="true"><path d="M2,14 H7 V4 H13 V14 H19 V4 H24" fill="none" stroke={s} strokeWidth="1.5" /></svg>;
     case 'TUNNEL': return <svg width="26" height="18" viewBox="0 0 26 18" aria-hidden="true"><path d="M3,3 H17 L23,9 L17,15 H3 Z" fill="none" stroke={s} strokeWidth="1.3" /></svg>;
     case 'BLOCK': return box('BLK');
+    case 'CONST': return box('0x');
+    case 'SPLIT': return <svg width="26" height="18" viewBox="0 0 26 18" aria-hidden="true"><path d="M2,9 H11 M11,2 V16 M11,3 H24 M11,7 H24 M11,11 H24 M11,15 H24" fill="none" stroke={s} strokeWidth="1.3" /><path d="M11,2 V16" stroke={s} strokeWidth="3" /></svg>;
+    case 'MERGE': return <svg width="26" height="18" viewBox="0 0 26 18" aria-hidden="true"><path d="M15,9 H24 M2,3 H15 M2,7 H15 M2,11 H15 M2,15 H15" fill="none" stroke={s} strokeWidth="1.3" /><path d="M15,2 V16" stroke={s} strokeWidth="3" /></svg>;
     case 'CONST0': return box('0');
     case 'CONST1': return box('1');
     case 'SEG7': return box('8.');
@@ -557,9 +577,13 @@ export default function GateEditor() {
   const table = useMemo(() => truthTable(flat), [flat]);
   const { ins, outs, displays } = useMemo(() => ioNodes(circuit), [circuit]);
   const byId = useMemo(() => new Map(circuit.nodes.map((n) => [n.id, n])), [circuit]);
-  const ffs = useMemo(() => flat.nodes.filter((n) => isFlipFlop(n.type)).sort((a, b) => a.x - b.x || a.y - b.y), [flat]);
+  const ffs = useMemo(() => flat.nodes.filter((n) => isFlipFlop(n.type) || n.type === 'REG').sort((a, b) => a.x - b.x || a.y - b.y), [flat]);
   const clocks = useMemo(() => circuit.nodes.filter((n) => n.type === 'CLK'), [circuit]);
-  const sequential = ffs.length > 0;
+  const sequential = flat.nodes.some((n) => CLOCKED.includes(n.type));
+  // Bus widths of every signal, and wires joining pins of different widths.
+  const widthInfo = useMemo(() => signalWidths(flat), [flat]);
+  const mismatched = useMemo(() => new Set(widthInfo.mismatched), [widthInfo]);
+  const widthOf = (key: string) => widthInfo.widths[key] ?? 1;
   const showGraph = sequential || clocks.length > 0;
 
   // Latest state for handlers that run from timers and pointer events.
@@ -579,9 +603,9 @@ export default function GateEditor() {
     } else setTrace(null);
     const sample: Sample = {};
     for (const n of cur.circuit.nodes) {
-      if (SOURCES.includes(n.type)) sample[n.id] = next[n.id] ? 1 : 0;
+      if (SOURCES.includes(n.type)) sample[n.id] = r.ev.values[n.id] ?? 0;
       else if (SINKS.includes(n.type) || n.type === 'SEG7') sample[n.id] = r.ev.values[n.id] ?? 0;
-      else if (isFlipFlop(n.type)) sample[n.id] = r.seq.q[n.id] ?? 0;
+      else if (isFlipFlop(n.type) || n.type === 'REG') sample[n.id] = r.seq.q[n.id] ?? 0;
     }
     setHistory((h) => [...h, sample].slice(-HISTORY_LIMIT));
   }, []);
@@ -754,6 +778,11 @@ export default function GateEditor() {
   };
 
   const toggleInput = (id: string) => apply({ ...live.current.inputs, [id]: live.current.inputs[id] ? 0 : 1 });
+  /** Sets a bus input to a value (wrapped to its width). */
+  const setBusInput = (n: GateNode, v: number) => {
+    const m = maskOf(dataWidth(n));
+    apply({ ...live.current.inputs, [n.id]: (((v % (m + 1)) + m + 1) % (m + 1)) >>> 0 });
+  };
   const setButton = (id: string, v: number) => {
     if ((live.current.inputs[id] ?? 0) !== v) apply({ ...live.current.inputs, [id]: v });
   };
@@ -1117,7 +1146,10 @@ export default function GateEditor() {
     const stroke = loopSet.has(n.id) ? '#ef4444' : isSel ? '#3b82f6' : 'var(--text-secondary)';
     const inNames = inputNames(n);
     const outNames = outputNames(n);
-    const clockPin = isFlipFlop(n.type) ? 1 : -1;
+    const clockPin = PARTS[n.type]?.clock ?? -1;
+    const busIn = n.type === 'IN' && dataWidth(n) > 1;
+    const inW = (() => { const w0 = circuit.wires.find((x) => x.to === n.id && x.pin === 0); return w0 ? widthOf(sig(w0.from, w0.fromPin ?? 0)) : 1; })();
+    const busOut = n.type === 'OUT' && inW > 1;
     let body: React.ReactNode;
     if (isGate(n.type)) body = <GateShape type={n.type} fill="var(--bg-surface)" stroke={stroke} h={h} />;
     else if (TRAPEZOID.includes(n.type)) {
@@ -1133,9 +1165,9 @@ export default function GateEditor() {
       body = (
         <>
           <rect x={0} y={0} width={w} height={h} rx={4} fill="var(--bg-surface)" stroke={stroke} strokeWidth={isSel ? 2.2 : 1.5} />
-          <text x={titleAt.x} y={titleAt.y} transform={upright(titleAt.x, titleAt.y)} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--text-primary)" pointerEvents="none">{n.type === 'BLOCK' ? (n.label || (n.ref && library[n.ref]?.name) || 'BLOCK') + (n.ref && !library[n.ref] ? ` (${g.blockMissing})` : '') : n.type === 'SHIFT' ? (n.dir === 'right' ? '>>' : '<<') : BLOCK_TITLE[n.type]}{ARITH.includes(n.type) ? ` ${bitWidth(n)}b` : ''}</text>
-          {isFlipFlop(n.type) && (
-            <text x={w / 2} y={h - 6} transform={upright(w / 2, h - 6)} textAnchor="middle" fontSize={11} fontWeight={700} fill={v ? on : 'var(--text-muted)'} pointerEvents="none">Q={v}</text>
+          <text x={titleAt.x} y={titleAt.y} transform={upright(titleAt.x, titleAt.y)} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--text-primary)" pointerEvents="none">{n.type === 'BLOCK' ? (n.label || (n.ref && library[n.ref]?.name) || 'BLOCK') + (n.ref && !library[n.ref] ? ` (${g.blockMissing})` : '') : n.type === 'SHIFT' ? (n.dir === 'right' ? '>>' : '<<') : BLOCK_TITLE[n.type]}{ARITH.includes(n.type) ? ` ${bitWidth(n)}b` : n.type === 'REG' ? ` ${dataWidth(n)}b` : n.type === 'RAM' || n.type === 'ROM' ? ` ${1 << addrWidth(n)}×${dataWidth(n)}` : ''}</text>
+          {(isFlipFlop(n.type) || n.type === 'REG') && (
+            <text x={w / 2} y={h - 6} transform={upright(w / 2, h - 6)} textAnchor="middle" fontSize={11} fontWeight={700} fill={v ? on : 'var(--text-muted)'} pointerEvents="none">Q={formatBus(v, dataWidth(n))}</text>
           )}
         </>
       );
@@ -1153,6 +1185,34 @@ export default function GateEditor() {
           <text x={(w - 14) / 2 + 2} y={h / 2 + 4} transform={upright((w - 14) / 2 + 2, h / 2 + 4)} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--text-primary)" pointerEvents="none">{n.label || '?'}</text>
         </>
       );
+    } else if (n.type === 'SPLIT' || n.type === 'MERGE') {
+      // A bus bar: the bus pin in the middle of one side, single bits on the other.
+      const split = n.type === 'SPLIT';
+      const bx = split ? 10 : w - 10;
+      const bits = dataWidth(n);
+      body = (
+        <>
+          <rect x={0} y={0} width={w} height={h} fill="transparent" />
+          {Array.from({ length: bits }, (_, k) => {
+            const y = (h * (k + 1)) / (bits + 1);
+            return (
+              <g key={k} pointerEvents="none">
+                <line x1={split ? bx : 0} y1={y} x2={split ? w : bx} y2={y} stroke="var(--text-secondary)" strokeWidth={1.3} />
+                <text x={split ? w - 3 : 3} y={y - 3} textAnchor={split ? 'end' : 'start'} fontSize={8} fill="var(--text-muted)">{k}</text>
+              </g>
+            );
+          })}
+          <line x1={split ? 0 : bx} y1={h / 2} x2={split ? bx : w} y2={h / 2} stroke="var(--text-secondary)" strokeWidth={3.5} pointerEvents="none" />
+          <rect x={bx - 3} y={4} width={6} height={h - 8} rx={2} fill={isSel ? '#3b82f6' : 'var(--text-secondary)'} stroke={stroke} />
+        </>
+      );
+    } else if (n.type === 'CONST') {
+      body = (
+        <>
+          <rect x={2} y={2} width={w - 4} height={h - 4} rx={4} fill="var(--bg-surface)" stroke={stroke} strokeWidth={isSel ? 2.2 : 1.4} />
+          <text x={w / 2} y={h / 2 + 5} transform={upright(w / 2, h / 2 + 5)} textAnchor="middle" fontSize={12} fontWeight={700} fill={v ? on : 'var(--text-secondary)'} pointerEvents="none">{formatBus(v, dataWidth(n))}</text>
+        </>
+      );
     } else if (n.type === 'CONST0' || n.type === 'CONST1') {
       body = (
         <>
@@ -1168,7 +1228,14 @@ export default function GateEditor() {
     if (uprightIO) body = null;
     const ioControls = (cx: number, cy: number, lx: number, ly: number, anchor: 'start' | 'middle' | 'end') => (
       <>
-        {n.type === 'IN' && (
+        {busIn && (
+          <g data-testid={`gate-toggle-${n.label || n.id}`} onPointerDown={(e) => { e.stopPropagation(); setBusInput(n, (inputs[n.id] ?? 0) + (e.shiftKey ? -1 : 1)); }} style={{ cursor: 'pointer' }}>
+            <title>{g.busHint}</title>
+            <rect x={cx - 16} y={cy - 12} width={34} height={24} rx={5} fill={v ? 'rgba(34,197,94,0.18)' : 'var(--bg-panel)'} stroke={v ? on : 'var(--text-secondary)'} />
+            <text x={cx + 1} y={cy + 4} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--text-primary)">{formatBus(v, dataWidth(n))}</text>
+          </g>
+        )}
+        {n.type === 'IN' && !busIn && (
           <g data-testid={`gate-toggle-${n.label || n.id}`} onPointerDown={(e) => { e.stopPropagation(); toggleInput(n.id); }} style={{ cursor: 'pointer' }}>
             <rect x={cx - 12} y={cy - 12} width={24} height={24} rx={5} fill={v ? on : 'var(--bg-panel)'} stroke="var(--text-secondary)" />
             <text x={cx} y={cy + 5} textAnchor="middle" fontSize={13} fontWeight={700} fill={v ? '#fff' : 'var(--text-primary)'}>{v}</text>
@@ -1196,7 +1263,13 @@ export default function GateEditor() {
         {n.type === 'LED' && (
           <circle data-testid={`gate-led-${n.label || n.id}`} cx={cx} cy={cy} r={10} fill={v ? '#ef4444' : 'var(--bg-panel)'} stroke="var(--text-secondary)" style={{ filter: v ? 'drop-shadow(0 0 6px rgba(239,68,68,0.9))' : undefined }} />
         )}
-        {n.type === 'OUT' && (
+        {busOut && (
+          <g data-testid={`gate-output-${n.label || n.id}`}>
+            <rect x={cx - 16} y={cy - 12} width={34} height={24} rx={12} fill={v ? 'rgba(239,68,68,0.18)' : 'var(--bg-panel)'} stroke={v ? '#ef4444' : 'var(--text-secondary)'} />
+            <text x={cx + 1} y={cy + 4} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--text-primary)" pointerEvents="none">{formatBus(v, inW)}</text>
+          </g>
+        )}
+        {n.type === 'OUT' && !busOut && (
           <g data-testid={`gate-output-${n.label || n.id}`}>
             <rect x={cx - 12} y={cy - 12} width={24} height={24} rx={12} fill={v ? '#ef4444' : 'var(--bg-panel)'} stroke="var(--text-secondary)" />
             <text x={cx} y={cy + 5} textAnchor="middle" fontSize={13} fontWeight={700} fill={v ? '#fff' : 'var(--text-primary)'} pointerEvents="none">{v}</text>
@@ -1218,7 +1291,7 @@ export default function GateEditor() {
           {body}
           {glitch && <rect x={-4} y={-4} width={w + 8} height={h + 8} rx={10} fill="none" stroke="#f59e0b" strokeWidth={2} strokeDasharray="4 3" />}
         </g>
-        {!uprightIO && ioControls(22, H / 2, 42, H / 2 + 4, 'start')}
+        {!uprightIO && ioControls(22, H / 2, busIn || busOut ? 46 : 42, H / 2 + 4, 'start')}
         {n.type === 'SEG7' && <text x={w / 2} y={h + 13} transform={upright(w / 2, h + 13)} textAnchor="middle" fontSize={11} fontWeight={600} fill="var(--text-primary)" pointerEvents="none">{n.label}</text>}
         {isGate(n.type) && (
           <text x={W / 2 - 4} y={h + 12} transform={upright(W / 2 - 4, h + 12)} textAnchor="middle" fontSize={9.5} fill="var(--text-muted)" pointerEvents="none">
@@ -1262,7 +1335,7 @@ export default function GateEditor() {
             </g>
             {sideways
               ? ioControls(bx + bw / 2, by + (rot === 90 ? 26 : bh - 26), bx + bw / 2, by + (rot === 90 ? bh - 12 : 22), 'middle')
-              : ioControls(bx + bw - 22, by + bh / 2, bx + bw - 40, by + bh / 2 + 4, 'end')}
+              : ioControls(bx + bw - 22, by + bh / 2, bx + bw - (busIn || busOut ? 44 : 40), by + bh / 2 + 4, 'end')}
           </>
         )}
       </g>
@@ -1361,6 +1434,7 @@ export default function GateEditor() {
             {notice && <span data-testid="gate-notice" style={{ color: notice.kind === 'ok' ? '#16a34a' : '#ef4444' }}>{notice.text}</span>}
             {ev.loop.length > 0 && <span style={{ color: '#ef4444' }}>{g.loopWarning}</span>}
             {ev.floating.length > 0 && <span style={{ color: '#d97706' }}>{fmt(g.floatingWarning, { n: ev.floating.length })}</span>}
+            {mismatched.size > 0 && <span data-testid="gate-width-warning" style={{ color: '#ef4444' }}>{fmt(g.widthMismatch, { n: mismatched.size })}</span>}
           </div>
           {showGraph && (
             <div data-testid="gate-clock-bar" className="mx-3 mb-2 px-3 py-2 rounded-[0.375rem] border flex items-center gap-2 flex-wrap" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
@@ -1372,7 +1446,7 @@ export default function GateEditor() {
               {sequential && <button type="button" className={btn} style={btnStyle} data-testid="gate-reset-ff" onClick={resetFlipFlops}><RotateCcw size={13} /> {g.resetFF}</button>}
               {sequential && (
                 <span data-testid="gate-ff-state" className="text-[0.75rem] font-mono ml-1" style={{ color: 'var(--text-secondary)' }}>
-                  {ffs.map((f, i) => `Q${i}=${seq.q[f.id] ?? 0}`).join('  ')}
+                  {ffs.map((f, i) => `Q${i}=${formatBus(seq.q[f.id] ?? 0, dataWidth(f))}`).join('  ')}
                 </span>
               )}
             </div>
@@ -1436,8 +1510,12 @@ export default function GateEditor() {
                   setCircuit((c) => ({ ...c, wires: c.wires.map((x2) => (x2.id === w.id ? { ...x2, bends: next } : x2)) }));
                   setSelected({ kind: 'wire', id: w.id });
                 };
+                const bw = widthOf(sig(w.from, w.fromPin ?? 0));
+                const bad = mismatched.has(w.id);
+                // A bus is drawn thick, with its value on the longest segment.
+                const longest = segs.reduce((m, sg) => (Math.abs(sg.p1.x - sg.p0.x) + Math.abs(sg.p1.y - sg.p0.y) > Math.abs(m.p1.x - m.p0.x) + Math.abs(m.p1.y - m.p0.y) ? sg : m), segs[0]);
                 return (
-                  <g key={w.id} data-wire={w.id} data-value={v}>
+                  <g key={w.id} data-wire={w.id} data-value={v} data-width={bw} data-mismatch={bad ? 'true' : undefined}>
                     {segs.map((sg, k) => {
                       const vertical = sg.p0.x === sg.p1.x;
                       const cursor = sg.index < 0 ? 'pointer' : vertical ? 'ew-resize' : 'ns-resize';
@@ -1446,7 +1524,12 @@ export default function GateEditor() {
                           onPointerDown={(e) => startDrag(e, sg.index)} onDoubleClick={(e) => addBend(e, k)} style={{ cursor: isSel ? cursor : 'pointer' }} />
                       );
                     })}
-                    <path d={dpath} fill="none" stroke={isSel ? '#3b82f6' : v ? on : off} strokeWidth={isSel ? 3 : 2.2} strokeLinejoin="round" pointerEvents="none" />
+                    <path d={dpath} fill="none" stroke={bad ? '#ef4444' : isSel ? '#3b82f6' : v ? on : off} strokeWidth={bw > 1 ? (isSel ? 5 : 4.2) : isSel ? 3 : 2.2} strokeDasharray={bad ? '7 4' : undefined} strokeLinejoin="round" pointerEvents="none" />
+                    {bw > 1 && longest && (
+                      <text x={(longest.p0.x + longest.p1.x) / 2 + (longest.p0.x === longest.p1.x ? 6 : 0)} y={(longest.p0.y + longest.p1.y) / 2 - (longest.p0.x === longest.p1.x ? 0 : 5)} fontSize={9.5} fontWeight={700} fill="var(--text-secondary)" pointerEvents="none">
+                        {formatBus(v, bw)}<tspan fontSize={8} fontWeight={400} fill="var(--text-muted)"> /{bw}</tspan>
+                      </text>
+                    )}
                     {isSel && segs.filter((sg) => sg.index >= 0).map((sg) => (
                       <rect key={`h${sg.index}`} x={(sg.p0.x + sg.p1.x) / 2 - 4} y={(sg.p0.y + sg.p1.y) / 2 - 4} width={8} height={8} rx={1.5} fill="#fff" stroke="#3b82f6" strokeWidth={1.5} pointerEvents="none" />
                     ))}
@@ -1559,7 +1642,69 @@ export default function GateEditor() {
                   <p className="text-[0.6875rem]" style={{ color: 'var(--text-muted)' }}>{g.arithNote}</p>
                 </>
               )}
-              {!labelled(sel.type) && !isFlipFlop(sel.type) && sel.type !== 'CONST0' && sel.type !== 'CONST1' && sel.type !== 'BLOCK' && (
+              {WIDE.includes(sel.type) && (
+                <label className="text-[0.75rem] flex items-center gap-2">
+                  {g.busWidth}
+                  <select data-testid="gate-bus-width" value={dataWidth(sel)} onChange={(e) => reshape(sel, { width: Number(e.target.value) })} className="h-8 px-2 rounded-[0.25rem] border text-[0.8125rem]" style={btnStyle}>
+                    {Array.from({ length: MAX_WIDTH }, (_, k) => k + 1).filter((k) => k > 1 || (sel.type !== 'SPLIT' && sel.type !== 'MERGE')).map((k) => <option key={k} value={k}>{k}</option>)}
+                  </select>
+                </label>
+              )}
+              {(sel.type === 'RAM' || sel.type === 'ROM') && (
+                <label className="text-[0.75rem] flex items-center gap-2">
+                  {g.addrBits}
+                  <select data-testid="gate-addr-bits" value={addrWidth(sel)} onChange={(e) => reshape(sel, { addrBits: Number(e.target.value) })} className="h-8 px-2 rounded-[0.25rem] border text-[0.8125rem]" style={btnStyle}>
+                    {Array.from({ length: MAX_ADDR }, (_, k) => k + 1).map((k) => <option key={k} value={k}>{k}</option>)}
+                  </select>
+                  <span style={{ color: 'var(--text-muted)' }}>{fmt(g.memorySize, { words: 1 << addrWidth(sel), bits: dataWidth(sel) })}</span>
+                </label>
+              )}
+              {(sel.type === 'CONST' || (sel.type === 'IN' && dataWidth(sel) > 1)) && (
+                <label className="text-[0.75rem] flex items-center gap-2">
+                  {sel.type === 'CONST' ? g.constValue : g.busValue}
+                  <input
+                    key={`${sel.id}:${sel.type === 'CONST' ? sel.value ?? 0 : inputs[sel.id] ?? 0}`}
+                    data-testid="gate-bus-value"
+                    defaultValue={String(sel.type === 'CONST' ? sel.value ?? 0 : inputs[sel.id] ?? 0)}
+                    onBlur={(e) => {
+                      const v = parseNumber(e.target.value);
+                      if (v === null) return;
+                      if (sel.type === 'CONST') updateNode(sel.id, { value: v & maskOf(dataWidth(sel)) });
+                      else setBusInput(sel, v);
+                    }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                    className="h-8 w-28 px-2 rounded-[0.25rem] border text-[0.8125rem] font-mono" style={btnStyle}
+                  />
+                </label>
+              )}
+              {sel.type === 'IN' && dataWidth(sel) > 1 && <p className="text-[0.6875rem]" style={{ color: 'var(--text-muted)' }}>{g.busHint}</p>}
+              {sel.type === 'ROM' && (
+                <label className="text-[0.75rem] flex flex-col gap-1">
+                  {g.romContents}
+                  <textarea
+                    key={`${sel.id}:${(sel.data ?? []).join(',')}`}
+                    data-testid="gate-rom-data"
+                    defaultValue={(sel.data ?? []).map((x) => formatBus(x, Math.max(5, dataWidth(sel)))).join(' ')}
+                    onBlur={(e) => {
+                      const words = e.target.value.split(/[\s,;]+/).filter(Boolean).map((t) => parseNumber(t) ?? 0).slice(0, 1 << addrWidth(sel)).map((x) => x & maskOf(dataWidth(sel)));
+                      updateNode(sel.id, { data: words });
+                    }}
+                    rows={3}
+                    className="px-2 py-1 rounded-[0.25rem] border text-[0.8125rem] font-mono" style={btnStyle}
+                  />
+                  <span className="text-[0.6875rem]" style={{ color: 'var(--text-muted)' }}>{g.romHint}</span>
+                </label>
+              )}
+              {sel.type === 'REG' && <p className="text-[0.6875rem]" style={{ color: 'var(--text-muted)' }}>{g.regHint}</p>}
+              {sel.type === 'RAM' && (
+                <div className="flex flex-col gap-1">
+                  <p className="text-[0.6875rem]" style={{ color: 'var(--text-muted)' }}>{g.ramHint}</p>
+                  <p data-testid="gate-ram-state" className="text-[0.6875rem] font-mono break-all" style={{ color: 'var(--text-secondary)' }}>
+                    {g.memoryState}: {Array.from({ length: Math.min(16, 1 << addrWidth(sel)) }, (_, k) => formatBus(seq.q[`${sel.id}@${k}`] ?? 0, Math.max(5, dataWidth(sel)))).join(' ')}{(1 << addrWidth(sel)) > 16 ? ' …' : ''}
+                  </p>
+                </div>
+              )}
+              {!labelled(sel.type) && !isFlipFlop(sel.type) && !CLOCKED.includes(sel.type) && sel.type !== 'CONST0' && sel.type !== 'CONST1' && sel.type !== 'CONST' && sel.type !== 'BLOCK' && (
                 <label className="text-[0.75rem] flex items-center gap-2">
                   {g.delay}
                   <input type="number" min={1} max={5} value={sel.delay} onChange={(e) => updateNode(sel.id, { delay: Math.max(1, Math.min(5, Number(e.target.value) || 1)) })} className="h-8 w-16 px-2 rounded-[0.25rem] border text-[0.8125rem]" style={btnStyle} />
@@ -1711,8 +1856,35 @@ function DataGraph({ history, rows }: { history: Sample[]; rows: GateNode[] }) {
         const top = r * rowH + 5;
         const hi = top;
         const lo = top + rowH - 10;
-        const label = isFlipFlop(n.type) ? `Q${ffIndex++}` : n.label || n.type;
-        const color = isFlipFlop(n.type) ? '#8b5cf6' : n.type === 'CLK' ? '#0ea5e9' : SOURCES.includes(n.type) ? '#3b82f6' : '#22c55e';
+        const label = isFlipFlop(n.type) || n.type === 'REG' ? `Q${ffIndex++}` : n.label || n.type;
+        const color = isFlipFlop(n.type) || n.type === 'REG' ? '#8b5cf6' : n.type === 'CLK' ? '#0ea5e9' : SOURCES.includes(n.type) ? '#3b82f6' : '#22c55e';
+        if (dataWidth(n) > 1 || history.some((smp) => (smp[n.id] ?? 0) > 1)) {
+          // A bus: one box per value, like a logic analyser's bus lane.
+          const w = dataWidth(n) > 1 ? dataWidth(n) : history.some((smp) => (smp[n.id] ?? 0) > 15) ? 8 : 4;
+          const runs: Array<{ from: number; to: number; v: number }> = [];
+          history.forEach((smp, i) => {
+            const v = smp[n.id] ?? 0;
+            const last = runs[runs.length - 1];
+            if (last && last.v === v) last.to = i + 1;
+            else runs.push({ from: i, to: i + 1, v });
+          });
+          return (
+            <g key={n.id} data-bus-row={n.id}>
+              <text x={4} y={top + 11} fontSize={10.5} fill="var(--text-primary)" fontFamily="var(--font-mono)">{label}</text>
+              {runs.map((run, k) => {
+                const x0 = nameW + run.from * step;
+                const x1 = nameW + run.to * step;
+                const mid = (hi + lo) / 2;
+                return (
+                  <g key={k}>
+                    <path d={`M${x0},${mid} L${x0 + 3},${hi} H${x1 - 3} L${x1},${mid} L${x1 - 3},${lo} H${x0 + 3} Z`} fill="none" stroke={color} strokeWidth={1.3} />
+                    {x1 - x0 > 14 && <text x={(x0 + x1) / 2} y={mid + 3.5} fontSize={9.5} textAnchor="middle" fill="var(--text-primary)" fontFamily="var(--font-mono)">{formatBus(run.v, w)}</text>}
+                  </g>
+                );
+              })}
+            </g>
+          );
+        }
         if (n.type === 'SEG7') {
           return (
             <g key={n.id}>

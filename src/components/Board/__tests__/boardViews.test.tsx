@@ -3302,4 +3302,59 @@ endmodule`);
   pass('Verilog engine: multi-line assigns, sized concatenation and vector NOT');
 }
 
+{
+  // Gate designer buses: splitter/merger, register, RAM, ROM, widths and their Verilog.
+  const N = (id: string, type: Gates.GateType, extra: Partial<Gates.GateNode> = {}, y = 0): Gates.GateNode => ({ id, type, x: 0, y, label: id, delay: 1, ...extra });
+  const Wr = (from: string, to: string, pin = 0, fromPin = 0): Gates.Wire => ({ id: `${from}${fromPin}-${to}${pin}`, from, to, pin, ...(fromPin ? { fromPin } : {}) });
+  const swap: Gates.Circuit = { nodes: [N('a', 'IN', { width: 4 }), N('s', 'SPLIT', { width: 4 }), N('m', 'MERGE', { width: 4 }), N('y', 'OUT')],
+    wires: [Wr('a', 's'), Wr('s', 'm', 0, 3), Wr('s', 'm', 1, 1), Wr('s', 'm', 2, 2), Wr('s', 'm', 3, 0), Wr('m', 'y')] };
+  assert.strictEqual(Gates.evaluate(swap, { a: 0b0001 }).values.y, 0b1000, 'splitter/merger rewire bits');
+  assert.deepStrictEqual(Gates.signalWidths(swap).mismatched, []);
+  const bad: Gates.Circuit = { nodes: [N('a', 'IN', { width: 4 }), N('g', 'AND')], wires: [Wr('a', 'g')] };
+  assert.strictEqual(Gates.signalWidths(bad).mismatched.length, 1, 'a 4-bit bus into a gate is a width mismatch');
+  const tt = Gates.truthTable({ nodes: [N('a', 'IN', { width: 2 }), N('b', 'IN'), N('y', 'OUT', {}, 5)], wires: [Wr('a', 'y')] })!;
+  assert.strictEqual(tt.rows.length, 8, 'a 2-bit input counts twice in the truth table');
+  assert.deepStrictEqual(tt.rows[5], { in: [2, 1], out: [2] });
+
+  const mem: Gates.Circuit = { nodes: [N('d', 'IN', { width: 4 }, 0), N('clk', 'CLK', {}, 10), N('en', 'IN', {}, 20), N('r', 'REG', { width: 4 }), N('q', 'OUT', {}, 0),
+    N('addr', 'IN', { width: 2 }, 30), N('we', 'IN', {}, 40), N('ram', 'RAM', { width: 4, addrBits: 2 }), N('rq', 'OUT', {}, 10), N('rom', 'ROM', { width: 4, addrBits: 2, data: [5, 6, 7, 8] }), N('ro', 'OUT', {}, 20)],
+    wires: [Wr('d', 'r', 0), Wr('clk', 'r', 1), Wr('en', 'r', 2), Wr('r', 'q'), Wr('addr', 'ram', 0), Wr('d', 'ram', 1), Wr('we', 'ram', 2), Wr('clk', 'ram', 3), Wr('ram', 'rq'), Wr('addr', 'rom'), Wr('rom', 'ro')] };
+  let st = Gates.settle(mem, { d: 9, clk: 0, en: 1, addr: 2, we: 1 });
+  st = Gates.settle(mem, { d: 9, clk: 1, en: 1, addr: 2, we: 1 }, st.seq);
+  assert.deepStrictEqual([st.ev.values.q, st.ev.values.rq, st.ev.values.ro], [9, 9, 7], 'register loads, RAM writes, ROM reads');
+  st = Gates.settle(mem, { d: 3, clk: 0, en: 0, addr: 1, we: 0 }, st.seq);
+  st = Gates.settle(mem, { d: 3, clk: 1, en: 0, addr: 1, we: 0 }, st.seq);
+  assert.deepStrictEqual([st.ev.values.q, st.ev.values.rq, st.ev.values.ro], [9, 0, 6], 'EN low holds; RAM word 1 is still empty');
+  // The same circuit on the DE2 engine, cycle by cycle.
+  const eng = compileVerilog(Gates.toDe2Verilog(mem, 'mem'));
+  let seq = Gates.EMPTY_SEQ;
+  let est: Record<string, number> = {};
+  let rnd = 7;
+  const next = (k: number) => { rnd = (rnd * 1103515245 + 12345) & 0x7fffffff; return rnd % k; };
+  for (let t = 0; t < 80; t += 1) {
+    const ins = { d: next(16), en: next(2), addr: next(4), we: next(2) };
+    for (const clk of [0, 1]) {
+      const r = Gates.settle(mem, { ...ins, clk }, seq);
+      seq = r.seq;
+      const sw: Record<string, number> = { CLOCK_50: clk, SW4: ins.en, SW5: ins.addr & 1, SW6: ins.addr >> 1, SW7: ins.we };
+      for (let k = 0; k < 4; k += 1) sw[`SW${k}`] = (ins.d >> k) & 1;
+      est = eng.evaluate(sw, est);
+      const led = (from: number) => [0, 1, 2, 3].reduce((v, k) => v | ((est[`LEDR${from + k}`] ?? 0) << k), 0);
+      if (t > 0) assert.deepStrictEqual([led(0), led(4), led(8)], [r.ev.values.q, r.ev.values.rq, r.ev.values.ro], `DE2 engine matches the editor at step ${t}`);
+    }
+  }
+  // Preset: a register counter built from buses counts 0..15 and wraps.
+  const cnt = Gates.PRESETS.reg_counter.circuit;
+  assert.deepStrictEqual(Gates.signalWidths(cnt).mismatched, []);
+  assert.deepStrictEqual(Gates.evaluate(cnt, {}).floating, [], 'an open register EN is not a floating input');
+  let cs = Gates.EMPTY_SEQ;
+  const seen: number[] = [];
+  for (let i = 0; i < 17; i += 1) { cs = Gates.settle(cnt, { clk: 0 }, cs).seq; const r = Gates.settle(cnt, { clk: 1 }, cs); cs = r.seq; seen.push(r.ev.values.q); }
+  assert.deepStrictEqual(seen, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1]);
+  // Tests accept bus values in decimal, hex and binary.
+  const tr = Gates.runTests(Gates.PRESETS.ram.circuit, 'addr data we write | q\n5 9 1 C | 9\n4 0 0 0 | 0\n5 0 0 0 | 0x9\n0b101 0 0 0 | 0b1001');
+  assert.deepStrictEqual([tr.error, tr.passed, tr.failed], [null, 4, 0]);
+  pass('gate designer buses: splitter/merger, register, RAM and ROM match their DE2 Verilog; widths are checked');
+}
+
 console.log(`--- DE2 Board Renderer Regression: PASS (${checks.length} checks) ---`);
