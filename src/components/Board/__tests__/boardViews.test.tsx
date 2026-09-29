@@ -126,7 +126,7 @@ import { exerciseCircuit } from '../../Gates/GateExercisePanel';
 import { getExercise } from '../../../exercises/exercises';
 import { gradeSubmission } from '../../../exercises/grader';
 import { defaultSpec, generateTestbench, readPorts, resizeSpec, setValue } from '../../../waveform/stimulus';
-import { minimize, parseExpression, sopText, tableOf, variablesOf } from '../../../logic/boolean';
+import { kmapCircuit, minimize, parseExpression, posText, sopText, tableOf, variablesOf } from '../../../logic/boolean';
 import { ISO, project, faceTransform, sevenSegmentShapes } from '../boardGeometry';
 
 /* ────────────────────────────────────────────────────────────────────────
@@ -3460,6 +3460,28 @@ endmodule`);
   const seq = grade('dff_en', df);
   assert.ok(seq.kind === 'graded' && seq.passed === seq.total, 'the clocked task passes cycle by cycle');
   pass('gate designer exercises: task ports, grading of drawn circuits (combinational and clocked)');
+}
+
+{
+  // K-map to gates in four forms: every form computes the same function; NAND/NOR forms use only those (and NOT).
+  const vars = ['a', 'b', 'c', 'd'];
+  const ones = [0, 2, 5, 7, 8, 10, 13, 15, 6];
+  const dcs = [1];
+  for (const form of ['sop', 'nand', 'pos', 'nor'] as const) {
+    const c = kmapCircuit(4, ones, dcs, vars, form);
+    const idOf = (l: string) => c.nodes.find((x) => x.label === l)!.id;
+    const out = c.nodes.find((x) => x.type === 'OUT')!.id;
+    for (let m = 0; m < 16; m += 1) {
+      if (dcs.includes(m)) continue;
+      const iv = Object.fromEntries(vars.map((v, k) => [idOf(v), (m >> (3 - k)) & 1]));
+      assert.strictEqual(Gates.evaluate(c, iv).values[out], ones.includes(m) ? 1 : 0, `${form} minterm ${m}`);
+    }
+    const types = new Set(c.nodes.map((x) => x.type).filter((t) => !['IN', 'OUT', 'NOT'].includes(t)));
+    if (form === 'nand') assert.deepStrictEqual([...types], ['NAND']);
+    if (form === 'nor') assert.deepStrictEqual([...types], ['NOR']);
+  }
+  assert.strictEqual(posText(minimize(2, [0], []), ['a', 'b']), '(a + b)', 'y = a + b has one zero, at a = b = 0');
+  pass('K-map circuits: AND-OR, NAND-only, OR-AND and NOR-only forms all match the function');
 }
 
 console.log(`--- DE2 Board Renderer Regression: PASS (${checks.length} checks) ---`);

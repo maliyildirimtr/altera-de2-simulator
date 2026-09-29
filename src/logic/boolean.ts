@@ -273,6 +273,119 @@ export function cellMinterm(n: number, row: number, col: number): number {
 
 /* ── To a gate-level circuit ─────────────────────────────────────── */
 
+/**
+ * Circuit forms: AND-OR (sum of products), NAND only (the same cover),
+ * OR-AND (product of sums, from the minimal cover of the zeros) and NOR only.
+ */
+export type CircuitForm = 'sop' | 'nand' | 'pos' | 'nor';
+
+/** Minimal product of sums text, from the minimal cover of the zeros: (a + b')(c). */
+export function posText(zeroCover: Implicant[], vars: string[]): string {
+  if (zeroCover.length === 0) return '1';
+  const n = vars.length;
+  return zeroCover
+    .map((imp) => {
+      const lits: string[] = [];
+      vars.forEach((v, k) => {
+        const bit = 1 << (n - 1 - k);
+        if (!(imp.mask & bit)) lits.push(imp.bits & bit ? `${v}'` : v);
+      });
+      return lits.length ? `(${lits.join(' + ')})` : '0';
+    })
+    .join('');
+}
+
+/**
+ * Gate circuit for a function given by its ones and don't-cares, in one of the
+ * four two-level forms. Gates take up to four inputs; with more terms the
+ * second level is split into groups joined by a non-inverting gate.
+ */
+export function kmapCircuit(n: number, ones: number[], dontCares: number[], vars: string[], form: CircuitForm = 'sop', outName = 'y'): Circuit {
+  const product = form === 'sop' || form === 'nand';
+  const all = Array.from({ length: 1 << n }, (_, m) => m);
+  const zeros = all.filter((m) => !ones.includes(m) && !dontCares.includes(m));
+  const cover = product ? minimize(n, ones, dontCares) : minimize(n, zeros, dontCares);
+
+  const nodes: GateNode[] = [];
+  const wires: Wire[] = [];
+  let seq = 0;
+  const node = (type: GateNode['type'], x: number, y: number, label = '', inputs?: number): string => {
+    const id = `k${seq++}`;
+    nodes.push({ id, type, x, y, label, delay: 1, ...(inputs && inputs > 2 ? { inputs } : {}) });
+    return id;
+  };
+  const wire = (from: string, to: string, pin = 0) => wires.push({ id: `w${seq++}`, from, to, pin });
+
+  const inputs = vars.map((v, k) => node('IN', 30, 40 + k * 100, v));
+  const inverted: Record<number, string> = {};
+  const literal = (k: number, positive: boolean): string => {
+    if (positive) return inputs[k];
+    if (!inverted[k]) {
+      inverted[k] = node('NOT', 170, 60 + k * 100);
+      wire(inputs[k], inverted[k]);
+    }
+    return inverted[k];
+  };
+  /** A gate of `type` over `srcs` (1 source with an inverting type is a NOT; 1 with a plain type is the source itself). */
+  const gate = (type: GateNode['type'], srcs: string[], x: number, y: number): string => {
+    if (srcs.length === 1) {
+      if (type === 'NAND' || type === 'NOR') {
+        const g = node('NOT', x, y);
+        wire(srcs[0], g);
+        return g;
+      }
+      return srcs[0];
+    }
+    const g = node(type, x, y, '', srcs.length);
+    srcs.forEach((src, pin) => wire(src, g, pin));
+    return g;
+  };
+
+  const first: GateNode['type'] = form === 'sop' ? 'AND' : form === 'nand' ? 'NAND' : form === 'pos' ? 'OR' : 'NOR';
+  const second: GateNode['type'] = form === 'sop' ? 'OR' : form === 'nand' ? 'NAND' : form === 'pos' ? 'AND' : 'NOR';
+  // Joins groups of more than four without changing the meaning of the final gate.
+  const join: GateNode['type'] = form === 'sop' || form === 'nor' ? 'OR' : 'AND';
+
+  const termOuts: string[] = [];
+  let constant: 0 | 1 | null = null;
+  cover.forEach((imp, t) => {
+    const lits: string[] = [];
+    vars.forEach((_, k) => {
+      const bit = 1 << (n - 1 - k);
+      if (imp.mask & bit) return;
+      // Product terms use the literal as written; sum clauses invert it.
+      const positive = !!(imp.bits & bit) === product;
+      lits.push(literal(k, positive));
+    });
+    if (lits.length === 0) constant = product ? 1 : 0;
+    // In the NAND/NOR forms a one-literal term still needs its gate (it inverts).
+    else if (lits.length === 1 && (form === 'sop' || form === 'pos')) termOuts.push(lits[0]);
+    else termOuts.push(gate(first, lits, 320, 30 + t * 100));
+  });
+  if (cover.length === 0) constant = product ? 0 : 1;
+
+  const out = node('OUT', 820, 40 + Math.max(0, (termOuts.length - 1) * 50), outName);
+  if (constant !== null) {
+    const c = node(constant ? 'CONST1' : 'CONST0', 600, 40);
+    wire(c, out);
+    return { nodes, wires };
+  }
+  let finalIns = termOuts;
+  if (finalIns.length > 4) {
+    const groups: string[] = [];
+    for (let i = 0; i < finalIns.length; i += 4) {
+      const part = finalIns.slice(i, i + 4);
+      const y = 40 + (i / 4) * 160;
+      // NAND/NOR only: AND = NOT(NAND), OR = NOT(NOR).
+      groups.push(form === 'nand' || form === 'nor' ? gate(second, [gate(second, part, 480, y)], 540, y) : gate(join, part, 500, y));
+    }
+    finalIns = groups;
+  }
+  wire(gate(second, finalIns, 640, 60 + Math.max(0, (termOuts.length - 1) * 40)), out);
+  return { nodes, wires };
+}
+
+/** The sum-of-products circuit of a cover (kept for existing callers). */
 export function sopToCircuit(cover: Implicant[], vars: string[], outName = 'y'): Circuit {
   const n = vars.length;
   const nodes: GateNode[] = [];

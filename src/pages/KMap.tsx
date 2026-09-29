@@ -9,7 +9,9 @@ import {
   minimize,
   parseExpression,
   sopText,
-  sopToCircuit,
+  kmapCircuit,
+  posText,
+  type CircuitForm,
   sopVerilog,
   tableOf,
   termText,
@@ -88,6 +90,9 @@ export default function KMap() {
   const dcs = useMemo(() => cells.flatMap((v, i) => (v === 2 ? [i] : [])), [cells]);
   const cover = useMemo(() => minimize(n, ones, dcs), [n, ones, dcs]);
   const sop = sopText(cover, vars);
+  const [form, setForm] = useState<CircuitForm>('sop');
+  const zeroCover = useMemo(() => minimize(n, Array.from({ length: 1 << n }, (_, m) => m).filter((m) => !ones.includes(m) && !dcs.includes(m)), dcs), [n, ones, dcs]);
+  const circuitOf = () => kmapCircuit(n, ones, dcs, vars, form);
   const verilog = `module kmap_design (\n${vars.map((v) => `    input  logic ${v},`).join('\n')}\n    output logic y\n);\n\n    // y = ${sop}\n    assign y = ${sopVerilog(cover, vars)};\n\nendmodule\n`;
   const layout = kmapLayout(n);
   const rowVarNames = vars.slice(0, layout.rowVars).join('');
@@ -96,7 +101,7 @@ export default function KMap() {
 
   const openInGates = () => {
     try {
-      localStorage.setItem(GATES_KEY, JSON.stringify({ circuit: sopToCircuit(cover, vars), inputs: {}, name: 'kmap_design' }));
+      localStorage.setItem(GATES_KEY, JSON.stringify({ circuit: circuitOf(), inputs: {}, name: 'kmap_design' }));
     } catch {
       /* the editor opens with its last design */
     }
@@ -104,7 +109,7 @@ export default function KMap() {
   };
   const runOnDe2 = () => {
     const st = useBoardStore.getState();
-    st.setHdlCode(toDe2Verilog(sopToCircuit(cover, vars), 'kmap_design'));
+    st.setHdlCode(toDe2Verilog(circuitOf(), 'kmap_design'));
     st.setPinMappings([]);
     st.setEngine(null);
     st.resetBoard();
@@ -216,7 +221,19 @@ export default function KMap() {
             <p className="text-[0.7812rem]" style={{ color: 'var(--text-secondary)' }}>
               {fmt(k.stats, { terms: cover.length, literals })} · Σm({ones.join(', ') || '—'}){dcs.length ? ` + d(${dcs.join(', ')})` : ''}
             </p>
-            <div className="flex gap-2 flex-wrap">
+            <p className="text-[0.75rem]" style={{ color: 'var(--text-secondary)' }}>
+              {k.posResult}: <span className="font-mono" data-testid="kmap-pos">y = {posText(zeroCover, vars)}</span>
+            </p>
+            <div className="flex gap-2 flex-wrap items-center">
+              <label className="flex items-center gap-1.5 text-[0.75rem]">
+                {k.form}
+                <select data-testid="kmap-form" value={form} onChange={(e) => setForm(e.target.value as CircuitForm)} className="h-8 px-2 rounded-[0.25rem] border text-[0.75rem]" style={btnStyle}>
+                  <option value="sop">{k.formSop}</option>
+                  <option value="nand">{k.formNand}</option>
+                  <option value="pos">{k.formPos}</option>
+                  <option value="nor">{k.formNor}</option>
+                </select>
+              </label>
               <button type="button" className={btn} style={btnStyle} onClick={openInGates} data-testid="kmap-to-gates"><Shapes size={13} /> {k.toGates}</button>
               <button type="button" className={btn} style={btnStyle} onClick={runOnDe2} data-testid="kmap-to-de2"><Cpu size={13} /> {k.toDe2}</button>
               <button type="button" className={btn} style={btnStyle} onClick={copy}><Copy size={13} /> {copied ? k.copied : k.copyVerilog}</button>
