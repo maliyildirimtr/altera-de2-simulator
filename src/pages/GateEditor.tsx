@@ -576,9 +576,6 @@ export default function GateEditor() {
       {/* Toolbar */}
       <div className="flex items-center gap-2 flex-wrap px-3 py-2 border-b" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
         <h1 className="text-[0.875rem] font-bold mr-2">{g.title}</h1>
-        <button type="button" className={btn} style={btnStyle} onClick={() => addNode('IN')} data-testid="gate-quick-IN">+ {g.input}</button>
-        <button type="button" className={btn} style={btnStyle} onClick={() => addNode('OUT')} data-testid="gate-quick-OUT">+ {g.output}</button>
-        <span className="w-px h-6" style={{ backgroundColor: 'var(--border-subtle)' }} />
         <div ref={menuRef} className="flex items-center gap-1.5 flex-wrap">
           {PALETTE.map(({ category, types }) => (
             <div key={category} className="relative">

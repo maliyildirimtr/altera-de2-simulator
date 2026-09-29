@@ -203,7 +203,7 @@ const en = {
     parts: 'Parts',
     categories: { logic: 'Gates', io: 'Inputs & outputs', plexers: 'Plexers', arithmetic: 'Arithmetic', flipflops: 'Flip-flops' },
     partNames: {
-      IN: 'Input switch', OUT: 'Output LED', BTN: 'Push button', CLK: 'Clock', CONST0: 'Constant 0', CONST1: 'Constant 1', SEG7: '7-segment display',
+      IN: 'Input', OUT: 'Output', BTN: 'Push button', CLK: 'Clock', CONST0: 'Constant 0', CONST1: 'Constant 1', SEG7: '7-segment display',
       AND: 'AND', OR: 'OR', NOT: 'NOT', NAND: 'NAND', NOR: 'NOR', XOR: 'XOR', XNOR: 'XNOR', BUF: 'Buffer',
       MUX2: '2:1 multiplexer', MUX4: '4:1 multiplexer', DEC2: '2-to-4 decoder', HA: 'Half adder', FA: 'Full adder',
       DFF: 'D flip-flop', TFF: 'T flip-flop', JKFF: 'JK flip-flop', SRFF: 'SR flip-flop',
@@ -511,7 +511,7 @@ const tr: Dictionary = {
     parts: 'Bileşenler',
     categories: { logic: 'Kapılar', io: 'Giriş ve çıkış', plexers: 'Seçiciler', arithmetic: 'Aritmetik', flipflops: "Flip-flop'lar" },
     partNames: {
-      IN: 'Giriş anahtarı', OUT: 'Çıkış LED', BTN: 'Buton', CLK: 'Saat', CONST0: 'Sabit 0', CONST1: 'Sabit 1', SEG7: '7 segment gösterge',
+      IN: 'Giriş', OUT: 'Çıkış', BTN: 'Buton', CLK: 'Saat', CONST0: 'Sabit 0', CONST1: 'Sabit 1', SEG7: '7 segment gösterge',
       AND: 'VE (AND)', OR: 'VEYA (OR)', NOT: 'DEĞİL (NOT)', NAND: 'VE-DEĞİL (NAND)', NOR: 'VEYA-DEĞİL (NOR)', XOR: 'ÖZEL VEYA (XOR)', XNOR: 'XNOR', BUF: 'Tampon',
       MUX2: '2:1 çoklayıcı', MUX4: '4:1 çoklayıcı', DEC2: '2-4 kod çözücü', HA: 'Yarım toplayıcı', FA: 'Tam toplayıcı',
       DFF: 'D flip-flop', TFF: 'T flip-flop', JKFF: 'JK flip-flop', SRFF: 'SR flip-flop',
