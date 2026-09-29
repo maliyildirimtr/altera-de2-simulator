@@ -3075,4 +3075,55 @@ useBoardStore.setState({ engine: null, pinMappings: [], simState: {} });
   pass('demultiplexers, 3-to-8 decoder, bit selector, priority encoder and LED match their Verilog on every input');
 }
 
+
+{
+  // Arithmetic blocks: editor values match an independent model and the exported Verilog, at every width.
+  const pk = (x: number[], from: number, k: number) => x.slice(from, from + k).reduce((v, b, i) => v | (b << i), 0);
+  const un = (v: number, k: number) => Array.from({ length: k }, (_, i) => (v >> i) & 1);
+  const model = (t: string, k: number, x: number[], dir?: string): number[] => {
+    const A = pk(x, 0, k), B = pk(x, k, k), m = (1 << k) - 1;
+    const sb = Math.max(1, Math.ceil(Math.log2(k)));
+    switch (t) {
+      case 'ADD': return un(A + B + x[2 * k], k + 1);
+      case 'SUB': { const d = A - B - x[2 * k]; return [...un(d & m, k), d < 0 ? 1 : 0]; }
+      case 'MUL': return un(A * B, 2 * k);
+      case 'DIV': return [...un(B ? Math.floor(A / B) : 0, k), ...un(B ? A % B : A, k)];
+      case 'SHIFT': { const s = pk(x, k, sb); return un((dir === 'right' ? A >> s : A << s) & m, k); }
+      case 'CMP': return [+(A > B), +(A === B), +(A < B)];
+      case 'NEG': return un(-A & m, k);
+      case 'SEXT': return [...un(A, k), ...Array(k).fill((A >> (k - 1)) & 1)];
+      default: return un(un(A, k).reduce((a, b) => a + b, 0), Math.ceil(Math.log2(k + 1)));
+    }
+  };
+  let combos = 0;
+  for (const t of Gates.ARITH) {
+    for (const k of t === 'SHIFT' ? [2, 3, 4] : [1, 2, 3, 4]) {
+      for (const dir of t === 'SHIFT' ? ['left', 'right'] : [undefined]) {
+        const part: Gates.GateNode = { id: 'p', type: t, bits: k, ...(dir ? { dir: dir as 'left' | 'right' } : {}), x: 300, y: 0, label: '', delay: 1 };
+        const ins = Gates.inputNames(part).length;
+        const outs = Gates.outputNames(part).length;
+        const c: Gates.Circuit = { nodes: [part], wires: [] };
+        for (let i = 0; i < ins; i++) { c.nodes.push({ id: `i${i}`, type: 'IN', x: 0, y: i * 10, label: `i${i}`, delay: 1 }); c.wires.push({ id: `wi${i}`, from: `i${i}`, to: 'p', pin: i }); }
+        for (let o = 0; o < outs; o++) { c.nodes.push({ id: `o${o}`, type: 'OUT', x: 600, y: o * 10, label: `o${o}`, delay: 1 }); c.wires.push({ id: `wo${o}`, from: 'p', fromPin: o, to: `o${o}`, pin: 0 }); }
+        const mod = compileVerilog(Gates.toVerilog(c, 'arith'));
+        assert.ok(!mod.transpileError, `${t} ${k}-bit Verilog runs on the engine`);
+        for (let combo = 0; combo < 1 << ins; combo++) {
+          const bits = Array.from({ length: ins }, (_, i) => (combo >> i) & 1);
+          const iv: Record<string, number> = {};
+          bits.forEach((b, i) => { iv[`i${i}`] = b; });
+          const want = model(t, k, bits, dir);
+          const ev = Gates.evaluate(c, iv);
+          assert.deepStrictEqual(Array.from({ length: outs }, (_, o) => ev.values[`o${o}`]), want, `${t} ${k}-bit ${dir ?? ''} editor, inputs ${bits.join('')}`);
+          let st: Record<string, number> = {};
+          st = mod.evaluate(iv, st);
+          st = mod.evaluate(iv, st);
+          assert.deepStrictEqual(Array.from({ length: outs }, (_, o) => (st[`o${o}`] ?? 0) & 1), want, `${t} ${k}-bit ${dir ?? ''} Verilog, inputs ${bits.join('')}`);
+          combos++;
+        }
+      }
+    }
+  }
+  pass(`arithmetic blocks (adder … bit counter, widths 1–4) match their model and Verilog on all ${combos} input combinations`);
+}
+
 console.log(`--- DE2 Board Renderer Regression: PASS (${checks.length} checks) ---`);

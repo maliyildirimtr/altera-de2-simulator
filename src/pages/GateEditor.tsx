@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown, Copy, Cpu, Pause, Play, RotateCcw, Timer, Trash2, Zap } from 'lucide-react';
 import {
+  ARITH,
   EMPTY_SEQ,
+  bitWidth,
   MULTI_INPUT,
   PALETTE,
   PRESETS,
@@ -68,7 +70,7 @@ function load(): Saved {
 
 /* ── Geometry ──────────────────────────────────────────────────────── */
 
-const BLOCK_TITLE: Partial<Record<GateType, string>> = { MUX2: 'MUX', MUX4: 'MUX', DEMUX2: 'DEMUX', DEMUX4: 'DEMUX', DEC2: 'DEC', DEC3: 'DEC', BITSEL: 'BIT', PENC4: 'PRI', HA: 'HA', FA: 'FA', DFF: 'D', TFF: 'T', JKFF: 'JK', SRFF: 'SR' };
+const BLOCK_TITLE: Partial<Record<GateType, string>> = { MUX2: 'MUX', MUX4: 'MUX', DEMUX2: 'DEMUX', DEMUX4: 'DEMUX', DEC2: 'DEC', DEC3: 'DEC', BITSEL: 'BIT', PENC4: 'PRI', ADD: 'ADD', SUB: 'SUB', MUL: 'MUL', DIV: 'DIV', SHIFT: 'SHIFT', CMP: 'CMP', NEG: 'NEG', SEXT: 'SEXT', BITCNT: 'CNT', HA: 'HA', FA: 'FA', DFF: 'D', TFF: 'T', JKFF: 'JK', SRFF: 'SR' };
 
 /** Plexers drawn as a trapezoid (wide side = the side with more signals). */
 const TRAPEZOID: GateType[] = ['MUX2', 'MUX4', 'BITSEL', 'DEMUX2', 'DEMUX4'];
@@ -503,6 +505,30 @@ export default function GateEditor() {
     setTrace(null);
   };
 
+  /** Changes a block's width or direction, keeping the wires whose pin still exists. */
+  const reshape = (n: GateNode, patch: Partial<GateNode>) => {
+    const next = { ...n, ...patch };
+    const [oi, oo, ni, no] = [inputNames(n), outputNames(n), inputNames(next), outputNames(next)];
+    setCircuit((c) => ({
+      nodes: c.nodes.map((x) => (x.id === n.id ? next : x)),
+      wires: c.wires.flatMap((w) => {
+        let out = w;
+        if (w.to === n.id) {
+          const pin = ni.indexOf(oi[w.pin]);
+          if (pin < 0) return [];
+          out = { ...out, pin };
+        }
+        if (w.from === n.id) {
+          const pin = no.indexOf(oo[w.fromPin ?? 0]);
+          if (pin < 0) return [];
+          out = { ...out, fromPin: pin };
+        }
+        return [out];
+      }),
+    }));
+    setTrace(null);
+  };
+
   const openInDe2 = () => {
     const st = useBoardStore.getState();
     st.setHdlCode(toDe2Verilog(circuit, name));
@@ -556,7 +582,7 @@ export default function GateEditor() {
       body = (
         <>
           <rect x={0} y={0} width={w} height={h} rx={4} fill="var(--bg-surface)" stroke={stroke} strokeWidth={isSel ? 2.2 : 1.5} />
-          <text x={w / 2} y={13} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--text-primary)" pointerEvents="none">{BLOCK_TITLE[n.type]}</text>
+          <text x={w / 2} y={13} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--text-primary)" pointerEvents="none">{n.type === 'SHIFT' ? (n.dir === 'right' ? '>>' : '<<') : BLOCK_TITLE[n.type]}{ARITH.includes(n.type) ? ` ${bitWidth(n)}b` : ''}</text>
           {isFlipFlop(n.type) && (
             <text x={w / 2} y={h - 6} textAnchor="middle" fontSize={11} fontWeight={700} fill={v ? on : 'var(--text-muted)'} pointerEvents="none">Q={v}</text>
           )}
@@ -863,6 +889,26 @@ export default function GateEditor() {
                     {[2, 3, 4].map((k) => <option key={k} value={k}>{k}</option>)}
                   </select>
                 </label>
+              )}
+              {ARITH.includes(sel.type) && (
+                <>
+                  <label className="text-[0.75rem] flex items-center gap-2">
+                    {g.bitWidth}
+                    <select data-testid="gate-bit-width" value={bitWidth(sel)} onChange={(e) => reshape(sel, { bits: Number(e.target.value) })} className="h-8 px-2 rounded-[0.25rem] border text-[0.8125rem]" style={btnStyle}>
+                      {(sel.type === 'SHIFT' ? [2, 3, 4] : [1, 2, 3, 4]).map((k) => <option key={k} value={k}>{k}</option>)}
+                    </select>
+                  </label>
+                  {sel.type === 'SHIFT' && (
+                    <label className="text-[0.75rem] flex items-center gap-2">
+                      {g.shiftDir}
+                      <select data-testid="gate-shift-dir" value={sel.dir ?? 'left'} onChange={(e) => reshape(sel, { dir: e.target.value as 'left' | 'right' })} className="h-8 px-2 rounded-[0.25rem] border text-[0.8125rem]" style={btnStyle}>
+                        <option value="left">{g.shiftLeft}</option>
+                        <option value="right">{g.shiftRight}</option>
+                      </select>
+                    </label>
+                  )}
+                  <p className="text-[0.6875rem]" style={{ color: 'var(--text-muted)' }}>{g.arithNote}</p>
+                </>
               )}
               {!labelled(sel.type) && !isFlipFlop(sel.type) && sel.type !== 'CONST0' && sel.type !== 'CONST1' && (
                 <label className="text-[0.75rem] flex items-center gap-2">

@@ -16,7 +16,7 @@ export type GateType =
   // plexers
   | 'MUX2' | 'MUX4' | 'DEMUX2' | 'DEMUX4' | 'DEC2' | 'DEC3' | 'BITSEL' | 'PENC4'
   // arithmetic
-  | 'HA' | 'FA'
+  | 'HA' | 'FA' | 'ADD' | 'SUB' | 'MUL' | 'DIV' | 'SHIFT' | 'CMP' | 'NEG' | 'SEXT' | 'BITCNT'
   // flip-flops (rising edge)
   | 'DFF' | 'TFF' | 'JKFF' | 'SRFF';
 
@@ -31,6 +31,10 @@ export interface GateNode {
   delay: number;
   /** Number of inputs for AND/OR/NAND/NOR/XOR/XNOR (2–4, default 2). */
   inputs?: number;
+  /** Bit width of the arithmetic blocks (1–4, default 4; barrel shifter 2–4). */
+  bits?: number;
+  /** Barrel shifter direction (default left). */
+  dir?: 'left' | 'right';
 }
 
 export interface Wire {
@@ -92,6 +96,16 @@ export const PARTS: Record<GateType, PartSpec> = {
   PENC4: { category: 'plexers', ins: ['I0', 'I1', 'I2', 'I3'], outs: ['Q0', 'Q1', 'V'] },
   HA: { category: 'arithmetic', ins: ['A', 'B'], outs: ['S', 'C'] },
   FA: { category: 'arithmetic', ins: ['A', 'B', 'Cin'], outs: ['S', 'Cout'] },
+  // Multi-bit blocks: pins depend on the width (see arithPins); these are the 4-bit ones.
+  ADD: { category: 'arithmetic', ins: [], outs: [] },
+  SUB: { category: 'arithmetic', ins: [], outs: [] },
+  MUL: { category: 'arithmetic', ins: [], outs: [] },
+  DIV: { category: 'arithmetic', ins: [], outs: [] },
+  SHIFT: { category: 'arithmetic', ins: [], outs: [] },
+  CMP: { category: 'arithmetic', ins: [], outs: [] },
+  NEG: { category: 'arithmetic', ins: [], outs: [] },
+  SEXT: { category: 'arithmetic', ins: [], outs: [] },
+  BITCNT: { category: 'arithmetic', ins: [], outs: [] },
   DFF: { category: 'flipflops', ins: ['D', 'C'], outs: FF_OUTS, clock: 1 },
   TFF: { category: 'flipflops', ins: ['T', 'C'], outs: FF_OUTS, clock: 1 },
   JKFF: { category: 'flipflops', ins: ['J', 'C', 'K'], outs: FF_OUTS, clock: 1 },
@@ -111,7 +125,7 @@ export const PALETTE: Array<{ category: PartCategory; types: GateType[] }> = [
   { category: 'logic', types: GATE_TYPES },
   { category: 'io', types: ['OUT', 'LED', 'IN', 'CLK', 'BTN', 'CONST0', 'CONST1', 'SEG7'] },
   { category: 'plexers', types: ['MUX2', 'MUX4', 'DEMUX2', 'DEMUX4', 'DEC2', 'DEC3', 'BITSEL', 'PENC4'] },
-  { category: 'arithmetic', types: ['HA', 'FA'] },
+  { category: 'arithmetic', types: ['HA', 'FA', 'ADD', 'SUB', 'MUL', 'DIV', 'SHIFT', 'CMP', 'NEG', 'SEXT', 'BITCNT'] },
   { category: 'flipflops', types: FLIP_FLOPS },
 ];
 
@@ -123,16 +137,76 @@ export function isGate(type: GateType): boolean {
   return GATE_TYPES.includes(type);
 }
 
-export function inputNames(n: Pick<GateNode, 'type' | 'inputs'>): string[] {
+/** Multi-bit arithmetic blocks (Digital's Arithmetic menu). */
+export const ARITH: GateType[] = ['ADD', 'SUB', 'MUL', 'DIV', 'SHIFT', 'CMP', 'NEG', 'SEXT', 'BITCNT'];
+
+type Shape = Pick<GateNode, 'type'> & Partial<Pick<GateNode, 'inputs' | 'bits' | 'dir'>>;
+
+export function bitWidth(n: Shape): number {
+  return Math.max(n.type === 'SHIFT' ? 2 : 1, Math.min(4, n.bits ?? 4));
+}
+const bus = (name: string, k: number) => Array.from({ length: k }, (_, i) => `${name}${i}`);
+const shiftBits = (k: number) => Math.max(1, Math.ceil(Math.log2(k)));
+const countBits = (k: number) => Math.ceil(Math.log2(k + 1));
+
+/** Input and output pin names of an arithmetic block, least significant bit first. */
+export function arithPins(n: Shape): { ins: string[]; outs: string[] } {
+  const k = bitWidth(n);
+  switch (n.type) {
+    case 'ADD': return { ins: [...bus('A', k), ...bus('B', k), 'Cin'], outs: [...bus('S', k), 'Cout'] };
+    case 'SUB': return { ins: [...bus('A', k), ...bus('B', k), 'Bin'], outs: [...bus('D', k), 'Bout'] };
+    case 'MUL': return { ins: [...bus('A', k), ...bus('B', k)], outs: bus('P', 2 * k) };
+    case 'DIV': return { ins: [...bus('A', k), ...bus('B', k)], outs: [...bus('Q', k), ...bus('R', k)] };
+    case 'SHIFT': return { ins: [...bus('D', k), ...bus('S', shiftBits(k))], outs: bus('Y', k) };
+    case 'CMP': return { ins: [...bus('A', k), ...bus('B', k)], outs: ['GT', 'EQ', 'LT'] };
+    case 'NEG': return { ins: bus('D', k), outs: bus('Y', k) };
+    case 'SEXT': return { ins: bus('D', k), outs: bus('Y', 2 * k) };
+    case 'BITCNT': return { ins: bus('D', k), outs: bus('C', countBits(k)) };
+    default: return { ins: [], outs: [] };
+  }
+}
+
+export function inputNames(n: Shape): string[] {
   if (MULTI_INPUT.includes(n.type)) {
     const k = Math.max(2, Math.min(4, n.inputs ?? 2));
     return Array(k).fill('');
   }
+  if (ARITH.includes(n.type)) return arithPins(n).ins;
   return PARTS[n.type].ins;
 }
 
-export function outputNames(n: Pick<GateNode, 'type'>): string[] {
+export function outputNames(n: Shape): string[] {
+  if (ARITH.includes(n.type)) return arithPins(n).outs;
   return PARTS[n.type].outs;
+}
+
+const pack = (bits: number[], from: number, k: number) => bits.slice(from, from + k).reduce((v, b, i) => v | ((b & 1) << i), 0);
+const unpack = (v: number, k: number) => Array.from({ length: k }, (_, i) => (v >> i) & 1);
+
+/** Values of an arithmetic block (unsigned; divide by zero gives Q = 0, R = A). */
+function arithValue(n: GateNode, ins: number[]): number[] {
+  const k = bitWidth(n);
+  const mask = (1 << k) - 1;
+  const A = pack(ins, 0, k);
+  const B = pack(ins, k, k);
+  switch (n.type) {
+    case 'ADD': return unpack(A + B + (ins[2 * k] ?? 0), k + 1);
+    case 'SUB': {
+      const d = A - B - (ins[2 * k] ?? 0);
+      return [...unpack(d & mask, k), d < 0 ? 1 : 0];
+    }
+    case 'MUL': return unpack(A * B, 2 * k);
+    case 'DIV': return [...unpack(B ? Math.floor(A / B) : 0, k), ...unpack(B ? A % B : A, k)];
+    case 'SHIFT': {
+      const sh = pack(ins, k, shiftBits(k));
+      return unpack((n.dir === 'right' ? A >> sh : A << sh) & mask, k);
+    }
+    case 'CMP': return [A > B ? 1 : 0, A === B ? 1 : 0, A < B ? 1 : 0];
+    case 'NEG': return unpack(-A & mask, k);
+    case 'SEXT': return [...unpack(A, k), ...Array(k).fill((A >> (k - 1)) & 1)];
+    case 'BITCNT': return unpack(unpack(A, k).reduce((x, y) => x + y, 0), countBits(k));
+    default: return [];
+  }
 }
 
 /** Number of input pins (accepts a node, or a type for the default count). */
@@ -216,6 +290,15 @@ export function computeNode(n: GateNode, ins: number[], q = 0, sourceValue = 0):
     }
     case 'HA': return [a ^ b, a & b];
     case 'FA': return [a ^ b ^ c, (a & b) | (c & (a ^ b))];
+    case 'ADD':
+    case 'SUB':
+    case 'MUL':
+    case 'DIV':
+    case 'SHIFT':
+    case 'CMP':
+    case 'NEG':
+    case 'SEXT':
+    case 'BITCNT': return arithValue(n, ins);
     case 'DFF':
     case 'TFF':
     case 'JKFF':
@@ -535,7 +618,7 @@ export function sanitizeName(raw: string, fallback: string): string {
 }
 
 const NET_PREFIX: Partial<Record<GateType, string>> = {
-  MUX2: 'mux', MUX4: 'mux', DEMUX2: 'demux', DEMUX4: 'demux', DEC2: 'dec', DEC3: 'dec', BITSEL: 'bitsel', PENC4: 'penc', HA: 'ha', FA: 'fa', DFF: 'dff', TFF: 'tff', JKFF: 'jk', SRFF: 'sr', CONST0: 'c0', CONST1: 'c1',
+  ADD: 'add', SUB: 'sub', MUL: 'mul', DIV: 'div', SHIFT: 'shift', CMP: 'cmp', NEG: 'neg', SEXT: 'sext', BITCNT: 'cnt', MUX2: 'mux', MUX4: 'mux', DEMUX2: 'demux', DEMUX4: 'demux', DEC2: 'dec', DEC3: 'dec', BITSEL: 'bitsel', PENC4: 'penc', HA: 'ha', FA: 'fa', DFF: 'dff', TFF: 'tff', JKFF: 'jk', SRFF: 'sr', CONST0: 'c0', CONST1: 'c1',
 };
 
 const OUT_SUFFIX: Partial<Record<GateType, string[]>> = {
@@ -631,7 +714,7 @@ function buildVerilog(c: Circuit, moduleName: string, mode: Mode): Built {
     const prefix = NET_PREFIX[n.type] ?? 'g';
     counters[prefix] = (counters[prefix] ?? 0) + 1;
     const base = `${prefix}${counters[prefix]}`;
-    const suffix = OUT_SUFFIX[n.type];
+    const suffix = OUT_SUFFIX[n.type] ?? (ARITH.includes(n.type) ? outputNames(n).map((x) => x.toLowerCase()) : undefined);
     outputNames(n).forEach((_, pin) => names.set(sig(n.id, pin), unique(suffix ? `${base}_${suffix[pin]}` : base)));
   }
 
@@ -682,6 +765,91 @@ function buildVerilog(c: Circuit, moduleName: string, mode: Mode): Built {
         body.push(`    assign ${net(0)} = ~${i(1)} & ~${i(0)};`, `    assign ${net(1)} = ~${i(1)} &  ${i(0)};`, `    assign ${net(2)} =  ${i(1)} & ~${i(0)};`, `    assign ${net(3)} =  ${i(1)} &  ${i(0)};`);
         break;
       case 'HA': body.push(`    assign ${net(0)} = ${i(0)} ^ ${i(1)};  // half adder sum`, `    assign ${net(1)} = ${i(0)} & ${i(1)};  // half adder carry`); break;
+      case 'ADD':
+      case 'SUB':
+      case 'MUL':
+      case 'DIV':
+      case 'SHIFT':
+      case 'CMP':
+      case 'NEG':
+      case 'SEXT':
+      case 'BITCNT': {
+        const k = bitWidth(n);
+        const vec = (from: number, len: number) => (len === 1 ? i(from) : `{${Array.from({ length: len }, (_, j) => i(from + len - 1 - j)).join(', ')}}`);
+        const base = net(0).replace(/_[a-z]+0$/, '');
+        const A = unique(`${base}_a`);
+        const B = unique(`${base}_b`);
+        const r = unique(`${base}_r`);
+        const outs = outputNames(n);
+        const declare = (name: string, width: number) => body.push(`    logic ${width > 1 ? `[${width - 1}:0] ` : ''}${name};`);
+        const bitsOut = (vecName: string, from: number, count: number, first = 0) => {
+          for (let j = 0; j < count; j++) body.push(`    assign ${net(from + j)} = ${vecName}[${first + j}];`);
+        };
+        body.push(`    // ${k}-bit ${n.type === 'SHIFT' ? `barrel shifter (${n.dir === 'right' ? 'right' : 'left'})` : n.type.toLowerCase()}`);
+        declare(A, k);
+        body.push(`    assign ${A} = ${vec(0, k)};`);
+        if (n.type === 'SEXT') {
+          for (let j = 0; j < 2 * k; j++) body.push(`    assign ${net(j)} = ${A}[${Math.min(j, k - 1)}];`);
+          break;
+        }
+        if (n.type === 'NEG') {
+          declare(r, k);
+          body.push(`    assign ${r} = 0 - ${A};  // two's complement`);
+          bitsOut(r, 0, k);
+          break;
+        }
+        if (n.type === 'BITCNT') {
+          const w = outs.length;
+          declare(r, w);
+          body.push(`    assign ${r} = ${Array.from({ length: k }, (_, j) => i(j)).join(' + ')};`);
+          bitsOut(r, 0, w);
+          break;
+        }
+        if (n.type === 'SHIFT') {
+          const sw = inputNames(n).length - k;
+          declare(B, sw);
+          body.push(`    assign ${B} = ${vec(k, sw)};`);
+          declare(r, k);
+          body.push(`    assign ${r} = ${A} ${n.dir === 'right' ? '>>' : '<<'} ${B};`);
+          bitsOut(r, 0, k);
+          break;
+        }
+        declare(B, k);
+        body.push(`    assign ${B} = ${vec(k, k)};`);
+        if (n.type === 'ADD') {
+          declare(r, k + 1);
+          body.push(`    assign ${r} = ${A} + ${B} + ${i(2 * k)};`);
+          bitsOut(r, 0, k + 1);
+        } else if (n.type === 'SUB') {
+          declare(r, k + 1);
+          body.push(`    assign ${r} = ${A} - ${B} - ${i(2 * k)};  // bit ${k} = borrow`);
+          bitsOut(r, 0, k + 1);
+        } else if (n.type === 'MUL') {
+          declare(r, 2 * k);
+          // Shift-and-add: one partial product per bit of B.
+          body.push(`    assign ${r} = ${Array.from({ length: k }, (_, j) => `(${B}[${j}] ? (${A} << ${j}) : 0)`).join(' + ')};`);
+          bitsOut(r, 0, 2 * k);
+        } else if (n.type === 'DIV') {
+          // Restoring division, most significant bit first: shift in the
+          // next bit of A, subtract B when it fits. Divide by zero gives Q = 0, R = A.
+          body.push(`    logic ${base}_nz;`, `    assign ${base}_nz = ${B} != 0;`);
+          let prev = '0';
+          for (let j = k - 1; j >= 0; j--) {
+            const t = unique(`${base}_t${j}`);
+            const rj = unique(`${base}_r${j}`);
+            declare(t, k + 1);
+            declare(rj, k + 1);
+            body.push(`    assign ${t} = (${prev} << 1) | ${A}[${j}];`);
+            body.push(`    assign ${net(j)} = ${base}_nz & (${t} >= ${B});`);
+            body.push(`    assign ${rj} = (${t} >= ${B}) ? ${t} - ${B} : ${t};`);
+            prev = rj;
+          }
+          for (let j = 0; j < k; j++) body.push(`    assign ${net(k + j)} = ${prev}[${j}];`);
+        } else if (n.type === 'CMP') {
+          body.push(`    assign ${net(0)} = ${A} > ${B};`, `    assign ${net(1)} = ${A} == ${B};`, `    assign ${net(2)} = ${A} < ${B};`);
+        }
+        break;
+      }
       case 'FA':
         body.push(`    assign ${net(0)} = ${i(0)} ^ ${i(1)} ^ ${i(2)};  // full adder sum`);
         body.push(`    assign ${net(1)} = (${i(0)} & ${i(1)}) | (${i(2)} & (${i(0)} ^ ${i(1)}));  // full adder carry`);
@@ -776,6 +944,28 @@ export const PRESETS: Record<string, { title: { en: string; tr: string }; circui
     circuit: {
       nodes: [node('a', 'IN', 40, 80, 'a'), node('b', 'IN', 40, 200, 'b'), node('ci', 'IN', 40, 340, 'cin'), node('h1', 'HA', 240, 100), node('h2', 'HA', 460, 180), node('o', 'OR', 680, 300), node('s', 'OUT', 900, 190, 'sum'), node('co', 'OUT', 900, 310, 'cout')],
       wires: [wire('a', 'h1', 0), wire('b', 'h1', 1), wire('h1', 'h2', 0), wire('ci', 'h2', 1), wire('h2', 's'), wire('h1', 'o', 0, 1), wire('h2', 'o', 1, 1), wire('o', 'co')],
+    },
+  },
+  adder4: {
+    title: { en: '4-bit adder → 7-segment', tr: '4 bit toplayıcı → 7 segment' },
+    circuit: {
+      nodes: [
+        ...[0, 1, 2, 3].map((i) => node(`a${i}`, 'IN', 40, 20 + i * 64, `a${i}`)),
+        ...[0, 1, 2, 3].map((i) => node(`b${i}`, 'IN', 40, 290 + i * 64, `b${i}`)),
+        node('cin', 'CONST0', 180, 560),
+        { ...node('add', 'ADD', 360, 150), bits: 4 },
+        ...[0, 1, 2, 3].map((i) => node(`s${i}`, 'OUT', 620, 60 + i * 70, `s${i}`)),
+        node('co', 'OUT', 620, 360, 'cout'),
+        node('h', 'SEG7', 900, 150, 'hex0'),
+      ],
+      wires: [
+        ...[0, 1, 2, 3].map((i) => wire(`a${i}`, 'add', i)),
+        ...[0, 1, 2, 3].map((i) => wire(`b${i}`, 'add', 4 + i)),
+        wire('cin', 'add', 8),
+        ...[0, 1, 2, 3].map((i) => wire('add', `s${i}`, 0, i)),
+        wire('add', 'co', 0, 4),
+        ...[0, 1, 2, 3].map((i) => wire('add', 'h', i, i)),
+      ],
     },
   },
   mux4: {
