@@ -122,6 +122,7 @@ import { buildLabReport } from '../../../report/labReport';
 import * as Gates from '../../../gates/circuit';
 import * as Num from '../../../logic/numbers';
 import * as Fsm from '../../../fsm/fsm';
+import { autoLayout } from '../../../gates/layout';
 import { exerciseCircuit } from '../../Gates/GateExercisePanel';
 import { getExercise } from '../../../exercises/exercises';
 import { gradeSubmission } from '../../../exercises/grader';
@@ -3482,6 +3483,33 @@ endmodule`);
   }
   assert.strictEqual(posText(minimize(2, [0], []), ['a', 'b']), '(a + b)', 'y = a + b has one zero, at a = b = 0');
   pass('K-map circuits: AND-OR, NAND-only, OR-AND and NOR-only forms all match the function');
+}
+
+{
+  // Gate designer "Tidy up": columns by depth, no overlaps, inside the canvas, logic unchanged.
+  const size = (n: Gates.GateNode) => ({ w: n.type === 'SEG7' ? 64 : 76, h: n.type === 'SEG7' ? 104 : 60 });
+  for (const key of ['full_adder', 'counter4', 'reg_counter', 'adder4']) {
+    const c = Gates.PRESETS[key].circuit;
+    const l = autoLayout(c, { width: 1100, height: 620, size });
+    const ins = l.nodes.filter((n) => Gates.SOURCES.includes(n.type));
+    const outs = l.nodes.filter((n) => Gates.SINKS.includes(n.type) || n.type === 'SEG7');
+    const maxIn = Math.max(...ins.map((n) => n.x));
+    const others = l.nodes.filter((n) => !ins.includes(n) && !outs.includes(n) && n.type !== 'CONST0' && n.type !== 'CONST1' && n.type !== 'CONST');
+    assert.ok(others.every((n) => n.x > maxIn) && outs.every((n) => others.every((o) => n.x > o.x)), `${key}: inputs left, outputs right`);
+    for (const a of l.nodes) for (const b of l.nodes) {
+      if (a === b) continue;
+      const sa = size(a); const sb = size(b);
+      assert.ok(a.x + sa.w <= b.x || b.x + sb.w <= a.x || a.y + sa.h <= b.y || b.y + sb.h <= a.y, `${key}: ${a.id} and ${b.id} do not overlap`);
+    }
+    assert.ok(l.nodes.every((n) => n.x >= 0 && n.y >= 0 && n.x + size(n).w <= 1100 && n.y + size(n).h <= 620), `${key}: inside the canvas`);
+    const srcIds = c.nodes.filter((n) => Gates.SOURCES.includes(n.type)).map((n) => n.id);
+    for (let m = 0; m < 1 << Math.min(srcIds.length, 8); m += 1) {
+      const iv = Object.fromEntries(srcIds.map((id, i) => [id, (m >> i) & 1]));
+      const [va, vb] = [Gates.evaluate(c, iv).values, Gates.evaluate(l, iv).values];
+      assert.ok(outs.every((o) => va[o.id] === vb[o.id]), `${key}: same logic`);
+    }
+  }
+  pass('gate designer Tidy up: columns by depth, no overlapping parts, logic unchanged');
 }
 
 console.log(`--- DE2 Board Renderer Regression: PASS (${checks.length} checks) ---`);

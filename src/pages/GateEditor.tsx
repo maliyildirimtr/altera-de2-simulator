@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Boxes, ChevronDown, ClipboardPaste, Copy, CopyPlus, Cpu, FileDown, FileUp, FlaskConical, GraduationCap, Link2, Move, Pause, Play, Plus, Redo2, RotateCcw, RotateCw, Timer, Trash2, Undo2, X, Zap } from 'lucide-react';
+import { Boxes, ChevronDown, ClipboardPaste, Copy, CopyPlus, Cpu, FileDown, FileUp, FlaskConical, GraduationCap, LayoutGrid, Link2, Move, Pause, Play, Plus, Redo2, RotateCcw, RotateCw, Timer, Trash2, Undo2, X, Zap } from 'lucide-react';
 import {
   ARITH,
   CLOCKED,
@@ -58,6 +58,7 @@ import { decodeJson, encodeJson, MAX_SHARE_URL_LENGTH } from '../services/shareL
 import { useLocation } from 'react-router-dom';
 import { downloadText } from '../utils/svgExport';
 import { De2PinDialog } from '../components/Gates/De2PinDialog';
+import { autoLayout } from '../gates/layout';
 import { GateExercisePanel } from '../components/Gates/GateExercisePanel';
 import { EXERCISES } from '../exercises/exercises';
 
@@ -261,9 +262,10 @@ const STUB = 18;
  * along the direction the pin faces (so a pin on the top of a rotated part is
  * left upwards), then joins the two stubs with at most two corners.
  */
-function autoBends(a: Pt, b: Pt, da: Pt = RIGHT, db: Pt = LEFT): number[] {
-  // The common case keeps its historic shape: one vertical segment half way.
-  if (da.x === 1 && db.x === -1) return [Math.max(a.x + STUB, (a.x + b.x) / 2)];
+function autoBends(a: Pt, b: Pt, da: Pt = RIGHT, db: Pt = LEFT, spread = 0): number[] {
+  // The common case keeps its historic shape: one vertical segment half way,
+  // nudged by `spread` so wires into neighbouring pins do not run on top of each other.
+  if (da.x === 1 && db.x === -1) return [Math.max(a.x + STUB, (a.x + b.x) / 2 + spread)];
   const p1 = { x: a.x + da.x * STUB, y: a.y + da.y * STUB };
   const q1 = { x: b.x + db.x * STUB, y: b.y + db.y * STUB };
   const xm = (p1.x + q1.x) / 2;
@@ -1377,6 +1379,7 @@ export default function GateEditor() {
         <h1 className="text-[0.875rem] font-bold mr-2">{g.title}</h1>
         <button type="button" className={btn} style={btnStyle} data-testid="gate-undo" title={g.undo} aria-label={g.undo} disabled={!undoStack.current.length} onClick={undo}><Undo2 size={14} /></button>
         <button type="button" className={btn} style={btnStyle} data-testid="gate-redo" title={g.redo} aria-label={g.redo} disabled={!redoStack.current.length} onClick={redo}><Redo2 size={14} /></button>
+        <button type="button" className={btn} style={btnStyle} data-testid="gate-auto-layout" title={g.autoLayoutHint} disabled={circuit.nodes.length < 2} onClick={() => { setCircuit((c) => autoLayout(c, { width: CANVAS_W, height: CANVAS_H, size: localSize, ports: { out: outPort, in: inPort } })); setTrace(null); }}><LayoutGrid size={14} /> {g.autoLayout}</button>
         <span className="w-px h-6" style={{ backgroundColor: 'var(--border-subtle)' }} />
         <div ref={menuRef} className="flex items-center gap-1.5 flex-wrap">
           {PALETTE.map(({ category, types }) => (
@@ -1509,7 +1512,7 @@ export default function GateEditor() {
                 const isSel = selected?.kind === 'wire' && selected.id === w.id;
                 const pa = outPort(a, w.fromPin ?? 0);
                 const pb = inPort(b, w.pin);
-                const bends = w.bends && w.bends.length % 2 === 1 ? w.bends : autoBends(pa, pb, pinDir(a, 'o', w.fromPin ?? 0), pinDir(b, 'i', w.pin));
+                const bends = w.bends && w.bends.length % 2 === 1 ? w.bends : autoBends(pa, pb, pinDir(a, 'o', w.fromPin ?? 0), pinDir(b, 'i', w.pin), (w.pin - (inputNames(b).length - 1) / 2) * 8);
                 const pts = routePoints(pa, pb, bends);
                 const dpath = pointsPath(pts);
                 // Segment k runs pts[k] -> pts[k+1]. Segments 1..n-2 belong to
