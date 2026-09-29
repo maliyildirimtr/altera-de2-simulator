@@ -37,6 +37,10 @@ export interface GateNode {
   bits?: number;
   /** Barrel shifter direction (default left). */
   dir?: 'left' | 'right';
+  /** Drawing only: rotation in degrees (0, 90, 180, 270), clockwise. */
+  rot?: number;
+  /** Drawing only (blocks): side and position (0–1 along the side) of moved pins, by key i0…, o0…. */
+  pinLayout?: Record<string, { side: 'L' | 'R' | 'T' | 'B'; pos: number }>;
   /** BLOCK: id of the block in the library, and its pin names (inputs, outputs). */
   ref?: string;
   pinsIn?: string[];

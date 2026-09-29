@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Boxes, ChevronDown, ClipboardPaste, Copy, CopyPlus, Cpu, FileDown, FileUp, FlaskConical, Link2, Pause, Play, Plus, Redo2, RotateCcw, Timer, Trash2, Undo2, X, Zap } from 'lucide-react';
+import { Boxes, ChevronDown, ClipboardPaste, Copy, CopyPlus, Cpu, FileDown, FileUp, FlaskConical, Link2, Move, Pause, Play, Plus, Redo2, RotateCcw, RotateCw, Timer, Trash2, Undo2, X, Zap } from 'lucide-react';
 import {
   ARITH,
   EMPTY_SEQ,
@@ -140,15 +140,71 @@ function nodeSize(n: Pick<GateNode, 'type' | 'inputs'>): { w: number; h: number 
   return { w: W, h: H };
 }
 
+type Side = 'L' | 'R' | 'T' | 'B';
+type LocalPin = { x: number; y: number; side: Side };
+
+/** Key of a pin in GateNode.pinLayout: i0, i1… for inputs, o0… for outputs. */
+const pinKey = (dir: 'i' | 'o', k: number) => `${dir}${k}`;
+
+/** Sides and positions of a block's pins (inputs left, outputs right unless moved). */
+function blockFrame(n: GateNode): { w: number; h: number; pins: Record<string, LocalPin> } {
+  const keys = [...inputNames(n).map((_, k) => pinKey('i', k)), ...outputNames(n).map((_, k) => pinKey('o', k))];
+  const sideOf = (key: string): Side => n.pinLayout?.[key]?.side ?? (key[0] === 'i' ? 'L' : 'R');
+  const bySide: Record<Side, string[]> = { L: [], R: [], T: [], B: [] };
+  keys.forEach((k) => bySide[sideOf(k)].push(k));
+  const h = Math.max(bySide.L.length, bySide.R.length, 1) * 22 + 22;
+  const w = Math.max(100, Math.max(bySide.T.length, bySide.B.length) * 30 + 24);
+  const pins: Record<string, LocalPin> = {};
+  (Object.keys(bySide) as Side[]).forEach((side) => {
+    const list = bySide[side];
+    list.forEach((key, i) => {
+      const pos = n.pinLayout?.[key]?.pos ?? (i + 1) / (list.length + 1);
+      if (side === 'L') pins[key] = { x: 0, y: pos * h, side };
+      else if (side === 'R') pins[key] = { x: w, y: pos * h, side };
+      else if (side === 'T') pins[key] = { x: pos * w, y: 0, side };
+      else pins[key] = { x: pos * w, y: h, side };
+    });
+  });
+  return { w, h, pins };
+}
+
+function localSize(n: GateNode): { w: number; h: number } {
+  return n.type === 'BLOCK' ? blockFrame(n) : nodeSize(n);
+}
+
+/** A pin in the part's own (unrotated) frame. */
+function localPin(n: GateNode, dir: 'i' | 'o', k: number): LocalPin {
+  if (n.type === 'BLOCK') return blockFrame(n).pins[pinKey(dir, k)] ?? { x: 0, y: 0, side: 'L' };
+  const { w, h } = nodeSize(n);
+  if (dir === 'i') return { x: 0, y: (h * (k + 1)) / (inputNames(n).length + 1), side: 'L' };
+  return { x: w, y: (h * (k + 1)) / (Math.max(1, outputNames(n).length) + 1), side: 'R' };
+}
+
+const rotOf = (n: GateNode) => (((n.rot ?? 0) % 360) + 360) % 360;
+
+/** Rotates a point of the part's frame about its centre (clockwise, like SVG). */
+function turn(n: GateNode, p: { x: number; y: number }, back = false): { x: number; y: number } {
+  const { w, h } = localSize(n);
+  const a = ((back ? -rotOf(n) : rotOf(n)) * Math.PI) / 180;
+  const [cx, cy] = [w / 2, h / 2];
+  const [c, s] = [Math.round(Math.cos(a)), Math.round(Math.sin(a))];
+  return { x: cx + (p.x - cx) * c - (p.y - cy) * s, y: cy + (p.x - cx) * s + (p.y - cy) * c };
+}
+
+/** Bounding box of a part on the canvas, after rotation. */
+function boxOf(n: GateNode): { x: number; y: number; w: number; h: number } {
+  const { w, h } = localSize(n);
+  const sideways = rotOf(n) % 180 === 90;
+  return sideways ? { x: n.x + (w - h) / 2, y: n.y + (h - w) / 2, w: h, h: w } : { x: n.x, y: n.y, w, h };
+}
+
 function inPort(n: GateNode, pin: number): { x: number; y: number } {
-  const { h } = nodeSize(n);
-  const count = inputNames(n).length;
-  return { x: n.x, y: n.y + (h * (pin + 1)) / (count + 1) };
+  const p = turn(n, localPin(n, 'i', pin));
+  return { x: n.x + p.x, y: n.y + p.y };
 }
 function outPort(n: GateNode, pin = 0): { x: number; y: number } {
-  const { w, h } = nodeSize(n);
-  const count = Math.max(1, outputNames(n).length);
-  return { x: n.x + w, y: n.y + (h * (pin + 1)) / (count + 1) };
+  const p = turn(n, localPin(n, 'o', pin));
+  return { x: n.x + p.x, y: n.y + p.y };
 }
 
 type Pt = { x: number; y: number };
@@ -276,6 +332,16 @@ function PartIcon({ type }: { type: GateType }) {
   }
 }
 
+/** A pin name drawn inside the frame next to a pin on the top, bottom or right side. */
+function PinLabel({ p, text, upright }: { p: LocalPin; text: string; upright: (x: number, y: number) => string | undefined }) {
+  const at =
+    p.side === 'T' ? { x: p.x, y: p.y + 16, a: 'middle' as const }
+    : p.side === 'B' ? { x: p.x, y: p.y - 8, a: 'middle' as const }
+    : p.side === 'R' ? { x: p.x - 9, y: p.y + 3.5, a: 'end' as const }
+    : { x: p.x + 9, y: p.y + 3.5, a: 'start' as const };
+  return <text x={at.x} y={at.y} textAnchor={at.a} fontSize={9} fill="var(--text-secondary)" pointerEvents="none" transform={upright(at.x, at.y)}>{text}</text>;
+}
+
 let idCounter = 0;
 const newId = (prefix: string) => `${prefix}${Date.now().toString(36)}${(idCounter++).toString(36)}`;
 
@@ -318,6 +384,8 @@ export default function GateEditor() {
   const redoStack = useRef<Circuit[]>([]);
   const committed = useRef(initial.circuit);
   const lastPush = useRef(0);
+  /** Set while typing a name, so the keystrokes become one undo step. */
+  const typing = useRef(false);
   const clipboard = useRef<Circuit | null>(null);
   const pasteCount = useRef(0);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -326,6 +394,8 @@ export default function GateEditor() {
   const menuRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ id: string; dx: number; dy: number; moved: boolean; starts?: Record<string, { x: number; y: number }>; p0?: { x: number; y: number } } | null>(null);
   const marqueeRef = useRef<{ x0: number; y0: number; moved: boolean } | null>(null);
+  const [pinEdit, setPinEdit] = useState<string | null>(null);
+  const pinDrag = useRef<{ id: string; key: string } | null>(null);
   /** Dragging one segment of a wire: index into its bends. */
   const wireDrag = useRef<{ id: string; index: number } | null>(null);
 
@@ -362,8 +432,10 @@ export default function GateEditor() {
     const cur = circuitRef.current;
     if (cur === committed.current) return;
     const now = Date.now();
-    // Quick successive edits (typing a label) become one step.
-    if (now - lastPush.current > 700 || !undoStack.current.length) {
+    // Keystrokes of one name become one step; every other change is its own step.
+    const merge = typing.current && now - lastPush.current < 1500 && undoStack.current.length > 0;
+    typing.current = false;
+    if (!merge) {
       undoStack.current = [...undoStack.current, committed.current].slice(-100);
     }
     lastPush.current = now;
@@ -372,7 +444,7 @@ export default function GateEditor() {
     bumpHistory((x) => x + 1);
   }, []);
   useEffect(() => {
-    if (drag.current || wireDrag.current) return; // committed on pointer up
+    if (drag.current || wireDrag.current || pinDrag.current) return; // committed on pointer up
     checkpoint();
   }, [circuit, checkpoint]);
   const restore = (c: Circuit) => {
@@ -583,6 +655,7 @@ export default function GateEditor() {
       if (mod && k === 'v') { e.preventDefault(); pasteClipboard(); return; }
       if (mod && k === 'd') { e.preventDefault(); duplicate(); return; }
       if (mod && k === 'a') { e.preventDefault(); setMulti(circuitRef.current.nodes.map((n) => n.id)); setSelected(null); return; }
+      if (!mod && k === 'r') { rotateSelection(e.shiftKey ? -90 : 90); return; }
       if (e.key === 'Delete' || e.key === 'Backspace') removeSelected();
       if (e.key === 'Escape') { setPending(null); setSelected(null); setMulti([]); setMenu(null); }
     };
@@ -604,6 +677,28 @@ export default function GateEditor() {
   const toggleInput = (id: string) => apply({ ...live.current.inputs, [id]: live.current.inputs[id] ? 0 : 1 });
   const setButton = (id: string, v: number) => {
     if ((live.current.inputs[id] ?? 0) !== v) apply({ ...live.current.inputs, [id]: v });
+  };
+
+  // Pin editing ends when another part is selected.
+  useEffect(() => {
+    if (pinEdit && !(selected?.kind === 'node' && selected.id === pinEdit)) setPinEdit(null);
+  }, [selected, pinEdit]);
+
+  const startPinDrag = (e: React.PointerEvent, n: GateNode, key: string) => {
+    pinDrag.current = { id: n.id, key };
+    try {
+      svgRef.current?.setPointerCapture(e.pointerId);
+    } catch {
+      /* optional */
+    }
+  };
+
+  /** Turns the selected parts by 90° (clockwise or counter-clockwise). */
+  const rotateSelection = (delta: number) => {
+    const ids = new Set(multi.length ? multi : selected?.kind === 'node' ? [selected.id] : []);
+    if (!ids.size) return;
+    setCircuit((c) => ({ ...c, nodes: c.nodes.map((n) => (ids.has(n.id) ? { ...n, rot: (((n.rot ?? 0) + delta) % 360 + 360) % 360 } : n)) }));
+    setTrace(null);
   };
 
   const onNodeDown = (e: React.PointerEvent, n: GateNode) => {
@@ -635,6 +730,19 @@ export default function GateEditor() {
       setCircuit((c) => ({ ...c, wires: c.wires.map((w) => (w.id === wd.id && w.bends ? { ...w, bends: w.bends.map((b, i) => (i === wd.index ? v : b)) } : w)) }));
       return;
     }
+    const pd = pinDrag.current;
+    if (pd) {
+      const node = byId.get(pd.id);
+      if (!node) return;
+      const { w, h } = localSize(node);
+      const q = turn(node, { x: p.x - node.x, y: p.y - node.y }, true);
+      const d: Record<Side, number> = { L: Math.abs(q.x), R: Math.abs(w - q.x), T: Math.abs(q.y), B: Math.abs(h - q.y) };
+      const side = (Object.keys(d) as Side[]).reduce((a, b) => (d[b] < d[a] ? b : a));
+      const along = side === 'L' || side === 'R' ? q.y / h : q.x / w;
+      const pos = Math.min(0.94, Math.max(0.06, Math.round(along * 20) / 20));
+      setCircuit((c) => ({ ...c, nodes: c.nodes.map((n) => (n.id === pd.id ? { ...n, pinLayout: { ...(n.pinLayout ?? {}), [pd.key]: { side, pos } } } : n)) }));
+      return;
+    }
     const mq = marqueeRef.current;
     if (mq) {
       mq.moved = true;
@@ -653,16 +761,18 @@ export default function GateEditor() {
         nodes: c.nodes.map((n) => {
           const s0 = starts[n.id];
           if (!s0) return n;
-          const { w: nw, h: nh } = nodeSize(n);
-          return { ...n, x: Math.min(CANVAS_W - nw - 4, Math.max(4, s0.x + dx)), y: Math.min(CANVAS_H - nh - 4, Math.max(4, s0.y + dy)) };
+          const b = boxOf(n);
+          const [ox, oy] = [b.x - n.x, b.y - n.y];
+          return { ...n, x: Math.min(CANVAS_W - b.w - 4, Math.max(4, s0.x + dx + ox)) - ox, y: Math.min(CANVAS_H - b.h - 4, Math.max(4, s0.y + dy + oy)) - oy };
         }),
       }));
       return;
     }
     const node = byId.get(dr.id);
-    const { w, h } = node ? nodeSize(node) : { w: W, h: H };
-    const x = Math.round(Math.min(CANVAS_W - w - 4, Math.max(4, p.x - dr.dx)) / 10) * 10;
-    const y = Math.round(Math.min(CANVAS_H - h - 4, Math.max(4, p.y - dr.dy)) / 10) * 10;
+    const b = node ? boxOf(node) : { x: 0, y: 0, w: W, h: H };
+    const [ox, oy] = node ? [b.x - node.x, b.y - node.y] : [0, 0];
+    const x = Math.round((Math.min(CANVAS_W - b.w - 4, Math.max(4, p.x - dr.dx + ox)) - ox) / 10) * 10;
+    const y = Math.round((Math.min(CANVAS_H - b.h - 4, Math.max(4, p.y - dr.dy + oy)) - oy) / 10) * 10;
     setCircuit((c) => ({ ...c, nodes: c.nodes.map((n) => (n.id === dr.id ? { ...n, x, y } : n)) }));
   };
   const onUp = () => {
@@ -686,8 +796,8 @@ export default function GateEditor() {
         const [x0, x1] = [Math.min(marquee.x0, marquee.x1), Math.max(marquee.x0, marquee.x1)];
         const [y0, y1] = [Math.min(marquee.y0, marquee.y1), Math.max(marquee.y0, marquee.y1)];
         const hit = circuit.nodes.filter((n) => {
-          const { w: nw, h: nh } = nodeSize(n);
-          return n.x < x1 && n.x + nw > x0 && n.y < y1 && n.y + nh > y0;
+          const b = boxOf(n);
+          return b.x < x1 && b.x + b.w > x0 && b.y < y1 && b.y + b.h > y0;
         });
         setMulti(hit.map((n) => n.id));
         setSelected(hit.length === 1 ? { kind: 'node', id: hit[0].id } : null);
@@ -696,6 +806,10 @@ export default function GateEditor() {
         setMulti([]);
       }
       setMarquee(null);
+    }
+    if (pinDrag.current) {
+      pinDrag.current = null;
+      checkpoint();
     }
     const wasDragging = !!drag.current?.moved;
     wireDrag.current = null;
@@ -722,7 +836,10 @@ export default function GateEditor() {
     if (key === 'hazard') setTimingMode(true);
   };
 
-  const updateNode = (id: string, patch: Partial<GateNode>) => setCircuit((c) => ({ ...c, nodes: c.nodes.map((n) => (n.id === id ? { ...n, ...patch } : n)) }));
+  const updateNode = (id: string, patch: Partial<GateNode>) => {
+    if ('label' in patch) typing.current = true;
+    setCircuit((c) => ({ ...c, nodes: c.nodes.map((n) => (n.id === id ? { ...n, ...patch } : n)) }));
+  };
 
   const setInputCount = (n: GateNode, k: number) => {
     setCircuit((c) => ({
@@ -901,6 +1018,7 @@ export default function GateEditor() {
   };
 
   const sel = selected?.kind === 'node' ? byId.get(selected.id) : undefined;
+
   const on = '#22c55e';
   const off = 'var(--text-muted)';
   const btn = 'h-8 px-2.5 rounded-[0.25rem] border text-[0.75rem] font-medium flex items-center gap-1.5 transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-40';
@@ -909,7 +1027,10 @@ export default function GateEditor() {
   const labelled = (t: GateType) => SOURCES.includes(t) || SINKS.includes(t) || t === 'SEG7' || t === 'TUNNEL';
 
   const renderNode = (n: GateNode) => {
-    const { w, h } = nodeSize(n);
+    const { w, h } = localSize(n);
+    const rot = rotOf(n);
+    const upright = (x: number, y: number) => (rot ? `rotate(${-rot} ${x} ${y})` : undefined);
+    const editing = pinEdit === n.id;
     const v = shown(n.id);
     const isSel = (selected?.kind === 'node' && selected.id === n.id) || multi.includes(n.id);
     const glitch = trace?.glitches.includes(n.id);
@@ -925,16 +1046,16 @@ export default function GateEditor() {
       body = (
         <>
           <path d={d} fill="var(--bg-surface)" stroke={stroke} strokeWidth={isSel ? 2.2 : 1.5} />
-          <text x={demux ? w / 2 + 7 : w / 2} y={h / 2 + 3} textAnchor="middle" fontSize={9} fontWeight={700} fill="var(--text-secondary)" pointerEvents="none">{BLOCK_TITLE[n.type]}</text>
+          <text x={demux ? w / 2 + 7 : w / 2} y={h / 2 + 3} transform={upright(demux ? w / 2 + 7 : w / 2, h / 2 + 3)} textAnchor="middle" fontSize={9} fontWeight={700} fill="var(--text-secondary)" pointerEvents="none">{BLOCK_TITLE[n.type]}</text>
         </>
       );
     } else if (isBlock(n.type)) {
       body = (
         <>
           <rect x={0} y={0} width={w} height={h} rx={4} fill="var(--bg-surface)" stroke={stroke} strokeWidth={isSel ? 2.2 : 1.5} />
-          <text x={w / 2} y={13} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--text-primary)" pointerEvents="none">{n.type === 'BLOCK' ? (n.label || (n.ref && library[n.ref]?.name) || 'BLOCK') + (n.ref && !library[n.ref] ? ` (${g.blockMissing})` : '') : n.type === 'SHIFT' ? (n.dir === 'right' ? '>>' : '<<') : BLOCK_TITLE[n.type]}{ARITH.includes(n.type) ? ` ${bitWidth(n)}b` : ''}</text>
+          <text x={w / 2} y={13} transform={upright(w / 2, 13)} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--text-primary)" pointerEvents="none">{n.type === 'BLOCK' ? (n.label || (n.ref && library[n.ref]?.name) || 'BLOCK') + (n.ref && !library[n.ref] ? ` (${g.blockMissing})` : '') : n.type === 'SHIFT' ? (n.dir === 'right' ? '>>' : '<<') : BLOCK_TITLE[n.type]}{ARITH.includes(n.type) ? ` ${bitWidth(n)}b` : ''}</text>
           {isFlipFlop(n.type) && (
-            <text x={w / 2} y={h - 6} textAnchor="middle" fontSize={11} fontWeight={700} fill={v ? on : 'var(--text-muted)'} pointerEvents="none">Q={v}</text>
+            <text x={w / 2} y={h - 6} transform={upright(w / 2, h - 6)} textAnchor="middle" fontSize={11} fontWeight={700} fill={v ? on : 'var(--text-muted)'} pointerEvents="none">Q={v}</text>
           )}
         </>
       );
@@ -949,20 +1070,21 @@ export default function GateEditor() {
       body = (
         <>
           <path d={`M0,0 H${w - 14} L${w},${h / 2} L${w - 14},${h} H0 Z`} fill={v ? 'rgba(34,197,94,0.12)' : 'var(--bg-surface)'} stroke={stroke} strokeWidth={isSel ? 2.2 : 1.4} />
-          <text x={(w - 14) / 2 + 2} y={h / 2 + 4} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--text-primary)" pointerEvents="none">{n.label || '?'}</text>
+          <text x={(w - 14) / 2 + 2} y={h / 2 + 4} transform={upright((w - 14) / 2 + 2, h / 2 + 4)} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--text-primary)" pointerEvents="none">{n.label || '?'}</text>
         </>
       );
     } else if (n.type === 'CONST0' || n.type === 'CONST1') {
       body = (
         <>
           <rect x={2} y={2} width={w - 4} height={h - 4} rx={4} fill="var(--bg-surface)" stroke={stroke} strokeWidth={isSel ? 2.2 : 1.4} />
-          <text x={w / 2} y={h / 2 + 5} textAnchor="middle" fontSize={14} fontWeight={700} fill={n.type === 'CONST1' ? on : 'var(--text-secondary)'} pointerEvents="none">{n.type === 'CONST1' ? 1 : 0}</text>
+          <text x={w / 2} y={h / 2 + 5} transform={upright(w / 2, h / 2 + 5)} textAnchor="middle" fontSize={14} fontWeight={700} fill={n.type === 'CONST1' ? on : 'var(--text-secondary)'} pointerEvents="none">{n.type === 'CONST1' ? 1 : 0}</text>
         </>
       );
     } else body = <rect x={4} y={6} width={w - 8} height={h - 12} rx={8} fill="var(--bg-surface)" stroke={stroke} strokeWidth={isSel ? 2.4 : 1.4} />;
 
     return (
-      <g key={n.id} data-node={n.id} data-type={n.type} data-value={v} transform={`translate(${n.x},${n.y})`}>
+      <g key={n.id} data-node={n.id} data-type={n.type} data-value={v} data-rot={rot} transform={`translate(${n.x},${n.y})`}>
+        <g transform={rot ? `rotate(${rot} ${w / 2} ${h / 2})` : undefined}>
         <g onPointerDown={(e) => onNodeDown(e, n)} style={{ cursor: 'move' }}>
           {body}
           {glitch && <rect x={-4} y={-4} width={w + 8} height={h + 8} rx={10} fill="none" stroke="#f59e0b" strokeWidth={2} strokeDasharray="4 3" />}
@@ -970,7 +1092,7 @@ export default function GateEditor() {
         {n.type === 'IN' && (
           <g data-testid={`gate-toggle-${n.label || n.id}`} onPointerDown={(e) => { e.stopPropagation(); toggleInput(n.id); }} style={{ cursor: 'pointer' }}>
             <rect x={10} y={14} width={24} height={24} rx={5} fill={v ? on : 'var(--bg-panel)'} stroke="var(--text-secondary)" />
-            <text x={22} y={31} textAnchor="middle" fontSize={13} fontWeight={700} fill={v ? '#fff' : 'var(--text-primary)'}>{v}</text>
+            <text x={22} y={31} transform={upright(22, 31)} textAnchor="middle" fontSize={13} fontWeight={700} fill={v ? '#fff' : 'var(--text-primary)'}>{v}</text>
           </g>
         )}
         {n.type === 'CLK' && (
@@ -998,45 +1120,51 @@ export default function GateEditor() {
         {n.type === 'OUT' && (
           <g data-testid={`gate-output-${n.label || n.id}`}>
             <rect x={10} y={14} width={24} height={24} rx={12} fill={v ? '#ef4444' : 'var(--bg-panel)'} stroke="var(--text-secondary)" />
-            <text x={22} y={31} textAnchor="middle" fontSize={13} fontWeight={700} fill={v ? '#fff' : 'var(--text-primary)'} pointerEvents="none">{v}</text>
+            <text x={22} y={31} transform={upright(22, 31)} textAnchor="middle" fontSize={13} fontWeight={700} fill={v ? '#fff' : 'var(--text-primary)'} pointerEvents="none">{v}</text>
           </g>
         )}
         {labelled(n.type) && n.type !== 'SEG7' && n.type !== 'TUNNEL' && (
-          <text x={42} y={H / 2 + 4} fontSize={12} fontWeight={600} fill="var(--text-primary)" pointerEvents="none">{n.label}</text>
+          <text x={42} y={H / 2 + 4} transform={upright(42, H / 2 + 4)} fontSize={12} fontWeight={600} fill="var(--text-primary)" pointerEvents="none">{n.label}</text>
         )}
-        {n.type === 'SEG7' && <text x={w / 2} y={h + 13} textAnchor="middle" fontSize={11} fontWeight={600} fill="var(--text-primary)" pointerEvents="none">{n.label}</text>}
+        {n.type === 'SEG7' && <text x={w / 2} y={h + 13} transform={upright(w / 2, h + 13)} textAnchor="middle" fontSize={11} fontWeight={600} fill="var(--text-primary)" pointerEvents="none">{n.label}</text>}
         {isGate(n.type) && (
-          <text x={W / 2 - 4} y={h + 12} textAnchor="middle" fontSize={9.5} fill="var(--text-muted)" pointerEvents="none">
+          <text x={W / 2 - 4} y={h + 12} transform={upright(W / 2 - 4, h + 12)} textAnchor="middle" fontSize={9.5} fill="var(--text-muted)" pointerEvents="none">
             {n.type}{timingMode ? ` · ${n.delay}t` : ''}
           </text>
         )}
         {/* Pin labels inside blocks; the clock pin gets the edge triangle. */}
         {isBlock(n.type) && inNames.map((nm, pin) => {
-          const y = inPort(n, pin).y - n.y;
+          const lp = localPin(n, 'i', pin);
+          const y = lp.y;
+          if (lp.side !== 'L') return <PinLabel key={`l${pin}`} p={lp} text={nm} upright={upright} />;
           if (pin === clockPin) return <path key={`l${pin}`} d={`M7,${y - 5} L14,${y} L7,${y + 5}`} fill="none" stroke="var(--text-secondary)" strokeWidth={1.3} pointerEvents="none" />;
-          return <text key={`l${pin}`} x={9} y={y + 3.5} fontSize={9} fill="var(--text-secondary)" pointerEvents="none">{nm}</text>;
+          return <text key={`l${pin}`} x={9} y={y + 3.5} transform={upright(9, y + 3.5)} fontSize={9} fill="var(--text-secondary)" pointerEvents="none">{nm}</text>;
         })}
-        {isBlock(n.type) && outNames.length > 1 && outNames.map((nm, pin) => {
-          const y = outPort(n, pin).y - n.y;
-          return <text key={`o${pin}`} x={w - 9} y={y + 3.5} textAnchor="end" fontSize={9} fill="var(--text-secondary)" pointerEvents="none">{nm}</text>;
+        {isBlock(n.type) && (outNames.length > 1 || n.type === 'BLOCK') && outNames.map((nm, pin) => {
+          const lp = localPin(n, 'o', pin);
+          const y = lp.y;
+          if (lp.side !== 'R') return <PinLabel key={`o${pin}`} p={lp} text={nm} upright={upright} />;
+          return <text key={`o${pin}`} x={w - 9} y={y + 3.5} transform={upright(w - 9, y + 3.5)} textAnchor="end" fontSize={9} fill="var(--text-secondary)" pointerEvents="none">{nm}</text>;
         })}
         {/* Ports */}
         {inNames.map((_, pin) => {
-          const p = inPort(n, pin);
+          const lp = localPin(n, 'i', pin);
           return (
-            <circle key={pin} data-port={`${n.id}:in${pin}`} cx={p.x - n.x} cy={p.y - n.y} r={6} fill={pending ? '#3b82f6' : 'var(--bg-surface)'} stroke="var(--text-secondary)" strokeWidth={1.3} style={{ cursor: 'crosshair' }}
-              onPointerDown={(e) => { e.stopPropagation(); if (pending) connect(n.id, pin); }} />
+            <circle key={pin} data-port={`${n.id}:in${pin}`} cx={lp.x} cy={lp.y} r={6} fill={editing ? '#f59e0b' : pending ? '#3b82f6' : 'var(--bg-surface)'} stroke="var(--text-secondary)" strokeWidth={1.3} style={{ cursor: editing ? 'grab' : 'crosshair' }}
+              onPointerDown={(e) => { e.stopPropagation(); if (editing) return startPinDrag(e, n, pinKey('i', pin)); if (pending) connect(n.id, pin); }} />
           );
         })}
         {outNames.map((_, pin) => {
+          const lp = localPin(n, 'o', pin);
           const p = outPort(n, pin);
           const pv = shown(sig(n.id, pin));
           const active = pending?.id === n.id && pending.pin === pin;
           return (
-            <circle key={`out${pin}`} data-port={`${n.id}:out${pin ? pin : ''}`} cx={p.x - n.x} cy={p.y - n.y} r={6} fill={active ? '#3b82f6' : pv ? on : 'var(--bg-surface)'} stroke="var(--text-secondary)" strokeWidth={1.3} style={{ cursor: 'crosshair' }}
-              onPointerDown={(e) => { e.stopPropagation(); setPending(active ? null : { id: n.id, pin }); setMouse(p); }} />
+            <circle key={`out${pin}`} data-port={`${n.id}:out${pin ? pin : ''}`} cx={lp.x} cy={lp.y} r={6} fill={editing ? '#f59e0b' : active ? '#3b82f6' : pv ? on : 'var(--bg-surface)'} stroke="var(--text-secondary)" strokeWidth={1.3} style={{ cursor: editing ? 'grab' : 'crosshair' }}
+              onPointerDown={(e) => { e.stopPropagation(); if (editing) return startPinDrag(e, n, pinKey('o', pin)); setPending(active ? null : { id: n.id, pin }); setMouse(p); }} />
           );
         })}
+        </g>
       </g>
     );
   };
@@ -1287,6 +1415,7 @@ export default function GateEditor() {
             <div className="flex flex-col gap-2" data-testid="gate-multi-panel">
               <h2 className="text-[0.75rem] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{fmt(g.selectedCount, { n: multi.length })}</h2>
               <div className="flex gap-2 flex-wrap">
+                <button type="button" className={btn} style={btnStyle} onClick={() => rotateSelection(90)}><RotateCw size={13} /> {g.rotate}</button>
                 <button type="button" className={btn} style={btnStyle} onClick={copySelection}><Copy size={13} /> {g.copySel}</button>
                 <button type="button" className={btn} style={btnStyle} data-testid="gate-duplicate" onClick={duplicate}><CopyPlus size={13} /> {g.duplicate}</button>
                 <button type="button" className={btn} style={btnStyle} disabled={!clipboard.current} onClick={() => pasteClipboard()}><ClipboardPaste size={13} /> {g.paste}</button>
@@ -1338,9 +1467,24 @@ export default function GateEditor() {
               )}
               {sel.type === 'TUNNEL' && <p className="text-[0.6875rem]" style={{ color: 'var(--text-muted)' }}>{g.tunnelHint}</p>}
               <div className="flex gap-2 flex-wrap">
+                <button type="button" className={btn} style={btnStyle} data-testid="gate-rotate-left" title={g.rotateLeft} aria-label={g.rotateLeft} onClick={() => rotateSelection(-90)}><RotateCcw size={13} /></button>
+                <button type="button" className={btn} style={btnStyle} data-testid="gate-rotate-right" title={g.rotateRight} aria-label={g.rotateRight} onClick={() => rotateSelection(90)}><RotateCw size={13} /> {g.rotate}</button>
                 <button type="button" className={btn} style={btnStyle} data-testid="gate-duplicate" onClick={duplicate}><CopyPlus size={13} /> {g.duplicate}</button>
                 <button type="button" className={btn} style={btnStyle} onClick={removeSelected}><Trash2 size={13} /> {g.delete}</button>
               </div>
+              {sel.type === 'BLOCK' && (
+                <div className="flex flex-col gap-1.5 mt-1">
+                  <div className="flex gap-2 flex-wrap">
+                    <button type="button" className={btn} data-testid="gate-edit-pins" style={{ ...btnStyle, ...(pinEdit === sel.id ? { backgroundColor: '#f59e0b', borderColor: '#f59e0b', color: '#fff' } : {}) }} onClick={() => setPinEdit(pinEdit === sel.id ? null : sel.id)}>
+                      <Move size={13} /> {pinEdit === sel.id ? g.pinsDone : g.editPins}
+                    </button>
+                    {sel.pinLayout && Object.keys(sel.pinLayout).length > 0 && (
+                      <button type="button" className={btn} style={btnStyle} data-testid="gate-reset-pins" onClick={() => updateNode(sel.id, { pinLayout: undefined })}>{g.resetPins}</button>
+                    )}
+                  </div>
+                  {pinEdit === sel.id && <p className="text-[0.6875rem]" style={{ color: '#d97706' }}>{g.editPinsHint}</p>}
+                </div>
+              )}
             </div>
           ) : selected?.kind === 'wire' ? (
             <div className="flex flex-col gap-2">
