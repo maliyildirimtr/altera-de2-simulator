@@ -477,6 +477,9 @@ export default function GateEditor() {
   const [timingMode, setTimingMode] = useState(!!initial.timing);
   const [trace, setTrace] = useState<Trace | null>(null);
   const [traceTime, setTraceTime] = useState(0);
+  // Replay controls: pause, and milliseconds per time unit.
+  const [replayPaused, setReplayPaused] = useState(false);
+  const [replaySpeed, setReplaySpeed] = useState(450);
   const [menu, setMenu] = useState<PartCategory | 'blocks' | 'file' | null>(null);
   const [running, setRunning] = useState(false);
   const [history, setHistory] = useState<Sample[]>([]);
@@ -608,6 +611,7 @@ export default function GateEditor() {
     if (cur.timingMode) {
       setTrace(simulateTiming(cur.circuit, cur.inputs, next, 60, r.seq.q));
       setTraceTime(0);
+      setReplayPaused(false);
     } else setTrace(null);
     const sample: Sample = {};
     for (const n of cur.circuit.nodes) {
@@ -626,9 +630,17 @@ export default function GateEditor() {
 
   // Replay animation.
   useEffect(() => {
-    if (!trace || traceTime >= trace.end) return;
-    const t = window.setTimeout(() => setTraceTime((x) => x + 1), 450);
+    if (!trace || traceTime >= trace.end || replayPaused) return;
+    const t = window.setTimeout(() => setTraceTime((x) => x + 1), replaySpeed);
     return () => window.clearTimeout(t);
+  }, [trace, traceTime, replayPaused, replaySpeed]);
+
+  /** Signals that change exactly at the replay time (the "wave front"). */
+  const front = useMemo(() => {
+    const out = new Set<string>();
+    if (!trace || traceTime === 0) return out;
+    for (const [key, list] of Object.entries(trace.changes)) if (list.some(([t]) => t === traceTime)) out.add(key);
+    return out;
   }, [trace, traceTime]);
 
   // Free-running clock: toggles every CLK node.
@@ -1324,6 +1336,9 @@ export default function GateEditor() {
         <g onPointerDown={(e) => onNodeDown(e, n)} style={{ cursor: 'move' }}>
           {body}
           {glitch && <rect x={-4} y={-4} width={w + 8} height={h + 8} rx={10} fill="none" stroke="#f59e0b" strokeWidth={2} strokeDasharray="4 3" />}
+          {outNames.some((_, pin) => front.has(sig(n.id, pin))) && (
+            <rect data-node-front={n.id} x={-6} y={-6} width={w + 12} height={h + 12} rx={12} fill="rgba(245,158,11,0.12)" stroke="#f59e0b" strokeWidth={2.5} pointerEvents="none" style={{ animation: 'gate-pulse 0.6s ease-out' }} />
+          )}
         </g>
         {!uprightIO && ioControls(22, H / 2, busIn || busOut ? 46 : 42, H / 2 + 4, 'start')}
         {n.type === 'SEG7' && <text x={w / 2} y={h + 13} transform={upright(w / 2, h + 13)} textAnchor="middle" fontSize={11} fontWeight={600} fill="var(--text-primary)" pointerEvents="none">{n.label}</text>}
@@ -1564,6 +1579,10 @@ export default function GateEditor() {
                       );
                     })}
                     <path d={dpath} fill="none" stroke={bad ? '#ef4444' : isSel ? '#3b82f6' : v ? on : off} strokeWidth={bw > 1 ? (isSel ? 5 : 4.2) : isSel ? 3 : 2.2} strokeDasharray={bad ? '7 4' : undefined} strokeLinejoin="round" pointerEvents="none" />
+                    {front.has(sig(w.from, w.fromPin ?? 0)) && (
+                      /* The change travelling along the wire during a replay. */
+                      <path data-wire-front={w.id} d={dpath} fill="none" stroke="#f59e0b" strokeWidth={bw > 1 ? 6 : 4} strokeDasharray="6 10" strokeLinecap="round" strokeLinejoin="round" opacity={0.9} pointerEvents="none" style={{ animation: `gate-flow ${Math.max(0.3, replaySpeed / 1000)}s linear infinite` }} />
+                    )}
                     {bw > 1 && longest && (
                       <text x={(longest.p0.x + longest.p1.x) / 2 + (longest.p0.x === longest.p1.x ? 6 : 0)} y={(longest.p0.y + longest.p1.y) / 2 - (longest.p0.x === longest.p1.x ? 0 : 5)} fontSize={9.5} fontWeight={700} fill="var(--text-secondary)" pointerEvents="none">
                         {formatBus(v, bw)}<tspan fontSize={8} fontWeight={400} fill="var(--text-muted)"> /{bw}</tspan>
@@ -1611,9 +1630,19 @@ export default function GateEditor() {
                 <span className="text-[0.7188rem]" style={{ color: 'var(--text-secondary)' }}>{timingMode ? g.timingHint : g.timingOff}</span>
                 {trace && (
                   <span className="flex items-center gap-2 text-[0.7188rem] ml-auto">
-                    t = {traceTime} / {trace.end}
-                    <input type="range" min={0} max={trace.end} value={traceTime} onChange={(e) => setTraceTime(Number(e.target.value))} />
-                    <button type="button" className="underline" onClick={() => setTraceTime(0)}>{g.replay}</button>
+                    <button type="button" className={btn} style={btnStyle} data-testid="gate-replay-back" title={g.stepBack} aria-label={g.stepBack} disabled={traceTime <= 0} onClick={() => { setReplayPaused(true); setTraceTime((x) => Math.max(0, x - 1)); }}>‹</button>
+                    <button type="button" className={btn} style={btnStyle} data-testid="gate-replay-pause" onClick={() => { if (traceTime >= trace.end) { setTraceTime(0); setReplayPaused(false); } else setReplayPaused((p) => !p); }}>
+                      {replayPaused || traceTime >= trace.end ? <Play size={12} /> : <Pause size={12} />}
+                    </button>
+                    <button type="button" className={btn} style={btnStyle} data-testid="gate-replay-step" title={g.stepForward} aria-label={g.stepForward} disabled={traceTime >= trace.end} onClick={() => { setReplayPaused(true); setTraceTime((x) => Math.min(trace.end, x + 1)); }}>›</button>
+                    <span data-testid="gate-replay-time" className="font-mono">t = {traceTime} / {trace.end}</span>
+                    <input type="range" min={0} max={trace.end} value={traceTime} onChange={(e) => { setReplayPaused(true); setTraceTime(Number(e.target.value)); }} />
+                    <select aria-label={g.replaySpeed} value={replaySpeed} onChange={(e) => setReplaySpeed(Number(e.target.value))} className="h-7 px-1 rounded-[0.25rem] border text-[0.7188rem]" style={btnStyle}>
+                      <option value={1000}>{g.speedSlow}</option>
+                      <option value={450}>{g.speedNormal}</option>
+                      <option value={180}>{g.speedFast}</option>
+                    </select>
+                    <button type="button" className="underline" onClick={() => { setTraceTime(0); setReplayPaused(false); }}>{g.replay}</button>
                   </span>
                 )}
               </div>
@@ -1624,6 +1653,11 @@ export default function GateEditor() {
                       ? fmt(g.glitchFound, { names: trace.glitches.map((id) => byId.get(id)?.label || byId.get(id)?.type || id).join(', ') })
                       : g.noGlitch}
                   </p>
+                  {front.size > 0 && (
+                    <p data-testid="gate-replay-events" className="text-[0.7188rem] mt-1 font-mono" style={{ color: '#d97706' }}>
+                      t = {traceTime}: {[...front].map((k) => { const [id, pin] = k.split('#'); const n = byId.get(id); const nm = n?.label || n?.type || id; return `${nm}${pin ? `.${outputNames(n!)[Number(pin)] || pin}` : ''} → ${valueAt(trace.changes[k], traceTime)}`; }).join(' · ')}
+                    </p>
+                  )}
                   <TimingDiagram trace={trace} nodes={circuit.nodes} time={traceTime} />
                 </>
               )}

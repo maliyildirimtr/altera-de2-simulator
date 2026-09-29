@@ -1131,3 +1131,10 @@ circle[stroke="#a855f7"],
 @media (prefers-reduced-motion: reduce) {
   .de2-artwork-placeholder__plate { animation: none; }
 }
+
+/* Gate designer replay: a change travelling along a wire, and a part that just changed. */
+@keyframes gate-flow { to { stroke-dashoffset: -32; } }
+@keyframes gate-pulse { from { opacity: 1; } to { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) {
+  [data-wire-front], [data-node-front] { animation: none !important; }
+}
