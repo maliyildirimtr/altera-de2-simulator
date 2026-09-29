@@ -1,10 +1,12 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
 import '../../lib/monacoSetup';
 import { useBoardStore } from '../../store/boardStore';
 import { markWorkspaceDirty } from '../../services/exampleHandoff';
-import { publishDiagnostics, subscribeDiagnostics } from '../../core/simulator/diagnostics';
+import { publishDiagnostics, subscribeDiagnostics, subscribeReveal } from '../../core/simulator/diagnostics';
+import { revealLine, showDiagnostics } from '../../lib/monacoDiagnostics';
+import { useI18n } from '../../i18n/I18nProvider';
 import { FileCode, Upload, BookOpen } from 'lucide-react';
 
 import { useT } from '../../i18n/toolText';
@@ -19,6 +21,9 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ isOpen, onOpenImport, is
   const t = useT();
   const navigate = useNavigate();
   const { hdlCode, setHdlCode } = useBoardStore();
+  const { lang } = useI18n();
+  const langRef = useRef(lang);
+  langRef.current = lang;
 
   const handleEditorChange = useCallback((value: string | undefined) => {
     if (value === undefined) return;
@@ -85,21 +90,16 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ isOpen, onOpenImport, is
           value={hdlCode}
           onMount={(editor, monaco) => {
             // Compile diagnostics as squiggles; cleared as soon as the code changes.
+            // Error lines are tinted and marked in the margin; the Problems
+            // list can ask the editor to jump to a line.
             let showing = false;
+            let lines: ReturnType<typeof showDiagnostics> = null;
             const unsubscribe = subscribeDiagnostics((list) => {
-              const m = editor.getModel();
-              if (!m) return;
-              monaco.editor.setModelMarkers(m, 'logiclab', list.map((dgn) => ({
-                severity: dgn.severity === 'error' ? monaco.MarkerSeverity.Error : dgn.severity === 'warning' ? monaco.MarkerSeverity.Warning : monaco.MarkerSeverity.Info,
-                message: dgn.message.en,
-                startLineNumber: dgn.line,
-                endLineNumber: dgn.line,
-                startColumn: m.getLineFirstNonWhitespaceColumn(dgn.line) || 1,
-                endColumn: m.getLineMaxColumn(dgn.line),
-              })));
+              lines = showDiagnostics(editor, monaco, list, langRef.current, lines);
               showing = list.length > 0;
             });
-            editor.onDidDispose(unsubscribe);
+            const unreveal = subscribeReveal((line) => revealLine(editor, line));
+            editor.onDidDispose(() => { unsubscribe(); unreveal(); });
             editor.onDidChangeModelContent(() => {
               markWorkspaceDirty('de2');
               const m = editor.getModel();
@@ -115,6 +115,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ isOpen, onOpenImport, is
           onChange={handleEditorChange}
           options={{
             minimap: { enabled: false },
+            glyphMargin: true,
             fontSize: Math.round(13 * uiScale()),
             wordWrap: 'on',
             scrollBeyondLastLine: false,

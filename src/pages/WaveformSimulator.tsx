@@ -46,6 +46,8 @@ import { getExampleById } from '../examples/registry';
 
 import { useT } from '../i18n/toolText';
 import { uiScale, useUiScale } from '../lib/uiScale';
+import { parseCompilerLog, showDiagnostics, type MonacoLike } from '../lib/monacoDiagnostics';
+import type { Diagnostic } from '../core/simulator/diagnostics';
 // ── Layout Persistence Schema ────────────────────────────────
 const LAYOUT_STORAGE_KEY = 'wf_workspace_layout_v1';
 
@@ -135,6 +137,11 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
   // Center right area ref to measure height for editorRatio
   const rightAreaRef = useRef<HTMLDivElement>(null);
   const monacoEditorRef = useRef<any>(null);
+  // Compiler messages per file, shown on their lines in the editor.
+  const monacoRef = useRef<MonacoLike | null>(null);
+  const [fileDiagnostics, setFileDiagnostics] = useState<Record<string, Diagnostic[]>>({});
+  const diagLinesRef = useRef<ReturnType<typeof showDiagnostics>>(null);
+  const [editorMounted, setEditorMounted] = useState(0);
 
   // Trigger Monaco layout when switched to editor or split
   useEffect(() => {
@@ -205,6 +212,13 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
 
   const activeSourceFile = sourceFiles.find(f => f.id === activeSourceId) || sourceFiles[0] || null;
   const activeEditorFile = activeEditorRole === 'source' ? activeSourceFile : testbenchFile;
+  const activeEditorName = activeEditorFile?.name ?? '';
+  useEffect(() => {
+    const editor = monacoEditorRef.current;
+    const monaco = monacoRef.current;
+    if (!editor || !monaco) return;
+    diagLinesRef.current = showDiagnostics(editor, monaco, fileDiagnostics[activeEditorName] ?? [], 'en', diagLinesRef.current);
+  }, [fileDiagnostics, activeEditorName, editorMounted]);
 
   // Input refs for file uploads
   const sourceInputRef  = useRef<HTMLInputElement>(null);
@@ -687,6 +701,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
       : (activeSourceFile ? activeSourceFile.name : filesToCompile[0].name);
 
     const result = await simulateSystemVerilog(filesToCompile, activeName);
+    setFileDiagnostics(Object.fromEntries(filesToCompile.map((f) => [f.name, parseCompilerLog(result.logs ?? [], f.name)])));
 
     if (result.logs && result.logs.length > 0) {
       setConsoleLogs(prev => [...prev, ...result.logs]);
@@ -1346,11 +1361,15 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
                     language={activeEditorFile.name.endsWith('.v') ? 'verilog' : 'systemverilog'}
                     theme={isDarkMode ? 'vs-dark' : 'vs-light'}
                     value={activeEditorFile.content}
-                    onMount={(editor) => {
+                    onMount={(editor, monaco) => {
                       monacoEditorRef.current = editor;
+                      monacoRef.current = monaco;
+                      setEditorMounted((n) => n + 1);
                     }}
                     onChange={(val) => {
                       const updated = val ?? '';
+                      // An edit makes the compiler's line numbers stale.
+                      setFileDiagnostics((prev) => (prev[activeEditorName]?.length ? { ...prev, [activeEditorName]: [] } : prev));
                       if (activeEditorRole === 'source') {
                         if (activeSourceFile && activeSourceFile.content !== updated) {
                           markWorkspaceDirty('waveform');
@@ -1371,6 +1390,7 @@ export default function WaveformSimulator({ isDarkMode = true }: { isDarkMode?: 
                     }}
                     options={{
                       minimap: { enabled: false },
+                      glyphMargin: true,
                       fontSize: Math.round(13 * uiScale()),
                       wordWrap: 'on',
                       scrollBeyondLastLine: false,

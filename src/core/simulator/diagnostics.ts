@@ -270,3 +270,31 @@ export function subscribeDiagnostics(listener: Listener): () => void {
   listener(latest);
   return () => listeners.delete(listener);
 }
+
+/** The latest diagnostics, for panels that list them. */
+export function currentDiagnostics(): Diagnostic[] {
+  return latest;
+}
+
+/* ── Jump to a line ──────────────────────────────────────────────────────
+ * A problem list asks for a line; the code editor scrolls there. When no
+ * editor is open yet, the request waits until one mounts. */
+type RevealListener = (line: number) => void;
+const revealers = new Set<RevealListener>();
+let pendingReveal: number | null = null;
+
+export function requestReveal(line: number): void {
+  if (revealers.size) revealers.forEach((r) => r(line));
+  else pendingReveal = line;
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('logiclab:reveal-line', { detail: line }));
+}
+
+export function subscribeReveal(listener: RevealListener): () => void {
+  revealers.add(listener);
+  if (pendingReveal !== null) {
+    const line = pendingReveal;
+    pendingReveal = null;
+    listener(line);
+  }
+  return () => revealers.delete(listener);
+}

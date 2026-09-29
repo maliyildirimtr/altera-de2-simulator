@@ -21,6 +21,7 @@ import {
 } from '../classroom/assignment';
 import { downloadText } from '../utils/svgExport';
 import { uiScale } from '../lib/uiScale';
+import { revealLine, showDiagnostics, type EditorLike, type MonacoLike } from '../lib/monacoDiagnostics';
 
 const STORAGE_KEY = 'logiclab_exercises_v1';
 const MAX_ROWS_SHOWN = 128;
@@ -185,6 +186,13 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
   const [progress, setProgress] = useState<Progress>(loadProgress);
   const [result, setResult] = useState<GradeResult | null>(null);
   const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
+  // The Monaco instance, so problems show on their lines and a click jumps there.
+  const editorRef = useRef<{ editor: EditorLike; monaco: MonacoLike } | null>(null);
+  const linesRef = useRef<ReturnType<typeof showDiagnostics>>(null);
+  useEffect(() => {
+    const e = editorRef.current;
+    if (e) linesRef.current = showDiagnostics(e.editor, e.monaco, diagnostics, lang, linesRef.current);
+  }, [diagnostics, lang]);
   const [showHint, setShowHint] = useState(false);
   const [onlyMismatches, setOnlyMismatches] = useState(false);
 
@@ -496,11 +504,15 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
               theme={isDarkMode ? 'vs-dark' : 'vs-light'}
               value={code}
               path={`exercise/${exercise.id}.sv`}
+              onMount={(editor, monaco) => {
+                editorRef.current = { editor, monaco };
+                linesRef.current = showDiagnostics(editor, monaco, diagnostics, lang, null);
+              }}
               onChange={(value) => {
                 if (value === undefined) return;
                 setProgress((p) => ({ ...p, code: { ...p.code, [exercise.id]: value } }));
               }}
-              options={{ minimap: { enabled: false }, fontSize: Math.round(13 * uiScale()), scrollBeyondLastLine: false, tabSize: 4 }}
+              options={{ minimap: { enabled: false }, glyphMargin: true, fontSize: Math.round(13 * uiScale()), scrollBeyondLastLine: false, tabSize: 4 }}
             />
           </div>
         </section>
@@ -509,7 +521,7 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
           {result && diagnostics.length > 0 && (
             <ul data-testid="exercise-diagnostics" className="flex flex-col gap-1 text-[0.7812rem] leading-snug">
               {diagnostics.slice(0, 6).map((dgn, i) => (
-                <li key={i} className="flex gap-2" style={{ color: 'var(--text-secondary)' }}>
+                <li key={i} className="flex gap-2 cursor-pointer hover:underline" style={{ color: 'var(--text-secondary)' }} onClick={() => editorRef.current && revealLine(editorRef.current.editor, dgn.line)}>
                   <span className="font-mono shrink-0" style={{ color: dgn.severity === 'error' ? '#ef4444' : '#eab308' }}>
                     {t.line} {dgn.line}
                   </span>

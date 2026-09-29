@@ -122,6 +122,15 @@ export default function DE2Simulator({ isDarkMode = true }: { isDarkMode?: boole
     persistLayout({ activeView: view });
   }, [persistLayout]);
 
+  // A click on a problem shows the code editor, which then scrolls to the line.
+  useEffect(() => {
+    const onReveal = () => {
+      if (activeView === 'board') handleSelectView('split');
+    };
+    window.addEventListener('logiclab:reveal-line', onReveal);
+    return () => window.removeEventListener('logiclab:reveal-line', onReveal);
+  }, [activeView, handleSelectView]);
+
   const handleResetWorkspaceLayout = useCallback(() => {
     setLayout(DEFAULT_LAYOUT);
     setActiveView(DEFAULT_LAYOUT.activeView);

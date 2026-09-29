@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Terminal,
   AlertCircle,
@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import { LogicAnalyzer } from './LogicAnalyzer';
 import { FsmView } from './FsmView';
+import { requestReveal, subscribeDiagnostics, type Diagnostic } from '../../core/simulator/diagnostics';
+import { useI18n } from '../../i18n/I18nProvider';
 
 import { useT } from '../../i18n/toolText';
 export interface ConsoleMessage {
@@ -41,7 +43,12 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
   compiledSource = '',
 }) => {
   const t = useT();
+  const { lang } = useI18n();
   const [activeTab, setActiveTab] = useState<'console' | 'problems' | 'analyzer' | 'fsm'>('console');
+  // Line-numbered problems from the last compile; a click jumps to the line.
+  const [problems, setProblems] = useState<Diagnostic[]>([]);
+  useEffect(() => subscribeDiagnostics(setProblems), []);
+  const problemCount = problems.length || (compileError ? 1 : 0);
 
   if (!isOpen) {
     return (
@@ -193,9 +200,9 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
           >
             <AlertCircle size={13} className={compileError ? 'text-red-500' : 'text-[var(--text-muted)]'} />
             <span>{t("Problems")}</span>
-            {compileError && (
+            {problemCount > 0 && (
               <span className="text-[0.625rem] font-mono bg-red-500/10 text-red-500 px-1.5 rounded ml-1 border border-red-500/20 font-semibold">
-                1
+                {problemCount}
               </span>
             )}
           </button>
@@ -296,8 +303,27 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
                   </pre>
                 </div>
               </div>
-            ) : (
+            ) : problems.length === 0 ? (
               <div className="italic" style={{ color: 'var(--text-muted)' }}>{t("No problems detected in the design.")}</div>
+            ) : null}
+            {problems.length > 0 && (
+              <ul data-testid="problem-list" className="mt-2 flex flex-col gap-0.5">
+                {problems.map((p, i) => (
+                  <li key={i}>
+                    <button
+                      type="button"
+                      data-testid="problem-item"
+                      onClick={() => requestReveal(p.line)}
+                      className="w-full flex items-start gap-2 px-2 py-1 rounded-[0.25rem] text-left text-xs hover:bg-[var(--bg-hover)]"
+                    >
+                      <span className="shrink-0 font-mono font-semibold" style={{ color: p.severity === 'error' ? '#ef4444' : p.severity === 'warning' ? '#eab308' : 'var(--text-muted)' }}>
+                        {lang === 'tr' ? 'Satır' : 'Line'} {p.line}
+                      </span>
+                      <span style={{ color: 'var(--text-primary)' }}>{p.message[lang]}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         )}
