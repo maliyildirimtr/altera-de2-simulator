@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { CheckCircle2, GraduationCap, Lightbulb, Play } from 'lucide-react';
-import { EXERCISES, getExercise, type Lang } from '../../exercises/exercises';
+import { EXERCISES, allExercises, getExercise, type Lang } from '../../exercises/exercises';
 import { expectedTable, gradeSubmission, type GradeResult, type TruthRow } from '../../exercises/grader';
 import { toVerilog, type Circuit, type GateNode } from '../../gates/circuit';
 import { fmt } from '../../i18n/dictionary';
@@ -107,7 +107,7 @@ export function GateExercisePanel({ flat, lang, text, active, onPick, onStart, b
       <label className="text-[0.75rem] flex items-center gap-2">
         {text.exercisePick}
         <select data-testid="gate-exercise-pick" value={ex.id} onChange={(e) => { onPick(e.target.value); setResult(null); setHint(false); }} className="h-8 px-2 rounded-[0.25rem] border text-[0.8125rem] flex-1 min-w-0" style={btnStyle}>
-          {EXERCISES.map((x) => <option key={x.id} value={x.id}>{solved[x.id] ? '✓ ' : ''}{x.title[lang]}</option>)}
+          {allExercises().map((x) => <option key={x.id} value={x.id}>{solved[x.id] ? '✓ ' : ''}{x.title[lang]}</option>)}
         </select>
       </label>
       <p className="text-[0.8125rem]">{ex.prompt[lang]}</p>

@@ -125,7 +125,8 @@ import * as Fsm from '../../../fsm/fsm';
 import { autoLayout } from '../../../gates/layout';
 import { verilogToCircuit } from '../../../gates/fromVerilog';
 import { exerciseCircuit } from '../../Gates/GateExercisePanel';
-import { getExercise } from '../../../exercises/exercises';
+import { buildCustomExercises, getExercise, tableReference } from '../../../exercises/exercises';
+import { decodeAssignment, encodeAssignment } from '../../../classroom/assignment';
 import { LESSONS } from '../../../lessons/lessons';
 import { gradeSubmission } from '../../../exercises/grader';
 import { defaultSpec, generateTestbench, readPorts, resizeSpec, setValue } from '../../../waveform/stimulus';
@@ -3617,6 +3618,38 @@ endmodule`);
   }
   assert.strictEqual(new Set(LESSONS.map((l) => l.id)).size, LESSONS.length, 'lesson ids are unique');
   pass(`lessons: ${LESSONS.length} lessons link only to existing presets, exercises, machines and examples`);
+}
+
+{
+  // Teacher tasks: a truth table or a Verilog solution travels in the assignment link and is graded like a built-in exercise.
+  const table = [[0], [1], [1], [0]];
+  const ref = tableReference('task', ['a', 'b'], ['y'], table);
+  const seqRef = `module det(input logic clk, input logic reset, input logic x, output logic z);
+    logic p;
+    always_ff @(posedge clk) begin if (reset) p <= 1'b0; else p <= x; end
+    assign z = p & x;
+endmodule`;
+  const link = encodeAssignment({ v: 1, id: 'abc', title: 'T', teacher: '', due: '', exercises: ['and_or', 'c_0', 'c_1', 'c_2'], custom: [
+    { title: 'XOR', prompt: 'y = a xor b', reference: ref },
+    { title: 'Two ones', prompt: '', reference: seqRef },
+    { title: 'Broken', prompt: '', reference: 'module x(; endmodule' },
+  ] });
+  const a = decodeAssignment(link, (id) => !!getExercise(id))!;
+  assert.deepStrictEqual(a.exercises, ['and_or', 'c_0', 'c_1'], 'a task whose solution does not compile is dropped');
+  const [xor, det] = buildCustomExercises(a.custom!.slice(0, 2));
+  assert.ok(xor.starter.includes('input  logic a') && xor.starter.includes('output logic y'));
+  const good = gradeSubmission(xor.reference, 'module task(input logic a, input logic b, output logic y); assign y = a ^ b; endmodule');
+  assert.ok(good.kind === 'graded' && good.passed === 4);
+  const wrong = gradeSubmission(xor.reference, 'module task(input logic a, input logic b, output logic y); assign y = a | b; endmodule');
+  assert.ok(wrong.kind === 'graded' && wrong.passed === 3);
+  assert.ok(det.sequential && det.sequential.clock === 'clk' && det.sequential.steps[0].reset === 1, 'a clk input makes it a clocked task with reset first');
+  const seqGood = gradeSubmission(det.reference, `module det(input logic clk, input logic reset, input logic x, output logic z);
+    logic q;
+    always_ff @(posedge clk) begin if (reset) q <= 1'b0; else q <= x; end
+    assign z = x & q;
+endmodule`, det.sequential);
+  assert.ok(seqGood.kind === 'graded' && seqGood.passed === seqGood.total);
+  pass('classroom: teacher tasks (truth table or Verilog) travel in the link and are graded like built-in exercises');
 }
 
 console.log(`--- DE2 Board Renderer Regression: PASS (${checks.length} checks) ---`);

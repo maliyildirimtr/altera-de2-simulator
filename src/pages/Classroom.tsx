@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Check, Copy, Download, ExternalLink, FileUp, Link2, Trash2 } from 'lucide-react';
-import { EXERCISES } from '../exercises/exercises';
+import { EXERCISES, customId, type CustomTaskSpec } from '../exercises/exercises';
+import { CustomTaskEditor } from '../components/Classroom/CustomTaskEditor';
 import { useI18n } from '../i18n/I18nProvider';
 import { fmt } from '../i18n/dictionary';
 import {
@@ -39,18 +40,19 @@ export default function Classroom() {
   const [link, setLink] = useState('');
   const [copied, setCopied] = useState(false);
   const [createError, setCreateError] = useState('');
+  const [customTasks, setCustomTasks] = useState<CustomTaskSpec[]>([]);
 
   const toggle = (id: string) =>
     setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
 
   const create = () => {
-    if (!title.trim() || picked.length === 0) {
+    if (!title.trim() || picked.length + customTasks.length === 0) {
       setCreateError(c.needTitle);
       return;
     }
     setCreateError('');
-    const ordered = EXERCISES.map((e) => e.id).filter((id) => picked.includes(id));
-    const a: Assignment = { v: 1, id: newAssignmentId(), title: title.trim(), teacher: teacher.trim(), due, exercises: ordered };
+    const ordered = [...EXERCISES.map((e) => e.id).filter((id) => picked.includes(id)), ...customTasks.map((_, i) => customId(i))];
+    const a: Assignment = { v: 1, id: newAssignmentId(), title: title.trim(), teacher: teacher.trim(), due, exercises: ordered, ...(customTasks.length ? { custom: customTasks } : {}) };
     setLink(assignmentUrl(a));
     setCopied(false);
   };
@@ -104,9 +106,10 @@ export default function Classroom() {
   const exerciseIds = useMemo(() => {
     const ids = new Set<string>();
     rows.forEach((r) => Object.keys(r.result.results).forEach((id) => ids.add(id)));
-    return EXERCISES.map((e) => e.id).filter((id) => ids.has(id));
+    const custom = [...ids].filter((id) => /^c_\d+$/.test(id)).sort((a, b) => Number(a.slice(2)) - Number(b.slice(2)));
+    return [...EXERCISES.map((e) => e.id).filter((id) => ids.has(id)), ...custom];
   }, [rows]);
-  const titleOf = (id: string) => EXERCISES.find((e) => e.id === id)?.title[lang] ?? id;
+  const titleOf = (id: string) => EXERCISES.find((e) => e.id === id)?.title[lang] ?? rows.find((r) => r.result.titles?.[id])?.result.titles?.[id] ?? id;
 
   const scoreOf = (r: StudentResult) => {
     const list = Object.values(r.results);
@@ -176,6 +179,22 @@ export default function Classroom() {
                 <span>{String(i + 1).padStart(2, '0')} · {e.title[lang]}</span>
               </label>
             ))}
+          </div>
+          <div className="flex flex-col gap-2 mt-1">
+            <span className="text-[0.75rem] font-semibold" style={{ color: 'var(--text-secondary)' }}>{c.customTitle} ({customTasks.length})</span>
+            <p className="text-[0.7188rem]" style={{ color: 'var(--text-muted)' }}>{c.customLead}</p>
+            {customTasks.length > 0 && (
+              <ul data-testid="cls-custom-list" className="flex flex-col gap-1">
+                {customTasks.map((t, i) => (
+                  <li key={i} className="flex items-center gap-2 px-2.5 py-1.5 rounded-[0.25rem] border text-[0.8125rem]" style={{ borderColor: 'var(--accent-primary)', backgroundColor: 'var(--accent-subtle)' }}>
+                    <span className="text-[0.6875rem] font-semibold uppercase" style={{ color: 'var(--accent-primary)' }}>{c.customTag}</span>
+                    <span className="flex-1">{t.title}</span>
+                    <button type="button" className="text-[0.75rem] underline" onClick={() => setCustomTasks((list) => list.filter((_, k) => k !== i))}>{c.remove}</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <CustomTaskEditor text={c} field={field} fieldStyle={fieldStyle} onAdd={(t) => setCustomTasks((list) => [...list, t].slice(0, 12))} />
           </div>
           {createError && <p className="text-[0.7812rem]" style={{ color: '#ef4444' }}>{createError}</p>}
           <div className="flex flex-wrap gap-2 items-center">

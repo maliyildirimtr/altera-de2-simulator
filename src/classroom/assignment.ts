@@ -11,6 +11,9 @@
  * determined student, and the UI says so.
  */
 
+import { compileVerilog } from '../core/simulator/verilogEngine';
+import type { CustomTaskSpec } from '../exercises/exercises';
+
 export interface Assignment {
   v: 1;
   /** Random id, ties result files to this assignment. */
@@ -20,6 +23,8 @@ export interface Assignment {
   /** ISO date (yyyy-mm-dd) or ''. */
   due: string;
   exercises: string[];
+  /** The teacher's own tasks (ids c_0, c_1 … in `exercises`). */
+  custom?: CustomTaskSpec[];
 }
 
 export interface ExerciseStat {
@@ -39,6 +44,8 @@ export interface StudentResult {
   submittedAt: string;
   results: Record<string, ExerciseStat>;
   checksum: string;
+  /** Titles of the teacher's own tasks, for the class table (not covered by the checksum). */
+  titles?: Record<string, string>;
 }
 
 export const ASSIGN_PARAM = 'assign';
@@ -71,7 +78,23 @@ export function decodeAssignment(encoded: string, knownExercises: (id: string) =
   try {
     const a = JSON.parse(fromBase64Url(encoded)) as Assignment;
     if (a?.v !== 1 || typeof a.id !== 'string' || !Array.isArray(a.exercises)) return null;
-    const exercises = a.exercises.filter((id) => typeof id === 'string' && knownExercises(id));
+    // Teacher tasks: keep the ones whose reference solution compiles.
+    const custom = (Array.isArray(a.custom) ? a.custom : []).slice(0, 12).map((t) => ({
+      title: String(t?.title ?? '').slice(0, 120),
+      prompt: String(t?.prompt ?? '').slice(0, 2000),
+      hint: String(t?.hint ?? '').slice(0, 1000),
+      reference: String(t?.reference ?? '').slice(0, 8000),
+    }));
+    const valid = custom.map((t) => {
+      try {
+        const e = compileVerilog(t.reference);
+        return e.inputs.length > 0 && e.outputs.length > 0;
+      } catch {
+        return false;
+      }
+    });
+    const isCustom = (id: string) => /^c_\d+$/.test(id) && valid[Number(id.slice(2))] === true;
+    const exercises = a.exercises.filter((id) => typeof id === 'string' && (knownExercises(id) || isCustom(id)));
     if (exercises.length === 0) return null;
     return {
       v: 1,
@@ -80,6 +103,7 @@ export function decodeAssignment(encoded: string, knownExercises: (id: string) =
       teacher: String(a.teacher ?? '').slice(0, 80),
       due: /^\d{4}-\d{2}-\d{2}$/.test(a.due ?? '') ? a.due : '',
       exercises,
+      ...(custom.length ? { custom } : {}),
     };
   } catch {
     return null;
@@ -145,14 +169,17 @@ export async function buildResult(
     submittedAt: new Date().toISOString(),
     results,
   };
-  return { ...body, checksum: await sha256Hex(canonical(body)) };
+  const titles: Record<string, string> = {};
+  (active.assignment.custom ?? []).forEach((t, i) => { titles[`c_${i}`] = t.title; });
+  return { ...body, checksum: await sha256Hex(canonical(body)), ...(Object.keys(titles).length ? { titles } : {}) };
 }
 
 export async function parseResult(text: string): Promise<{ result: StudentResult; checksumOk: boolean } | null> {
   try {
     const r = JSON.parse(text) as StudentResult;
     if (r?.kind !== 'logiclab-result' || typeof r.results !== 'object') return null;
-    const { checksum, ...body } = r;
+    const { checksum, titles: _titles, ...body } = r;
+    void _titles;
     return { result: r, checksumOk: checksum === (await sha256Hex(canonical(body))) };
   } catch {
     return null;

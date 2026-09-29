@@ -5,6 +5,7 @@
  * the student must use.
  */
 import type { SequentialSpec } from './grader';
+import { compileVerilog } from '../core/simulator/verilogEngine';
 export type Lang = 'en' | 'tr';
 export type Text = Record<Lang, string>;
 
@@ -502,6 +503,93 @@ endmodule`,
   },
 ];
 
+/* ── Teacher-made tasks (carried inside an assignment link) ────────── */
+
+/** A task a teacher writes: a reference solution defines the ports and the right answers. */
+export interface CustomTaskSpec {
+  title: string;
+  prompt: string;
+  hint?: string;
+  /** Known-good Verilog; never shown to the student. */
+  reference: string;
+}
+
+const custom = new Map<string, Exercise>();
+let customLoaded = false;
+
+/** Reads the active assignment once, so its tasks are known on every page. */
+function ensureCustom() {
+  if (customLoaded) return;
+  customLoaded = true;
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('logiclab_assignment_v1') : null;
+    const specs = raw ? (JSON.parse(raw)?.assignment?.custom as CustomTaskSpec[] | undefined) : undefined;
+    if (Array.isArray(specs)) registerCustomTasks(specs);
+  } catch {
+    /* no assignment */
+  }
+}
+
+export const customId = (i: number) => `c_${i}`;
+
+/**
+ * Turns teacher tasks into exercises (ids c_0, c_1 …). A task whose module
+ * has an input called clk or clock is graded cycle by cycle, with any
+ * reset/rst/clr input held high in the first cycle.
+ */
+export function buildCustomExercises(specs: CustomTaskSpec[]): Exercise[] {
+  return specs.map((spec, i) => {
+    const engine = compileVerilog(spec.reference);
+    const widths = engine.portWidths ?? {};
+    const name = /\bmodule\s+(\w+)/.exec(spec.reference)?.[1] ?? `task${i}`;
+    const port = (dir: string, p: string) => `    ${dir} logic ${(widths[p] ?? 1) > 1 ? `[${(widths[p] ?? 1) - 1}:0] ` : ''}${p}`;
+    const starter = `module ${name} (\n${[...engine.inputs.map((p) => port('input ', p)), ...engine.outputs.map((p) => port('output', p))].join(',\n')}\n);\n\n    // Your code here\n\nendmodule\n`;
+    const clock = engine.inputs.find((p) => /^(clk|clock)$/i.test(p));
+    let sequential: Exercise['sequential'];
+    if (clock) {
+      const others = engine.inputs.filter((p) => p !== clock);
+      const reset = others.find((p) => /^(rst|reset|clr|clear)$/i.test(p));
+      let seed = 7 + i;
+      const rnd = (w: number) => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return (seed >> 8) & ((1 << Math.min(w, 16)) - 1); };
+      sequential = {
+        clock,
+        steps: Array.from({ length: 16 }, (_, k) => Object.fromEntries(others.map((p) => [p, p === reset ? (k === 0 ? 1 : 0) : rnd(widths[p] ?? 1)]))),
+      };
+    }
+    const text = (x: string) => ({ en: x, tr: x });
+    return { id: customId(i), level: 'beginner', title: text(spec.title), prompt: text(spec.prompt), hint: text(spec.hint || ''), starter, reference: spec.reference, ...(sequential ? { sequential } : {}) };
+  });
+}
+
+export function registerCustomTasks(specs: CustomTaskSpec[]) {
+  customLoaded = true;
+  custom.clear();
+  try {
+    buildCustomExercises(specs).forEach((e) => custom.set(e.id, e));
+  } catch {
+    /* a task that no longer compiles is left out */
+  }
+}
+
+/** Built-in exercises followed by the active assignment's own tasks. */
+export function allExercises(): Exercise[] {
+  ensureCustom();
+  return [...EXERCISES, ...custom.values()];
+}
+
 export function getExercise(id: string): Exercise | undefined {
-  return EXERCISES.find((e) => e.id === id);
+  ensureCustom();
+  return EXERCISES.find((e) => e.id === id) ?? custom.get(id);
+}
+
+/** Reference module for a truth table: one output value per input combination (first input = MSB). */
+export function tableReference(name: string, inputs: string[], outputs: string[], table: number[][]): string {
+  const n = inputs.length;
+  const lines = [`module ${name} (`, [...inputs.map((p) => `    input  logic ${p}`), ...outputs.map((p) => `    output logic ${p}`)].join(',\n'), ');', '    always_comb begin', `        case ({${inputs.join(', ')}})`];
+  for (let m = 0; m < 1 << n; m++) {
+    const body = outputs.map((o, k) => `${o} = 1'b${table[m]?.[k] ? 1 : 0};`).join(' ');
+    lines.push(`            ${n}'d${m}: begin ${body} end`);
+  }
+  lines.push(`            default: begin ${outputs.map((o) => `${o} = 1'b0;`).join(' ')} end`, '        endcase', '    end', 'endmodule', '');
+  return lines.join('\n');
 }

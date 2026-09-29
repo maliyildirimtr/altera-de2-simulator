@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Editor from '@monaco-editor/react';
 import '../lib/monacoSetup';
 import { CheckCircle2, Circle, Lightbulb, Play, RotateCcw, Shapes } from 'lucide-react';
-import { EXERCISES, getExercise, type Exercise } from '../exercises/exercises';
+import { EXERCISES, allExercises, getExercise, registerCustomTasks, type Exercise } from '../exercises/exercises';
 import { expectedTable, gradeSubmission, type GradeResult, type Port, type TruthRow } from '../exercises/grader';
 import { lintVerilog, type Diagnostic } from '../core/simulator/diagnostics';
 import { OpenInSchematicButton } from '../components/Share/OpenInToolButton';
@@ -208,6 +208,7 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
     if (!encoded) return;
     const a = decodeAssignment(encoded, (id) => !!getExercise(id));
     if (a) {
+      registerCustomTasks(a.custom ?? []);
       const next = { assignment: a, student: active?.assignment.id === a.id ? active.student : active?.student ?? '' };
       setActive(next);
       saveActiveAssignment(next);
@@ -221,7 +222,9 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search]);
   const assigned = active ? active.assignment.exercises : null;
-  const listed = assigned && onlyAssigned ? EXERCISES.filter((e) => assigned.includes(e.id)) : EXERCISES;
+  // The teacher's own tasks appear only while their assignment is active.
+  const every = allExercises();
+  const listed = assigned && onlyAssigned ? every.filter((e) => assigned.includes(e.id)) : every;
   const setStudent = (student: string) => {
     if (!active) return;
     const next = { ...active, student };
@@ -231,6 +234,7 @@ export default function Exercises({ isDarkMode = true }: { isDarkMode?: boolean 
   const leaveAssignment = () => {
     setActive(null);
     saveActiveAssignment(null);
+    registerCustomTasks([]);
     setAssignmentNote(null);
   };
   const downloadResult = async () => {
