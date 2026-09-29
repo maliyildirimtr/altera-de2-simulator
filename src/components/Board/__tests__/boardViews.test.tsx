@@ -3126,4 +3126,55 @@ useBoardStore.setState({ engine: null, pinMappings: [], simState: {} });
   pass(`arithmetic blocks (adder … bit counter, widths 1–4) match their model and Verilog on all ${combos} input combinations`);
 }
 
+
+{
+  // Blocks (sub-circuits), tunnels and test tables.
+  const inner: Gates.Circuit = {
+    nodes: [
+      { id: 'a', type: 'IN', x: 0, y: 0, label: 'a', delay: 1 }, { id: 'b', type: 'IN', x: 0, y: 50, label: 'b', delay: 1 },
+      { id: 't1', type: 'TUNNEL', x: 100, y: 0, label: 'n', delay: 1 }, { id: 't2', type: 'TUNNEL', x: 200, y: 100, label: 'n', delay: 1 },
+      { id: 'x', type: 'XOR', x: 300, y: 0, label: '', delay: 1 }, { id: 'c', type: 'AND', x: 300, y: 100, label: '', delay: 1 },
+      { id: 's', type: 'OUT', x: 400, y: 0, label: 's', delay: 1 }, { id: 'co', type: 'OUT', x: 400, y: 100, label: 'co', delay: 1 },
+    ],
+    wires: [
+      { id: '1', from: 'a', to: 't1', pin: 0 }, { id: '2', from: 't2', to: 'x', pin: 0 }, { id: '3', from: 'b', to: 'x', pin: 1 },
+      { id: '4', from: 't2', to: 'c', pin: 0 }, { id: '5', from: 'b', to: 'c', pin: 1 }, { id: '6', from: 'x', to: 's', pin: 0 }, { id: '7', from: 'c', to: 'co', pin: 0 },
+    ],
+  };
+  const lib: Gates.Library = { ha: { id: 'ha', name: 'ha', circuit: inner } };
+  assert.deepStrictEqual(Gates.blockPins(inner), { ins: ['a', 'b'], outs: ['s', 'co'] });
+  // Full adder from two copies of the block.
+  const pins = { pinsIn: ['a', 'b'], pinsOut: ['s', 'co'] };
+  const fa: Gates.Circuit = {
+    nodes: [
+      { id: 'A', type: 'IN', x: 0, y: 0, label: 'A', delay: 1 }, { id: 'B', type: 'IN', x: 0, y: 50, label: 'B', delay: 1 }, { id: 'C', type: 'IN', x: 0, y: 100, label: 'C', delay: 1 },
+      { id: 'h1', type: 'BLOCK', ref: 'ha', ...pins, x: 100, y: 0, label: 'ha', delay: 1 }, { id: 'h2', type: 'BLOCK', ref: 'ha', ...pins, x: 200, y: 0, label: 'ha', delay: 1 },
+      { id: 'o', type: 'OR', x: 300, y: 100, label: '', delay: 1 }, { id: 'S', type: 'OUT', x: 400, y: 0, label: 'S', delay: 1 }, { id: 'CO', type: 'OUT', x: 400, y: 100, label: 'CO', delay: 1 },
+    ],
+    wires: [
+      { id: '1', from: 'A', to: 'h1', pin: 0 }, { id: '2', from: 'B', to: 'h1', pin: 1 }, { id: '3', from: 'h1', to: 'h2', pin: 0 }, { id: '4', from: 'C', to: 'h2', pin: 1 },
+      { id: '5', from: 'h2', to: 'S', pin: 0 }, { id: '6', from: 'h1', fromPin: 1, to: 'o', pin: 0 }, { id: '7', from: 'h2', fromPin: 1, to: 'o', pin: 1 }, { id: '8', from: 'o', to: 'CO', pin: 0 },
+    ],
+  };
+  const flat = Gates.flatten(fa, lib);
+  assert.deepStrictEqual(Gates.truthTable(flat)!.rows.map((r) => r.out.join('')), ['00', '10', '10', '01', '10', '01', '01', '11'], 'a full adder built from two half-adder blocks (with tunnels inside) adds');
+  assert.strictEqual(Gates.evaluate(flat, { A: 1, B: 1, C: 0 }).values[Gates.sig('h1', 1)], 1, "a block's output k has the key sig(block, k)");
+  assert.ok(!compileVerilog(Gates.toVerilog(flat, 'fa')).transpileError, 'a design with blocks exports runnable Verilog');
+  assert.deepStrictEqual(Object.keys(Gates.usedBlocks(fa, lib)), ['ha']);
+  // A block that is missing from the library leaves its outputs floating instead of crashing.
+  assert.ok(Gates.evaluate(Gates.flatten(fa, {}), { A: 1 }).floating.length > 0);
+  // Test tables.
+  const ok = Gates.runTests(flat, 'A B C | S CO\n0 0 0 | 0 0\n1 1 1 | 1 1\n1 0 1 | 0 1');
+  assert.deepStrictEqual([ok.error, ok.passed, ok.failed], [null, 3, 0]);
+  const bad = Gates.runTests(flat, 'A B C | S CO\n1 1 0 | 1 X');
+  assert.deepStrictEqual([bad.passed, bad.failed, bad.rows[0].cells.find((c) => c.name === 'S')!.got], [0, 1, '0']);
+  assert.ok(Gates.runTests(flat, 'A Q\n0 0').error!.startsWith('unknown:Q'));
+  assert.ok(Gates.runTests(flat, 'A B\n0').error!.startsWith('columns:'));
+  // Sequential: C in a clock column pulses it.
+  const seqRes = Gates.runTests(Gates.PRESETS.counter4.circuit, 'clk | q0 q1 hex0\nC | 1 0 1\nC | 0 1 2\nC | 1 1 3');
+  assert.deepStrictEqual([seqRes.error, seqRes.passed], [null, 3], 'clock pulses step a counter in a test table');
+  assert.match(Gates.testTemplate(inner), /^a b \| s co\n0 0 \| X X/);
+  pass('blocks, tunnels and test tables work, including a full adder made of two half-adder blocks');
+}
+
 console.log(`--- DE2 Board Renderer Regression: PASS (${checks.length} checks) ---`);

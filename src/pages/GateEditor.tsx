@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, Copy, Cpu, Pause, Play, RotateCcw, Timer, Trash2, Zap } from 'lucide-react';
+import { Boxes, ChevronDown, ClipboardPaste, Copy, CopyPlus, Cpu, FileDown, FileUp, FlaskConical, Link2, Pause, Play, Plus, Redo2, RotateCcw, Timer, Trash2, Undo2, X, Zap } from 'lucide-react';
 import {
   ARITH,
   EMPTY_SEQ,
@@ -11,7 +11,12 @@ import {
   SEG7_PATTERNS,
   SINKS,
   SOURCES,
+  blockPins,
   evaluate,
+  flatten,
+  runTests,
+  testTemplate,
+  usedBlocks,
   inputNames,
   ioNodes,
   isFlipFlop,
@@ -27,6 +32,8 @@ import {
   type Circuit,
   type GateNode,
   type GateType,
+  type Library,
+  type TestResult,
   type PartCategory,
   type SeqState,
   type Trace,
@@ -36,6 +43,9 @@ import { fmt } from '../i18n/dictionary';
 import { OpenInSchematicButton } from '../components/Share/OpenInToolButton';
 import { useBoardStore } from '../store/boardStore';
 import { markWorkspaceDirty, markWorkspaceUser } from '../services/exampleHandoff';
+import { decodeJson, encodeJson, MAX_SHARE_URL_LENGTH } from '../services/shareLink';
+import { useLocation } from 'react-router-dom';
+import { downloadText } from '../utils/svgExport';
 
 const STORAGE_KEY = 'logiclab_gates_v1';
 const W = 72;
@@ -51,6 +61,44 @@ interface Saved {
   /** Open with the gate-delay view on (set by the lessons). */
   timing?: boolean;
   seq?: SeqState;
+  tests?: string;
+}
+
+const LIBRARY_KEY = 'logiclab_gates_lib_v1';
+const SHARE_KEY = 'g';
+const FILE_FORMAT = 'logiclab-gates';
+
+function loadLibrary(): Library {
+  try {
+    const raw = localStorage.getItem(LIBRARY_KEY);
+    const lib = raw ? (JSON.parse(raw) as Library) : {};
+    return lib && typeof lib === 'object' ? lib : {};
+  } catch {
+    return {};
+  }
+}
+
+function isCircuit(c: unknown): c is Circuit {
+  const x = c as Circuit;
+  return !!x && Array.isArray(x.nodes) && Array.isArray(x.wires) && x.nodes.every((n) => n && typeof n.id === 'string' && typeof n.type === 'string') && x.wires.every((w) => w && typeof w.from === 'string' && typeof w.to === 'string');
+}
+
+/** A design as saved to a file or carried by a share link. */
+interface DesignFile {
+  format: typeof FILE_FORMAT;
+  version: 1;
+  name: string;
+  circuit: Circuit;
+  tests?: string;
+  library?: Library;
+}
+
+function readDesign(data: unknown): DesignFile | null {
+  const d = data as DesignFile;
+  if (!d || d.format !== FILE_FORMAT || !isCircuit(d.circuit)) return null;
+  const library: Library = {};
+  for (const [id, b] of Object.entries(d.library ?? {})) if (b && typeof b.name === 'string' && isCircuit(b.circuit)) library[id] = { id, name: b.name, circuit: b.circuit };
+  return { format: FILE_FORMAT, version: 1, name: typeof d.name === 'string' ? d.name : 'gate_design', circuit: d.circuit, tests: typeof d.tests === 'string' ? d.tests : '', library };
 }
 
 function load(): Saved {
@@ -59,7 +107,7 @@ function load(): Saved {
     if (raw) {
       const s = JSON.parse(raw) as Saved;
       if (s?.circuit?.nodes && s.circuit.wires) {
-        return { circuit: s.circuit, inputs: s.inputs ?? {}, name: s.name || 'gate_design', timing: !!s.timing, seq: s.seq?.q ? s.seq : EMPTY_SEQ };
+        return { circuit: s.circuit, inputs: s.inputs ?? {}, name: s.name || 'gate_design', timing: !!s.timing, seq: s.seq?.q ? s.seq : EMPTY_SEQ, tests: typeof s.tests === 'string' ? s.tests : '' };
       }
     }
   } catch {
@@ -70,7 +118,7 @@ function load(): Saved {
 
 /* ── Geometry ──────────────────────────────────────────────────────── */
 
-const BLOCK_TITLE: Partial<Record<GateType, string>> = { MUX2: 'MUX', MUX4: 'MUX', DEMUX2: 'DEMUX', DEMUX4: 'DEMUX', DEC2: 'DEC', DEC3: 'DEC', BITSEL: 'BIT', PENC4: 'PRI', ADD: 'ADD', SUB: 'SUB', MUL: 'MUL', DIV: 'DIV', SHIFT: 'SHIFT', CMP: 'CMP', NEG: 'NEG', SEXT: 'SEXT', BITCNT: 'CNT', HA: 'HA', FA: 'FA', DFF: 'D', TFF: 'T', JKFF: 'JK', SRFF: 'SR' };
+const BLOCK_TITLE: Partial<Record<GateType, string>> = { MUX2: 'MUX', MUX4: 'MUX', DEMUX2: 'DEMUX', DEMUX4: 'DEMUX', DEC2: 'DEC', DEC3: 'DEC', BITSEL: 'BIT', PENC4: 'PRI', ADD: 'ADD', SUB: 'SUB', MUL: 'MUL', DIV: 'DIV', SHIFT: 'SHIFT', CMP: 'CMP', NEG: 'NEG', SEXT: 'SEXT', BITCNT: 'CNT', BLOCK: 'BLK', HA: 'HA', FA: 'FA', DFF: 'D', TFF: 'T', JKFF: 'JK', SRFF: 'SR' };
 
 /** Plexers drawn as a trapezoid (wide side = the side with more signals). */
 const TRAPEZOID: GateType[] = ['MUX2', 'MUX4', 'BITSEL', 'DEMUX2', 'DEMUX4'];
@@ -83,6 +131,8 @@ function nodeSize(n: Pick<GateNode, 'type' | 'inputs'>): { w: number; h: number 
   if (isGate(n.type)) return { w: W, h: Math.max(H, inputNames(n).length * 16 + 12) };
   if (n.type === 'SEG7') return { w: 64, h: 104 };
   if (n.type === 'CONST0' || n.type === 'CONST1') return { w: 44, h: 36 };
+  if (n.type === 'TUNNEL') return { w: 76, h: 32 };
+  if (n.type === 'BLOCK') return { w: 100, h: Math.max(inputNames(n).length, outputNames(n).length, 1) * 22 + 22 };
   if (isBlock(n.type)) {
     const pins = Math.max(inputNames(n).length, outputNames(n).length);
     return { w: 76, h: pins * 22 + 18 };
@@ -211,6 +261,8 @@ function PartIcon({ type }: { type: GateType }) {
     case 'OUT': return <svg width="26" height="18" viewBox="0 0 26 18" aria-hidden="true"><circle cx="13" cy="9" r="7" fill="none" stroke={s} strokeWidth="1.3" /><text x="13" y="12" textAnchor="middle" fontSize="8" fontWeight="700" fill={s}>1</text></svg>;
     case 'BTN': return <svg width="26" height="18" viewBox="0 0 26 18" aria-hidden="true"><rect x="5" y="2" width="16" height="14" rx="3" fill="none" stroke={s} /><circle cx="13" cy="9" r="4.5" fill={s} /></svg>;
     case 'CLK': return <svg width="26" height="18" viewBox="0 0 26 18" aria-hidden="true"><path d="M2,14 H7 V4 H13 V14 H19 V4 H24" fill="none" stroke={s} strokeWidth="1.5" /></svg>;
+    case 'TUNNEL': return <svg width="26" height="18" viewBox="0 0 26 18" aria-hidden="true"><path d="M3,3 H17 L23,9 L17,15 H3 Z" fill="none" stroke={s} strokeWidth="1.3" /></svg>;
+    case 'BLOCK': return box('BLK');
     case 'CONST0': return box('0');
     case 'CONST1': return box('1');
     case 'SEG7': return box('8.');
@@ -252,39 +304,116 @@ export default function GateEditor() {
   const [timingMode, setTimingMode] = useState(!!initial.timing);
   const [trace, setTrace] = useState<Trace | null>(null);
   const [traceTime, setTraceTime] = useState(0);
-  const [menu, setMenu] = useState<PartCategory | null>(null);
+  const [menu, setMenu] = useState<PartCategory | 'blocks' | 'file' | null>(null);
   const [running, setRunning] = useState(false);
   const [history, setHistory] = useState<Sample[]>([]);
+  const [library, setLibrary] = useState<Library>(loadLibrary);
+  const [multi, setMulti] = useState<string[]>([]);
+  const [marquee, setMarquee] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
+  const [tests, setTests] = useState(initial.tests ?? '');
+  const [testResult, setTestResult] = useState<TestResult | null>(null);
+  const [notice, setNotice] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  const [, bumpHistory] = useState(0);
+  const undoStack = useRef<Circuit[]>([]);
+  const redoStack = useRef<Circuit[]>([]);
+  const committed = useRef(initial.circuit);
+  const lastPush = useRef(0);
+  const clipboard = useRef<Circuit | null>(null);
+  const pasteCount = useRef(0);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const location = useLocation();
   const svgRef = useRef<SVGSVGElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const drag = useRef<{ id: string; dx: number; dy: number; moved: boolean } | null>(null);
+  const drag = useRef<{ id: string; dx: number; dy: number; moved: boolean; starts?: Record<string, { x: number; y: number }>; p0?: { x: number; y: number } } | null>(null);
+  const marqueeRef = useRef<{ x0: number; y0: number; moved: boolean } | null>(null);
   /** Dragging one segment of a wire: index into its bends. */
   const wireDrag = useRef<{ id: string; index: number } | null>(null);
 
   useEffect(() => {
     const t = window.setTimeout(() => {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ circuit, inputs, name, timing: timingMode, seq }));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ circuit, inputs, name, timing: timingMode, seq, tests }));
       } catch {
         /* storage unavailable */
       }
     }, 300);
     return () => window.clearTimeout(t);
-  }, [circuit, inputs, name, timingMode, seq]);
+  }, [circuit, inputs, name, timingMode, seq, tests]);
 
-  const ev = useMemo(() => evaluate(circuit, inputs, seq.q), [circuit, inputs, seq]);
-  const verilog = useMemo(() => toVerilog(circuit, name), [circuit, name]);
-  const table = useMemo(() => truthTable(circuit), [circuit]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(LIBRARY_KEY, JSON.stringify(library));
+    } catch {
+      /* storage unavailable */
+    }
+  }, [library]);
+
+  // Notices fade after a few seconds.
+  useEffect(() => {
+    if (!notice) return;
+    const t = window.setTimeout(() => setNotice(null), 4500);
+    return () => window.clearTimeout(t);
+  }, [notice]);
+
+  /* ── Undo / redo: every committed change of the circuit is a step ── */
+  const circuitRef = useRef(circuit);
+  circuitRef.current = circuit;
+  const checkpoint = useCallback(() => {
+    const cur = circuitRef.current;
+    if (cur === committed.current) return;
+    const now = Date.now();
+    // Quick successive edits (typing a label) become one step.
+    if (now - lastPush.current > 700 || !undoStack.current.length) {
+      undoStack.current = [...undoStack.current, committed.current].slice(-100);
+    }
+    lastPush.current = now;
+    redoStack.current = [];
+    committed.current = cur;
+    bumpHistory((x) => x + 1);
+  }, []);
+  useEffect(() => {
+    if (drag.current || wireDrag.current) return; // committed on pointer up
+    checkpoint();
+  }, [circuit, checkpoint]);
+  const restore = (c: Circuit) => {
+    committed.current = c;
+    lastPush.current = 0;
+    setCircuit(c);
+    setSelected(null);
+    setMulti([]);
+    setTrace(null);
+    bumpHistory((x) => x + 1);
+  };
+  const undo = () => {
+    const prev = undoStack.current[undoStack.current.length - 1];
+    if (!prev) return;
+    undoStack.current = undoStack.current.slice(0, -1);
+    redoStack.current = [...redoStack.current, circuitRef.current];
+    restore(prev);
+  };
+  const redo = () => {
+    const next = redoStack.current[redoStack.current.length - 1];
+    if (!next) return;
+    redoStack.current = redoStack.current.slice(0, -1);
+    undoStack.current = [...undoStack.current, circuitRef.current];
+    restore(next);
+  };
+
+  // What runs: blocks expanded, tunnels joined (ids of top-level parts unchanged).
+  const flat = useMemo(() => flatten(circuit, library), [circuit, library]);
+  const ev = useMemo(() => evaluate(flat, inputs, seq.q), [flat, inputs, seq]);
+  const verilog = useMemo(() => toVerilog(flat, name), [flat, name]);
+  const table = useMemo(() => truthTable(flat), [flat]);
   const { ins, outs, displays } = useMemo(() => ioNodes(circuit), [circuit]);
   const byId = useMemo(() => new Map(circuit.nodes.map((n) => [n.id, n])), [circuit]);
-  const ffs = useMemo(() => circuit.nodes.filter((n) => isFlipFlop(n.type)).sort((a, b) => a.x - b.x || a.y - b.y), [circuit]);
+  const ffs = useMemo(() => flat.nodes.filter((n) => isFlipFlop(n.type)).sort((a, b) => a.x - b.x || a.y - b.y), [flat]);
   const clocks = useMemo(() => circuit.nodes.filter((n) => n.type === 'CLK'), [circuit]);
   const sequential = ffs.length > 0;
   const showGraph = sequential || clocks.length > 0;
 
   // Latest state for handlers that run from timers and pointer events.
-  const live = useRef({ circuit, inputs, seq, timingMode });
-  live.current = { circuit, inputs, seq, timingMode };
+  const live = useRef({ circuit: flat, inputs, seq, timingMode });
+  live.current = { circuit: flat, inputs, seq, timingMode };
 
   /** Applies new source values: settles flip-flops, records a step, replays delays. */
   const apply = useCallback((next: Record<string, number>) => {
@@ -362,7 +491,9 @@ export default function GateEditor() {
   useEffect(() => {
     if (!menu) return;
     const onDown = (e: PointerEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenu(null);
+      const el = e.target as Element;
+      if (menuRef.current?.contains(el) || el.closest?.('[data-testid="gate-menu-file"]') || el.closest?.('[role="menu"]')) return;
+      setMenu(null);
     };
     document.addEventListener('pointerdown', onDown);
     return () => document.removeEventListener('pointerdown', onDown);
@@ -398,6 +529,14 @@ export default function GateEditor() {
   };
 
   const removeSelected = useCallback(() => {
+    if (multi.length > 1) {
+      const gone = new Set(multi);
+      setCircuit((c) => ({ nodes: c.nodes.filter((n) => !gone.has(n.id)), wires: c.wires.filter((w) => !gone.has(w.from) && !gone.has(w.to)) }));
+      setMulti([]);
+      setSelected(null);
+      setTrace(null);
+      return;
+    }
     if (!selected) return;
     setCircuit((c) =>
       selected.kind === 'wire'
@@ -406,18 +545,50 @@ export default function GateEditor() {
     );
     setSelected(null);
     setTrace(null);
-  }, [selected]);
+  }, [selected, multi]);
+
+  /* ── Copy / paste ── */
+  const copySelection = () => {
+    const ids = new Set(multi.length ? multi : selected?.kind === 'node' ? [selected.id] : []);
+    if (!ids.size) return;
+    clipboard.current = structuredClone({ nodes: circuit.nodes.filter((n) => ids.has(n.id)), wires: circuit.wires.filter((w) => ids.has(w.from) && ids.has(w.to)) });
+    pasteCount.current = 0;
+  };
+  const pasteClipboard = (src: Circuit | null = clipboard.current) => {
+    if (!src || !src.nodes.length) return;
+    pasteCount.current += 1;
+    const d = 30 * pasteCount.current;
+    const map = new Map(src.nodes.map((n) => [n.id, newId(n.type.toLowerCase())]));
+    const nodes = src.nodes.map((n) => ({ ...n, id: map.get(n.id)!, x: Math.min(CANVAS_W - 80, n.x + d), y: Math.min(CANVAS_H - 60, n.y + d) }));
+    const wires = src.wires.map((w) => ({ ...w, id: newId('w'), from: map.get(w.from)!, to: map.get(w.to)!, ...(w.bends ? { bends: w.bends.map((b, i) => b + d * (i % 2 === 0 ? 1 : 1)) } : {}) }));
+    setCircuit((c) => ({ nodes: [...c.nodes, ...nodes], wires: [...c.wires, ...wires] }));
+    setMulti(nodes.map((n) => n.id));
+    setSelected(nodes.length === 1 ? { kind: 'node', id: nodes[0].id } : null);
+    setTrace(null);
+  };
+  const duplicate = () => {
+    copySelection();
+    pasteClipboard();
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      const mod = e.ctrlKey || e.metaKey;
+      const k = e.key.toLowerCase();
+      if (mod && k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
+      if (mod && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); redo(); return; }
+      if (mod && k === 'c') { copySelection(); return; }
+      if (mod && k === 'v') { e.preventDefault(); pasteClipboard(); return; }
+      if (mod && k === 'd') { e.preventDefault(); duplicate(); return; }
+      if (mod && k === 'a') { e.preventDefault(); setMulti(circuitRef.current.nodes.map((n) => n.id)); setSelected(null); return; }
       if (e.key === 'Delete' || e.key === 'Backspace') removeSelected();
-      if (e.key === 'Escape') { setPending(null); setSelected(null); setMenu(null); }
+      if (e.key === 'Escape') { setPending(null); setSelected(null); setMulti([]); setMenu(null); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [removeSelected]);
+  });
 
   const connect = (to: string, pin: number) => {
     if (!pending || pending.id === to) { setPending(null); return; }
@@ -438,8 +609,21 @@ export default function GateEditor() {
   const onNodeDown = (e: React.PointerEvent, n: GateNode) => {
     e.stopPropagation();
     const p = toPoint(e);
-    drag.current = { id: n.id, dx: p.x - n.x, dy: p.y - n.y, moved: false };
+    if (e.shiftKey) {
+      // Shift-click adds to or removes from the selection.
+      setMulti((m) => (m.includes(n.id) ? m.filter((x) => x !== n.id) : [...(m.length ? m : selected?.kind === 'node' ? [selected.id] : []), n.id]));
+      setSelected({ kind: 'node', id: n.id });
+      return;
+    }
+    const group = multi.includes(n.id) && multi.length > 1 ? multi : [n.id];
+    const starts: Record<string, { x: number; y: number }> = {};
+    for (const id of group) {
+      const m = byId.get(id);
+      if (m) starts[id] = { x: m.x, y: m.y };
+    }
+    drag.current = { id: n.id, dx: p.x - n.x, dy: p.y - n.y, moved: false, starts, p0: p };
     (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
+    if (group.length === 1) setMulti([n.id]);
     setSelected({ kind: 'node', id: n.id });
   };
   const onMove = (e: React.PointerEvent) => {
@@ -451,9 +635,30 @@ export default function GateEditor() {
       setCircuit((c) => ({ ...c, wires: c.wires.map((w) => (w.id === wd.id && w.bends ? { ...w, bends: w.bends.map((b, i) => (i === wd.index ? v : b)) } : w)) }));
       return;
     }
+    const mq = marqueeRef.current;
+    if (mq) {
+      mq.moved = true;
+      setMarquee({ x0: mq.x0, y0: mq.y0, x1: p.x, y1: p.y });
+      return;
+    }
     const dr = drag.current;
     if (!dr) return;
     dr.moved = true;
+    if (dr.starts && dr.p0 && Object.keys(dr.starts).length > 1) {
+      const dx = Math.round((p.x - dr.p0.x) / 10) * 10;
+      const dy = Math.round((p.y - dr.p0.y) / 10) * 10;
+      const starts = dr.starts;
+      setCircuit((c) => ({
+        ...c,
+        nodes: c.nodes.map((n) => {
+          const s0 = starts[n.id];
+          if (!s0) return n;
+          const { w: nw, h: nh } = nodeSize(n);
+          return { ...n, x: Math.min(CANVAS_W - nw - 4, Math.max(4, s0.x + dx)), y: Math.min(CANVAS_H - nh - 4, Math.max(4, s0.y + dy)) };
+        }),
+      }));
+      return;
+    }
     const node = byId.get(dr.id);
     const { w, h } = node ? nodeSize(node) : { w: W, h: H };
     const x = Math.round(Math.min(CANVAS_W - w - 4, Math.max(4, p.x - dr.dx)) / 10) * 10;
@@ -474,18 +679,40 @@ export default function GateEditor() {
         }),
       }));
     }
+    const mq = marqueeRef.current;
+    if (mq) {
+      marqueeRef.current = null;
+      if (mq.moved && marquee) {
+        const [x0, x1] = [Math.min(marquee.x0, marquee.x1), Math.max(marquee.x0, marquee.x1)];
+        const [y0, y1] = [Math.min(marquee.y0, marquee.y1), Math.max(marquee.y0, marquee.y1)];
+        const hit = circuit.nodes.filter((n) => {
+          const { w: nw, h: nh } = nodeSize(n);
+          return n.x < x1 && n.x + nw > x0 && n.y < y1 && n.y + nh > y0;
+        });
+        setMulti(hit.map((n) => n.id));
+        setSelected(hit.length === 1 ? { kind: 'node', id: hit[0].id } : null);
+      } else {
+        setSelected(null);
+        setMulti([]);
+      }
+      setMarquee(null);
+    }
+    const wasDragging = !!drag.current?.moved;
     wireDrag.current = null;
     drag.current = null;
+    if (wasDragging) checkpoint();
   };
 
   const loadPreset = (key: string) => {
     const p = PRESETS[key];
     const next: Record<string, number> = key === 'hazard' ? { a: 1, b: 1, c: 1 } : {};
-    const r = settle(p.circuit, next, EMPTY_SEQ);
+    const r = settle(flatten(p.circuit, library), next, EMPTY_SEQ);
     setCircuit(structuredClone(p.circuit));
+    setMulti([]);
+    setTestResult(null);
     setInputs(next);
     setSeq(r.seq);
-    live.current = { ...live.current, circuit: p.circuit, inputs: next, seq: r.seq };
+    live.current = { ...live.current, circuit: flatten(p.circuit, library), inputs: next, seq: r.seq };
     setName(key);
     setSelected(null);
     setPending(null);
@@ -529,9 +756,132 @@ export default function GateEditor() {
     setTrace(null);
   };
 
+  /* ── Files, share links and blocks ── */
+  const designFile = (): DesignFile => ({ format: FILE_FORMAT, version: 1, name, circuit, tests, library: usedBlocks(circuit, library) });
+  const loadDesign = (d: DesignFile) => {
+    const lib = { ...library, ...(d.library ?? {}) };
+    if (d.library && Object.keys(d.library).length) setLibrary(lib);
+    const r = settle(flatten(d.circuit, lib), {}, EMPTY_SEQ);
+    setCircuit(d.circuit);
+    setInputs({});
+    setSeq(r.seq);
+    setName(d.name);
+    setTests(d.tests ?? '');
+    setSelected(null);
+    setMulti([]);
+    setTrace(null);
+    setHistory([]);
+    setRunning(false);
+    setTestResult(null);
+  };
+  const newCircuit = () => {
+    setCircuit({ nodes: [], wires: [] });
+    setInputs({});
+    setSeq(EMPTY_SEQ);
+    setTrace(null);
+    setSelected(null);
+    setMulti([]);
+    setHistory([]);
+    setRunning(false);
+    setTestResult(null);
+    setMenu(null);
+  };
+  const safeName = (name || 'gate_design').replace(/[^A-Za-z0-9_-]+/g, '_');
+  const saveFile = () => {
+    downloadText(JSON.stringify(designFile(), null, 2), `${safeName}.logiclab.json`, 'application/json');
+    setMenu(null);
+  };
+  const openFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      let d: DesignFile | null = null;
+      try {
+        d = readDesign(JSON.parse(String(reader.result)));
+      } catch {
+        d = null;
+      }
+      if (!d) return setNotice({ kind: 'err', text: g.openFailed });
+      if (circuitRef.current.nodes.length && !window.confirm(g.openShared)) return;
+      loadDesign(d);
+    };
+    reader.readAsText(file);
+  };
+  const copyShareLink = async () => {
+    setMenu(null);
+    try {
+      const url = `${window.location.origin}${window.location.pathname}#/gates?${SHARE_KEY}=${await encodeJson(designFile())}`;
+      if (url.length > MAX_SHARE_URL_LENGTH) return setNotice({ kind: 'err', text: g.tooLong });
+      await navigator.clipboard.writeText(url);
+      setNotice({ kind: 'ok', text: g.linkCopied });
+    } catch (err) {
+      setNotice({ kind: 'err', text: (err as Error).message });
+    }
+  };
+  // Open a design carried by a share link (#/gates?g=…).
+  useEffect(() => {
+    const code = new URLSearchParams(location.search).get(SHARE_KEY);
+    if (!code) return;
+    let cancelled = false;
+    decodeJson(code)
+      .then((data) => {
+        if (cancelled) return;
+        const d = readDesign(data);
+        if (!d) throw new Error(g.openFailed);
+        if (circuitRef.current.nodes.length && !window.confirm(g.openShared)) return;
+        loadDesign(d);
+      })
+      .catch((err: Error) => { if (!cancelled) setNotice({ kind: 'err', text: err.message }); })
+      .finally(() => { if (!cancelled) navigate(location.pathname, { replace: true }); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]);
+
+  const saveAsBlock = () => {
+    setMenu(null);
+    const pins = blockPins(circuit);
+    if (!pins.ins.length || !pins.outs.length) return setNotice({ kind: 'err', text: g.blockNeedsIo });
+    const bname = (name || 'block').trim();
+    const existing = Object.values(library).find((b) => b.name === bname);
+    if (existing && !window.confirm(fmt(g.blockExists, { name: bname }))) return;
+    const id = existing?.id ?? newId('blk');
+    if (usedBlocks(circuit, library)[id]) return setNotice({ kind: 'err', text: g.blockRecursive });
+    setLibrary((lib) => ({ ...lib, [id]: { id, name: bname, circuit: structuredClone(circuit) } }));
+    setNotice({ kind: 'ok', text: fmt(g.blockSaved, { name: bname }) });
+  };
+  const addBlock = (id: string) => {
+    const b = library[id];
+    if (!b) return;
+    const pins = blockPins(b.circuit);
+    const count = circuit.nodes.filter((n) => n.type === 'BLOCK').length;
+    const n: GateNode = { id: newId('blk'), type: 'BLOCK', ref: id, pinsIn: pins.ins, pinsOut: pins.outs, label: b.name, x: 300 + (count % 4) * 40, y: 60 + (count % 4) * 40, delay: 1 };
+    setCircuit((c) => ({ ...c, nodes: [...c.nodes, n] }));
+    setSelected({ kind: 'node', id: n.id });
+    setMulti([n.id]);
+    setMenu(null);
+  };
+  const deleteBlock = (id: string) => {
+    const b = library[id];
+    if (!b || !window.confirm(fmt(g.blockDelete, { name: b.name }))) return;
+    setLibrary((lib) => {
+      const next = { ...lib };
+      delete next[id];
+      return next;
+    });
+  };
+
+  const runTest = () => {
+    if (!tests.trim()) return setTestResult({ error: 'empty', rows: [], passed: 0, failed: 0 });
+    setTestResult(runTests(flat, tests));
+  };
+  const testError = (e: string) =>
+    e === 'empty' ? g.testEmpty
+    : e.startsWith('unknown:') ? fmt(g.testUnknown, { names: e.slice(8) })
+    : e.startsWith('columns:') ? fmt(g.testColumns, { line: e.slice(8) })
+    : e;
+
   const openInDe2 = () => {
     const st = useBoardStore.getState();
-    st.setHdlCode(toDe2Verilog(circuit, name));
+    st.setHdlCode(toDe2Verilog(flat, name));
     st.setPinMappings([]);
     st.setEngine(null);
     st.resetBoard();
@@ -556,12 +906,12 @@ export default function GateEditor() {
   const btn = 'h-8 px-2.5 rounded-[0.25rem] border text-[0.75rem] font-medium flex items-center gap-1.5 transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-40';
   const btnStyle = { borderColor: 'var(--border-subtle)', color: 'var(--text-primary)', backgroundColor: 'var(--bg-surface)' };
   const loopSet = new Set(ev.loop);
-  const labelled = (t: GateType) => SOURCES.includes(t) || SINKS.includes(t) || t === 'SEG7';
+  const labelled = (t: GateType) => SOURCES.includes(t) || SINKS.includes(t) || t === 'SEG7' || t === 'TUNNEL';
 
   const renderNode = (n: GateNode) => {
     const { w, h } = nodeSize(n);
     const v = shown(n.id);
-    const isSel = selected?.kind === 'node' && selected.id === n.id;
+    const isSel = (selected?.kind === 'node' && selected.id === n.id) || multi.includes(n.id);
     const glitch = trace?.glitches.includes(n.id);
     const stroke = loopSet.has(n.id) ? '#ef4444' : isSel ? '#3b82f6' : 'var(--text-secondary)';
     const inNames = inputNames(n);
@@ -582,7 +932,7 @@ export default function GateEditor() {
       body = (
         <>
           <rect x={0} y={0} width={w} height={h} rx={4} fill="var(--bg-surface)" stroke={stroke} strokeWidth={isSel ? 2.2 : 1.5} />
-          <text x={w / 2} y={13} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--text-primary)" pointerEvents="none">{n.type === 'SHIFT' ? (n.dir === 'right' ? '>>' : '<<') : BLOCK_TITLE[n.type]}{ARITH.includes(n.type) ? ` ${bitWidth(n)}b` : ''}</text>
+          <text x={w / 2} y={13} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--text-primary)" pointerEvents="none">{n.type === 'BLOCK' ? (n.label || (n.ref && library[n.ref]?.name) || 'BLOCK') + (n.ref && !library[n.ref] ? ` (${g.blockMissing})` : '') : n.type === 'SHIFT' ? (n.dir === 'right' ? '>>' : '<<') : BLOCK_TITLE[n.type]}{ARITH.includes(n.type) ? ` ${bitWidth(n)}b` : ''}</text>
           {isFlipFlop(n.type) && (
             <text x={w / 2} y={h - 6} textAnchor="middle" fontSize={11} fontWeight={700} fill={v ? on : 'var(--text-muted)'} pointerEvents="none">Q={v}</text>
           )}
@@ -593,6 +943,13 @@ export default function GateEditor() {
         <>
           <rect x={0} y={0} width={w} height={h} rx={6} fill="#111827" stroke={stroke} strokeWidth={isSel ? 2.2 : 1.5} />
           <Seg7Face value={v} />
+        </>
+      );
+    } else if (n.type === 'TUNNEL') {
+      body = (
+        <>
+          <path d={`M0,0 H${w - 14} L${w},${h / 2} L${w - 14},${h} H0 Z`} fill={v ? 'rgba(34,197,94,0.12)' : 'var(--bg-surface)'} stroke={stroke} strokeWidth={isSel ? 2.2 : 1.4} />
+          <text x={(w - 14) / 2 + 2} y={h / 2 + 4} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--text-primary)" pointerEvents="none">{n.label || '?'}</text>
         </>
       );
     } else if (n.type === 'CONST0' || n.type === 'CONST1') {
@@ -644,7 +1001,7 @@ export default function GateEditor() {
             <text x={22} y={31} textAnchor="middle" fontSize={13} fontWeight={700} fill={v ? '#fff' : 'var(--text-primary)'} pointerEvents="none">{v}</text>
           </g>
         )}
-        {labelled(n.type) && n.type !== 'SEG7' && (
+        {labelled(n.type) && n.type !== 'SEG7' && n.type !== 'TUNNEL' && (
           <text x={42} y={H / 2 + 4} fontSize={12} fontWeight={600} fill="var(--text-primary)" pointerEvents="none">{n.label}</text>
         )}
         {n.type === 'SEG7' && <text x={w / 2} y={h + 13} textAnchor="middle" fontSize={11} fontWeight={600} fill="var(--text-primary)" pointerEvents="none">{n.label}</text>}
@@ -689,6 +1046,9 @@ export default function GateEditor() {
       {/* Toolbar */}
       <div className="flex items-center gap-2 flex-wrap px-3 py-2 border-b" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
         <h1 className="text-[0.875rem] font-bold mr-2">{g.title}</h1>
+        <button type="button" className={btn} style={btnStyle} data-testid="gate-undo" title={g.undo} aria-label={g.undo} disabled={!undoStack.current.length} onClick={undo}><Undo2 size={14} /></button>
+        <button type="button" className={btn} style={btnStyle} data-testid="gate-redo" title={g.redo} aria-label={g.redo} disabled={!redoStack.current.length} onClick={redo}><Redo2 size={14} /></button>
+        <span className="w-px h-6" style={{ backgroundColor: 'var(--border-subtle)' }} />
         <div ref={menuRef} className="flex items-center gap-1.5 flex-wrap">
           {PALETTE.map(({ category, types }) => (
             <div key={category} className="relative">
@@ -707,6 +1067,33 @@ export default function GateEditor() {
               )}
             </div>
           ))}
+          <div className="relative">
+            <button type="button" data-testid="gate-menu-blocks" aria-haspopup="menu" aria-expanded={menu === 'blocks'} className={btn} style={{ ...btnStyle, backgroundColor: menu === 'blocks' ? 'var(--accent-subtle)' : btnStyle.backgroundColor }} onClick={() => setMenu(menu === 'blocks' ? null : 'blocks')}>
+              <Boxes size={13} /> {g.myBlocks} <ChevronDown size={12} style={{ opacity: 0.7 }} />
+            </button>
+            {menu === 'blocks' && (
+              <div role="menu" className="absolute left-0 top-full mt-1 z-40 min-w-[16rem] max-w-[22rem] p-1 rounded-[0.375rem] border shadow-lg flex flex-col" style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
+                <button type="button" role="menuitem" data-testid="gate-save-block" onClick={saveAsBlock} className="flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-[0.25rem] text-left text-[0.7812rem] font-semibold hover:bg-[var(--accent-subtle)]" style={{ color: 'var(--accent-primary)' }}>
+                  <Plus size={14} /> {g.saveAsBlock}
+                </button>
+                <div className="h-px my-1" style={{ backgroundColor: 'var(--border-subtle)' }} />
+                {Object.values(library).length === 0 && <p className="px-2.5 py-1.5 text-[0.7188rem]" style={{ color: 'var(--text-muted)' }}>{g.noBlocks}</p>}
+                {Object.values(library).sort((a, b) => a.name.localeCompare(b.name)).map((b) => {
+                  const pins = blockPins(b.circuit);
+                  return (
+                    <div key={b.id} className="flex items-center gap-1 rounded-[0.25rem] hover:bg-[var(--accent-subtle)]">
+                      <button type="button" role="menuitem" data-testid={`gate-add-block-${b.name}`} onClick={() => addBlock(b.id)} className="flex-1 min-w-0 flex items-center gap-2.5 px-2.5 py-1.5 text-left text-[0.7812rem]" style={{ color: 'var(--text-primary)' }}>
+                        <span className="w-[1.75rem] flex justify-center" style={{ color: 'var(--text-secondary)' }}><PartIcon type="BLOCK" /></span>
+                        <span className="truncate">{b.name}</span>
+                        <span className="ml-auto text-[0.6875rem] shrink-0" style={{ color: 'var(--text-muted)' }}>{pins.ins.length}→{pins.outs.length}</span>
+                      </button>
+                      <button type="button" aria-label={g.delete} title={g.delete} onClick={() => deleteBlock(b.id)} className="p-1.5 rounded hover:bg-[var(--bg-hover)]" style={{ color: 'var(--text-muted)' }}><X size={13} /></button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
         <span className="flex-1" />
         <label className="flex items-center gap-1.5 text-[0.75rem]">
@@ -716,7 +1103,26 @@ export default function GateEditor() {
             {Object.entries(PRESETS).map(([k, p]) => <option key={k} value={k}>{p.title[lang]}</option>)}
           </select>
         </label>
-        <button type="button" className={btn} style={btnStyle} onClick={() => { setCircuit({ nodes: [], wires: [] }); setInputs({}); setSeq(EMPTY_SEQ); setTrace(null); setSelected(null); setHistory([]); setRunning(false); }}>{g.clear}</button>
+        <div className="relative" ref={undefined}>
+          <button type="button" data-testid="gate-menu-file" aria-haspopup="menu" aria-expanded={menu === 'file'} className={btn} style={{ ...btnStyle, backgroundColor: menu === 'file' ? 'var(--accent-subtle)' : btnStyle.backgroundColor }} onClick={() => setMenu(menu === 'file' ? null : 'file')}>
+            {g.file} <ChevronDown size={12} style={{ opacity: 0.7 }} />
+          </button>
+          {menu === 'file' && (
+            <div role="menu" className="absolute right-0 top-full mt-1 z-40 min-w-[14rem] p-1 rounded-[0.375rem] border shadow-lg flex flex-col" style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
+              {[
+                { id: 'new', icon: <Plus size={14} />, label: g.newCircuit, run: newCircuit },
+                { id: 'open', icon: <FileUp size={14} />, label: g.openFile, run: () => { setMenu(null); fileRef.current?.click(); } },
+                { id: 'save', icon: <FileDown size={14} />, label: g.saveFile, run: saveFile },
+                { id: 'share', icon: <Link2 size={14} />, label: g.shareLink, run: () => void copyShareLink() },
+              ].map((it) => (
+                <button key={it.id} type="button" role="menuitem" data-testid={`gate-file-${it.id}`} onClick={it.run} className="flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-[0.25rem] text-left text-[0.7812rem] hover:bg-[var(--accent-subtle)]" style={{ color: 'var(--text-primary)' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>{it.icon}</span> {it.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <input ref={fileRef} type="file" accept=".json,application/json" className="hidden" data-testid="gate-file-input" onChange={(e) => { const f = e.target.files?.[0]; if (f) openFile(f); e.target.value = ''; }} />
       </div>
 
       <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
@@ -724,6 +1130,7 @@ export default function GateEditor() {
         <div className="flex-1 min-w-0 min-h-0 flex flex-col">
           <div className="px-3 py-1.5 text-[0.7188rem] flex items-center gap-3 flex-wrap" style={{ color: 'var(--text-secondary)' }}>
             <span>{pending ? g.connectHint : g.help}</span>
+            {notice && <span data-testid="gate-notice" style={{ color: notice.kind === 'ok' ? '#16a34a' : '#ef4444' }}>{notice.text}</span>}
             {ev.loop.length > 0 && <span style={{ color: '#ef4444' }}>{g.loopWarning}</span>}
             {ev.floating.length > 0 && <span style={{ color: '#d97706' }}>{fmt(g.floatingWarning, { n: ev.floating.length })}</span>}
           </div>
@@ -751,7 +1158,7 @@ export default function GateEditor() {
               style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-canvas, var(--bg-panel))', touchAction: 'none' }}
               onPointerMove={onMove}
               onPointerUp={onUp}
-              onPointerDown={() => { setSelected(null); setPending(null); }}
+              onPointerDown={(e) => { setPending(null); const p = toPoint(e); marqueeRef.current = { x0: p.x, y0: p.y, moved: false }; try { svgRef.current?.setPointerCapture(e.pointerId); } catch { /* optional */ } }}
             >
               <defs>
                 <pattern id="gate-grid" width="20" height="20" patternUnits="userSpaceOnUse">
@@ -823,6 +1230,9 @@ export default function GateEditor() {
               )}
 
               {circuit.nodes.map(renderNode)}
+              {marquee && (
+                <rect data-testid="gate-marquee" x={Math.min(marquee.x0, marquee.x1)} y={Math.min(marquee.y0, marquee.y1)} width={Math.abs(marquee.x1 - marquee.x0)} height={Math.abs(marquee.y1 - marquee.y0)} fill="rgba(59,130,246,0.08)" stroke="#3b82f6" strokeDasharray="5 4" pointerEvents="none" />
+              )}
             </svg>
 
             {/* Clocked timing diagram */}
@@ -873,7 +1283,17 @@ export default function GateEditor() {
 
         {/* Side panel */}
         <aside className="lg:w-[22.5rem] shrink-0 border-t lg:border-t-0 lg:border-l overflow-y-auto p-3 flex flex-col gap-3" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
-          {sel ? (
+          {multi.length > 1 ? (
+            <div className="flex flex-col gap-2" data-testid="gate-multi-panel">
+              <h2 className="text-[0.75rem] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{fmt(g.selectedCount, { n: multi.length })}</h2>
+              <div className="flex gap-2 flex-wrap">
+                <button type="button" className={btn} style={btnStyle} onClick={copySelection}><Copy size={13} /> {g.copySel}</button>
+                <button type="button" className={btn} style={btnStyle} data-testid="gate-duplicate" onClick={duplicate}><CopyPlus size={13} /> {g.duplicate}</button>
+                <button type="button" className={btn} style={btnStyle} disabled={!clipboard.current} onClick={() => pasteClipboard()}><ClipboardPaste size={13} /> {g.paste}</button>
+                <button type="button" className={btn} style={btnStyle} onClick={removeSelected}><Trash2 size={13} /> {g.deleteSel}</button>
+              </div>
+            </div>
+          ) : sel ? (
             <div className="flex flex-col gap-2">
               <h2 className="text-[0.75rem] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{g.selected}: {g.partNames[sel.type]}</h2>
               {labelled(sel.type) && (
@@ -910,13 +1330,17 @@ export default function GateEditor() {
                   <p className="text-[0.6875rem]" style={{ color: 'var(--text-muted)' }}>{g.arithNote}</p>
                 </>
               )}
-              {!labelled(sel.type) && !isFlipFlop(sel.type) && sel.type !== 'CONST0' && sel.type !== 'CONST1' && (
+              {!labelled(sel.type) && !isFlipFlop(sel.type) && sel.type !== 'CONST0' && sel.type !== 'CONST1' && sel.type !== 'BLOCK' && (
                 <label className="text-[0.75rem] flex items-center gap-2">
                   {g.delay}
                   <input type="number" min={1} max={5} value={sel.delay} onChange={(e) => updateNode(sel.id, { delay: Math.max(1, Math.min(5, Number(e.target.value) || 1)) })} className="h-8 w-16 px-2 rounded-[0.25rem] border text-[0.8125rem]" style={btnStyle} />
                 </label>
               )}
-              <button type="button" className={btn} style={btnStyle} onClick={removeSelected}><Trash2 size={13} /> {g.delete}</button>
+              {sel.type === 'TUNNEL' && <p className="text-[0.6875rem]" style={{ color: 'var(--text-muted)' }}>{g.tunnelHint}</p>}
+              <div className="flex gap-2 flex-wrap">
+                <button type="button" className={btn} style={btnStyle} data-testid="gate-duplicate" onClick={duplicate}><CopyPlus size={13} /> {g.duplicate}</button>
+                <button type="button" className={btn} style={btnStyle} onClick={removeSelected}><Trash2 size={13} /> {g.delete}</button>
+              </div>
             </div>
           ) : selected?.kind === 'wire' ? (
             <div className="flex flex-col gap-2">
@@ -971,6 +1395,50 @@ export default function GateEditor() {
               </table>
             ) : (
               <p className="text-[0.75rem]" style={{ color: 'var(--text-muted)' }}>{sequential ? g.tableSequential : g.tableNeedsInputs}</p>
+            )}
+          </div>
+          <div data-testid="gate-tests">
+            <h2 className="text-[0.75rem] font-semibold uppercase tracking-wider mb-1.5 flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}><FlaskConical size={13} /> {g.tests}</h2>
+            <p className="text-[0.6875rem] mb-1.5" style={{ color: 'var(--text-muted)' }}>{g.testHint}</p>
+            <textarea data-testid="gate-test-text" value={tests} onChange={(e) => { setTests(e.target.value); setTestResult(null); }} rows={6} spellCheck={false} className="w-full px-2 py-1.5 rounded-[0.25rem] border text-[0.75rem] font-mono" style={btnStyle} placeholder={'a b | y\n0 0 | 0\n0 1 | 1'} />
+            <div className="flex gap-2 mt-1.5 flex-wrap">
+              <button type="button" className={btn} style={btnStyle} data-testid="gate-test-template" onClick={() => { setTests(testTemplate(flat)); setTestResult(null); }}>{g.testTemplate}</button>
+              <button type="button" className={`${btn} text-white`} style={{ backgroundColor: 'var(--accent-primary)', borderColor: 'var(--accent-primary)' }} data-testid="gate-test-run" onClick={runTest}><Play size={13} /> {g.testRun}</button>
+            </div>
+            {testResult && (
+              <div className="mt-2" data-testid="gate-test-result">
+                {testResult.error ? (
+                  <p className="text-[0.75rem]" style={{ color: '#ef4444' }}>{testError(testResult.error)}</p>
+                ) : (
+                  <>
+                    <p className="text-[0.75rem] font-semibold" style={{ color: testResult.failed ? '#ef4444' : '#16a34a' }}>
+                      {testResult.failed ? fmt(g.testFailed, { failed: testResult.failed, total: testResult.rows.length }) : fmt(g.testPassed, { n: testResult.rows.length })}
+                    </p>
+                    {testResult.failed > 0 && (
+                      <table className="text-[0.6875rem] font-mono border-collapse mt-1">
+                        <thead>
+                          <tr>
+                            <th className="px-1.5 text-left" style={{ color: 'var(--text-muted)' }}>{g.testLine}</th>
+                            {testResult.rows[0]?.cells.map((c) => <th key={c.name} className="px-1.5 text-left">{c.name}</th>)}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {testResult.rows.filter((r) => !r.ok).slice(0, 12).map((r) => (
+                            <tr key={r.line}>
+                              <td className="px-1.5" style={{ color: 'var(--text-muted)' }}>{r.line}</td>
+                              {r.cells.map((c) => (
+                                <td key={c.name} className="px-1.5" style={{ color: c.ok ? undefined : '#ef4444', fontWeight: c.ok ? 400 : 700 }} title={c.ok ? undefined : `${g.testExpected} ${c.want}`}>
+                                  {c.input ? c.want : c.ok ? c.got : `${c.got}≠${c.want}`}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </>
+                )}
+              </div>
             )}
           </div>
         </aside>

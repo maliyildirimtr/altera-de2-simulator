@@ -71,6 +71,17 @@ export async function decodeSharePayload(encoded: string): Promise<SharePayload>
   return data as SharePayload;
 }
 
+/** Any JSON value as a compressed base64url string (used by tools with their own link format). */
+export async function encodeJson(value: unknown): Promise<string> {
+  const json = new TextEncoder().encode(JSON.stringify(value));
+  return toBase64Url(await pipeThrough(json, new CompressionStream('deflate-raw')));
+}
+
+export async function decodeJson(encoded: string): Promise<unknown> {
+  const json = await pipeThrough(fromBase64Url(encoded), new DecompressionStream('deflate-raw'));
+  return JSON.parse(new TextDecoder().decode(json));
+}
+
 export async function buildShareUrl(payload: SharePayload): Promise<string> {
   const encoded = await encodeSharePayload(payload);
   const base = `${window.location.origin}${window.location.pathname}`;

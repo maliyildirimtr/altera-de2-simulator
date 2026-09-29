@@ -10,7 +10,9 @@
 
 export type GateType =
   // sources and sinks
-  | 'IN' | 'OUT' | 'LED' | 'BTN' | 'CLK' | 'CONST0' | 'CONST1' | 'SEG7'
+  | 'IN' | 'OUT' | 'LED' | 'BTN' | 'CLK' | 'CONST0' | 'CONST1' | 'SEG7' | 'TUNNEL'
+  // a saved circuit used as a block
+  | 'BLOCK'
   // gates
   | 'AND' | 'OR' | 'NOT' | 'NAND' | 'NOR' | 'XOR' | 'XNOR' | 'BUF'
   // plexers
@@ -35,6 +37,10 @@ export interface GateNode {
   bits?: number;
   /** Barrel shifter direction (default left). */
   dir?: 'left' | 'right';
+  /** BLOCK: id of the block in the library, and its pin names (inputs, outputs). */
+  ref?: string;
+  pinsIn?: string[];
+  pinsOut?: string[];
 }
 
 export interface Wire {
@@ -57,7 +63,7 @@ export interface Circuit {
   wires: Wire[];
 }
 
-export type PartCategory = 'io' | 'logic' | 'plexers' | 'arithmetic' | 'flipflops';
+export type PartCategory = 'io' | 'wires' | 'logic' | 'plexers' | 'arithmetic' | 'flipflops';
 
 interface PartSpec {
   category: PartCategory;
@@ -75,8 +81,10 @@ export const PARTS: Record<GateType, PartSpec> = {
   LED: { category: 'io', ins: [''], outs: [] },
   BTN: { category: 'io', ins: [], outs: [''] },
   CLK: { category: 'io', ins: [], outs: [''] },
-  CONST0: { category: 'io', ins: [], outs: [''] },
-  CONST1: { category: 'io', ins: [], outs: [''] },
+  CONST0: { category: 'wires', ins: [], outs: [''] },
+  CONST1: { category: 'wires', ins: [], outs: [''] },
+  TUNNEL: { category: 'wires', ins: [''], outs: [''] },
+  BLOCK: { category: 'io', ins: [], outs: [] },
   SEG7: { category: 'io', ins: ['b0', 'b1', 'b2', 'b3'], outs: [] },
   AND: { category: 'logic', ins: ['', ''], outs: [''] },
   OR: { category: 'logic', ins: ['', ''], outs: [''] },
@@ -123,7 +131,8 @@ export const SINKS: GateType[] = ['OUT', 'LED'];
 
 export const PALETTE: Array<{ category: PartCategory; types: GateType[] }> = [
   { category: 'logic', types: GATE_TYPES },
-  { category: 'io', types: ['OUT', 'LED', 'IN', 'CLK', 'BTN', 'CONST0', 'CONST1', 'SEG7'] },
+  { category: 'io', types: ['OUT', 'LED', 'IN', 'CLK', 'BTN', 'SEG7'] },
+  { category: 'wires', types: ['TUNNEL', 'CONST0', 'CONST1'] },
   { category: 'plexers', types: ['MUX2', 'MUX4', 'DEMUX2', 'DEMUX4', 'DEC2', 'DEC3', 'BITSEL', 'PENC4'] },
   { category: 'arithmetic', types: ['HA', 'FA', 'ADD', 'SUB', 'MUL', 'DIV', 'SHIFT', 'CMP', 'NEG', 'SEXT', 'BITCNT'] },
   { category: 'flipflops', types: FLIP_FLOPS },
@@ -140,7 +149,7 @@ export function isGate(type: GateType): boolean {
 /** Multi-bit arithmetic blocks (Digital's Arithmetic menu). */
 export const ARITH: GateType[] = ['ADD', 'SUB', 'MUL', 'DIV', 'SHIFT', 'CMP', 'NEG', 'SEXT', 'BITCNT'];
 
-type Shape = Pick<GateNode, 'type'> & Partial<Pick<GateNode, 'inputs' | 'bits' | 'dir'>>;
+type Shape = Pick<GateNode, 'type'> & Partial<Pick<GateNode, 'inputs' | 'bits' | 'dir' | 'pinsIn' | 'pinsOut'>>;
 
 export function bitWidth(n: Shape): number {
   return Math.max(n.type === 'SHIFT' ? 2 : 1, Math.min(4, n.bits ?? 4));
@@ -172,11 +181,13 @@ export function inputNames(n: Shape): string[] {
     return Array(k).fill('');
   }
   if (ARITH.includes(n.type)) return arithPins(n).ins;
+  if (n.type === 'BLOCK') return n.pinsIn ?? [];
   return PARTS[n.type].ins;
 }
 
 export function outputNames(n: Shape): string[] {
   if (ARITH.includes(n.type)) return arithPins(n).outs;
+  if (n.type === 'BLOCK') return n.pinsOut ?? [];
   return PARTS[n.type].outs;
 }
 
@@ -303,6 +314,8 @@ export function computeNode(n: GateNode, ins: number[], q = 0, sourceValue = 0):
     case 'TFF':
     case 'JKFF':
     case 'SRFF': return [q, q ^ 1];
+    case 'TUNNEL': return [ins[0] ?? 0];
+    case 'BLOCK': return outputNames(n).map(() => 0);
     default: return [gateValue(n.type, ins)];
   }
 }
@@ -910,6 +923,209 @@ export function toVerilog(c: Circuit, moduleName = 'gate_design'): string {
 export function toDe2Verilog(c: Circuit, moduleName = 'gate_design'): string {
   const built = buildVerilog(c, `${sanitizeName(moduleName, 'gate_design')}_de2`, 'de2');
   return ['// DE2 board mapping:', ...built.notes, built.code].join('\n');
+}
+
+/* ── Blocks (sub-circuits) and tunnels ─────────────────────────────── */
+
+/** A saved circuit that can be placed as a block (BLOCK node). */
+export interface LibraryBlock {
+  id: string;
+  name: string;
+  circuit: Circuit;
+}
+export type Library = Record<string, LibraryBlock>;
+
+/** Pin names of a circuit used as a block: its inputs and outputs, top to bottom. */
+export function blockPins(c: Circuit): { ins: string[]; outs: string[] } {
+  const { ins, outs } = ioNodes(c);
+  const name = (n: GateNode, i: number, p: string) => n.label.trim() || `${p}${i}`;
+  return { ins: ins.map((n, i) => name(n, i, 'in')), outs: outs.map((n, i) => name(n, i, 'out')) };
+}
+
+/** Library blocks a circuit uses, directly or through other blocks. */
+export function usedBlocks(c: Circuit, lib: Library, seen = new Set<string>()): Library {
+  const out: Library = {};
+  for (const n of c.nodes) {
+    if (n.type !== 'BLOCK' || !n.ref || seen.has(n.ref) || !lib[n.ref]) continue;
+    seen.add(n.ref);
+    out[n.ref] = lib[n.ref];
+    Object.assign(out, usedBlocks(lib[n.ref].circuit, lib, seen));
+  }
+  return out;
+}
+
+const MAX_DEPTH = 8;
+
+/**
+ * The circuit the simulator actually runs: every block (BLOCK) is replaced by
+ * the parts inside it, and tunnels with the same name are joined. Top-level
+ * node ids are kept, and a block's output k gets the signal key sig(block, k),
+ * so values and traces line up with what the editor draws.
+ */
+export function flatten(c: Circuit, lib: Library = {}, depth = 0): Circuit {
+  const nodes: GateNode[] = [];
+  const inner: Wire[] = [];
+  const inPins: Record<string, string[]> = {};
+  for (const n of c.nodes) {
+    if (n.type !== 'BLOCK') {
+      nodes.push(n.type === 'TUNNEL' ? { ...n, type: 'BUF' } : n);
+      continue;
+    }
+    const def = n.ref ? lib[n.ref] : undefined;
+    inPins[n.id] = [];
+    if (!def || depth >= MAX_DEPTH) continue;
+    const body = flatten(def.circuit, lib, depth + 1);
+    const { ins, outs } = ioNodes(def.circuit);
+    const p = `${n.id}/`;
+    const rename = new Map<string, string>();
+    for (const m of body.nodes) {
+      const k = outs.findIndex((o) => o.id === m.id);
+      if (m.type === 'SEG7') continue;
+      if (k >= 0) {
+        rename.set(m.id, sig(n.id, k));
+        nodes.push({ ...m, id: sig(n.id, k), type: 'BUF', label: '' });
+      } else if (ins.some((x) => x.id === m.id)) {
+        rename.set(m.id, p + m.id);
+        nodes.push({ ...m, id: p + m.id, type: 'BUF', label: '' });
+      } else {
+        rename.set(m.id, p + m.id);
+        nodes.push({ ...m, id: p + m.id });
+      }
+    }
+    inPins[n.id] = ins.map((x) => p + x.id);
+    for (const w of body.wires) {
+      const from = rename.get(w.from);
+      const to = rename.get(w.to);
+      if (from && to) inner.push({ ...w, id: p + w.id, from, to });
+    }
+  }
+  // Outer wires: into a block pin k -> its input buffer; from a block output k -> sig(block, k).
+  const outer: Wire[] = [];
+  for (const w of c.wires) {
+    let next: Wire = w;
+    if (inPins[w.to]) {
+      const to = inPins[w.to][w.pin];
+      if (!to) continue;
+      next = { ...next, to, pin: 0 };
+    }
+    const fromNode = c.nodes.find((n) => n.id === w.from);
+    if (fromNode?.type === 'BLOCK') {
+      const { fromPin, ...rest } = next;
+      next = { ...rest, from: sig(w.from, fromPin ?? 0) };
+    }
+    outer.push(next);
+  }
+  // Tunnels: a tunnel without an input reads the one with the same name that has one.
+  const wires = [...inner, ...outer];
+  const tunnels = c.nodes.filter((n) => n.type === 'TUNNEL');
+  const driver = new Map<string, Wire>();
+  for (const t of tunnels) {
+    const w = wires.find((x) => x.to === t.id && x.pin === 0);
+    const key = t.label.trim();
+    if (w && key && !driver.has(key)) driver.set(key, w);
+  }
+  for (const t of tunnels) {
+    const key = t.label.trim();
+    const d = driver.get(key);
+    if (!d || wires.some((x) => x.to === t.id && x.pin === 0)) continue;
+    wires.push({ id: `${t.id}~tunnel`, from: d.from, ...(d.fromPin ? { fromPin: d.fromPin } : {}), to: t.id, pin: 0 });
+  }
+  return { nodes, wires };
+}
+
+/* ── Test cases (like Digital's "Test" component) ───────────────────── */
+
+export interface TestCell {
+  name: string;
+  input: boolean;
+  /** Written value: 0, 1, X (don't care) or C (clock pulse); hex digit for a 7-segment display. */
+  want: string;
+  got: string | null;
+  ok: boolean;
+}
+export interface TestResult {
+  error: string | null;
+  rows: Array<{ line: number; ok: boolean; cells: TestCell[] }>;
+  passed: number;
+  failed: number;
+}
+
+/**
+ * Runs a test table against the circuit. The first line names the signals
+ * (inputs and outputs, by label, in any order); each further line gives one
+ * value per signal. Inputs: 0, 1 or C (a clock pulse 0 → 1 → 0 after the
+ * other inputs are applied). Outputs: 0, 1 or X (not checked); a 7-segment
+ * display takes a hex digit. Rows run in order from reset, so sequential
+ * circuits can be tested step by step. Lines starting with # are comments.
+ */
+export function runTests(c: Circuit, text: string): TestResult {
+  const result: TestResult = { error: null, rows: [], passed: 0, failed: 0 };
+  const lines = text.split('\n').map((l, i) => ({ line: i + 1, tokens: l.replace(/#.*$/, '').trim().split(/\s+/).filter((t) => t && t !== '|') }));
+  const useful = lines.filter((l) => l.tokens.length);
+  if (!useful.length) return { ...result, error: 'empty' };
+  const [head, ...rows] = useful;
+  const find = (name: string) =>
+    c.nodes.find((n) => n.label === name && (SOURCES.includes(n.type) || SINKS.includes(n.type) || n.type === 'SEG7')) ??
+    c.nodes.find((n) => n.label.toLowerCase() === name.toLowerCase() && (SOURCES.includes(n.type) || SINKS.includes(n.type) || n.type === 'SEG7'));
+  const cols = head.tokens.map((name) => ({ name, node: find(name) }));
+  const missing = cols.filter((col) => !col.node).map((col) => col.name);
+  if (missing.length) return { ...result, error: `unknown:${missing.join(', ')}` };
+  let seq: SeqState = EMPTY_SEQ;
+  let inputs: Record<string, number> = {};
+  for (const n of c.nodes) if (SOURCES.includes(n.type)) inputs[n.id] = 0;
+  seq = settle(c, inputs, seq).seq;
+  for (const row of rows) {
+    if (row.tokens.length !== cols.length) return { ...result, error: `columns:${row.line}` };
+    const pulses: string[] = [];
+    const next = { ...inputs };
+    cols.forEach((col, i) => {
+      const n = col.node!;
+      if (!SOURCES.includes(n.type)) return;
+      const t = row.tokens[i].toUpperCase();
+      if (t === 'C') {
+        pulses.push(n.id);
+        next[n.id] = 0;
+      } else next[n.id] = t === '1' ? 1 : 0;
+    });
+    let r = settle(c, next, seq);
+    for (const pulse of [1, 0]) {
+      if (!pulses.length) break;
+      const p2 = { ...next };
+      pulses.forEach((id) => { p2[id] = pulse; });
+      r = settle(c, p2, r.seq);
+    }
+    inputs = next;
+    seq = r.seq;
+    const cells: TestCell[] = cols.map((col, i) => {
+      const n = col.node!;
+      const want = row.tokens[i].toUpperCase();
+      if (SOURCES.includes(n.type)) return { name: col.name, input: true, want, got: null, ok: true };
+      const v = r.ev.values[n.id] ?? 0;
+      const got = n.type === 'SEG7' ? v.toString(16).toUpperCase() : String(v);
+      const ok = want === 'X' || want === got;
+      return { name: col.name, input: false, want, got, ok };
+    });
+    const ok = cells.every((cell) => cell.ok);
+    result.rows.push({ line: row.line, ok, cells });
+    if (ok) result.passed++;
+    else result.failed++;
+  }
+  return result;
+}
+
+/** A starting table: every input combination (up to 6 inputs), outputs to fill in. */
+export function testTemplate(c: Circuit): string {
+  const { ins, outs, displays } = ioNodes(c);
+  const names = (list: GateNode[]) => list.map((n, i) => n.label.trim() || `${n.type.toLowerCase()}${i}`);
+  const inNames = names(ins);
+  const outNames = [...names(outs), ...names(displays)];
+  const lines = [`${inNames.join(' ')} | ${outNames.join(' ')}`];
+  const count = ins.length <= 6 ? 1 << ins.length : 4;
+  for (let combo = 0; combo < count; combo++) {
+    const bits = ins.map((n, i) => (n.type === 'CLK' ? 'C' : String((combo >> (ins.length - 1 - i)) & 1)));
+    lines.push(`${bits.join(' ')} | ${outNames.map(() => 'X').join(' ')}`);
+  }
+  return lines.join('\n');
 }
 
 /* ── Presets ────────────────────────────────────────────────────────── */
