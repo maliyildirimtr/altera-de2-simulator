@@ -64,6 +64,8 @@ export function LogicAnalyzer() {
   const [trigSignal, setTrigSignal] = useState('');
   const [trigCondition, setTrigCondition] = useState<TriggerCondition>('rise');
   const [trigValue, setTrigValue] = useState('0');
+  // Measurement cursors, as sample numbers (click = A, Shift+click = B).
+  const [cursors, setCursors] = useState<{ a: number | null; b: number | null }>({ a: null, b: null });
 
   useLayoutEffect(() => {
     const el = wrapRef.current;
@@ -112,6 +114,31 @@ export function LogicAnalyzer() {
     : triggerStatus === 'done' ? 'Triggered — capture stopped'
     : '';
   const triggerIndex = triggerN === null ? -1 : samples.findIndex((sample) => sample.n === triggerN);
+  const ia = cursors.a === null ? -1 : samples.findIndex((sample) => sample.n === cursors.a);
+  const ib = cursors.b === null ? -1 : samples.findIndex((sample) => sample.n === cursors.b);
+  const placeCursor = (e: React.PointerEvent<SVGSVGElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - r.left;
+    if (x < x0 || samples.length === 0) return;
+    const i = Math.max(0, Math.min(samples.length - 1, Math.floor((x - x0) / step)));
+    const n = samples[i].n;
+    setCursors((c) => (e.shiftKey || e.button === 2 ? { ...c, b: n } : { ...c, a: n }));
+  };
+  // Between the cursors: samples, clock cycles, and edges / period of the selected signal.
+  const measure = (() => {
+    if (ia < 0 || ib < 0) return null;
+    const [lo, hi] = ia <= ib ? [ia, ib] : [ib, ia];
+    const rising = (sig: string) => {
+      const at: number[] = [];
+      for (let i = lo + 1; i <= hi; i++) if ((samples[i].values[sig] ?? 0) && !(samples[i - 1].values[sig] ?? 0)) at.push(i);
+      return at;
+    };
+    const changes = (sig: string) => { let c = 0; for (let i = lo + 1; i <= hi; i++) if (samples[i].values[sig] !== samples[i - 1].values[sig]) c++; return c; };
+    const clockSig = cap.signals.find((x) => /^(CLOCK_50|clk|clock)$/i.test(x));
+    const sel = rising(selectedSignal);
+    const period = sel.length > 1 ? (sel[sel.length - 1] - sel[0]) / (sel.length - 1) : null;
+    return { samples: hi - lo, cycles: clockSig ? rising(clockSig).length : null, edges: (cap.widths[selectedSignal] ?? 1) > 1 ? null : sel.length, changes: changes(selectedSignal), period };
+  })();
   const btn = 'flex items-center gap-1 px-2 py-0.5 rounded-[0.25rem] border text-[0.6875rem] disabled:opacity-40';
   const btnStyle = { borderColor: 'var(--border-subtle)', color: 'var(--text-primary)', backgroundColor: 'var(--bg-surface)' };
   const field = 'px-1.5 py-0.5 rounded-[0.25rem] border text-[0.6875rem]';
@@ -206,8 +233,29 @@ export function LogicAnalyzer() {
         )}
       </div>
 
+      <div className="flex items-center gap-3 flex-wrap font-sans text-[0.6875rem]" data-testid="analyzer-measure" style={{ color: 'var(--text-secondary)' }}>
+        <span style={{ color: 'var(--text-muted)' }}>{t("Cursors: click = A, Shift+click = B")}</span>
+        {ia >= 0 && <span className="font-mono" style={{ color: '#a78bfa' }}>A #{cursors.a}</span>}
+        {ib >= 0 && <span className="font-mono" style={{ color: '#f472b6' }}>B #{cursors.b}</span>}
+        {measure && (
+          <span className="font-mono" data-testid="analyzer-measure-result">
+            Δ {measure.samples} {t("samples")}
+            {measure.cycles !== null ? ` · ${measure.cycles} ${t("clock cycles")}` : ''}
+            {` · ${selectedSignal}: `}
+            {measure.edges !== null ? `${measure.edges} ${t("rising edges")}` : `${measure.changes} ${t("changes")}`}
+            {measure.period !== null ? ` · ${t("period")} ${measure.period.toFixed(1)}` : ''}
+          </span>
+        )}
+        {(ia >= 0 || ib >= 0) && (
+          <button type="button" className="underline" onClick={() => setCursors({ a: null, b: null })}>{t("Clear cursors")}</button>
+        )}
+      </div>
+
       <div ref={wrapRef} className="flex-1 min-h-0 overflow-y-auto">
         <svg
+          data-testid="analyzer-plot"
+          onPointerDown={placeCursor}
+          onContextMenu={(e) => e.preventDefault()}
           width={width}
           height={signals.length * ROW_H + 4}
           role="img"
@@ -258,8 +306,8 @@ export function LogicAnalyzer() {
                   {sig.length > 12 ? `${sig.slice(0, 11)}…` : sig}
                   <title>{`${sig}${w > 1 ? ` [${w - 1}:0]` : ''} = ${formatValue(last, w)} (click to hide)`}</title>
                 </text>
-                <text x={NAME_W - 6} y={mid + 4} fontSize={10} textAnchor="end" fill="var(--text-muted)" style={{ fontFamily: 'var(--font-mono)' }}>
-                  {formatValue(last, w)}
+                <text x={NAME_W - 6} y={mid + 4} fontSize={10} textAnchor="end" fill={ia >= 0 ? '#a78bfa' : 'var(--text-muted)'} style={{ fontFamily: 'var(--font-mono)' }}>
+                  {formatValue(ia >= 0 ? samples[ia].values[sig] ?? 0 : last, w)}
                 </text>
                 <path
                   d={path}
@@ -275,6 +323,12 @@ export function LogicAnalyzer() {
               </g>
             );
           })}
+          {[{ i: ia, c: '#a78bfa', l: 'A' }, { i: ib, c: '#f472b6', l: 'B' }].filter((k) => k.i >= 0).map((k) => (
+            <g key={k.l} data-testid={`analyzer-cursor-${k.l}`} pointerEvents="none">
+              <line x1={x0 + (k.i + 0.5) * step} x2={x0 + (k.i + 0.5) * step} y1={0} y2={signals.length * ROW_H + 4} stroke={k.c} strokeWidth={1.3} />
+              <text x={x0 + (k.i + 0.5) * step + 3} y={10} fontSize={10} fontWeight={700} fill={k.c}>{k.l}</text>
+            </g>
+          ))}
           {triggerIndex >= 0 && (
             <line
               data-testid="analyzer-trigger-marker"
