@@ -102,14 +102,14 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
     <>
       {/* ── Main bar ── */}
       <nav
-        className="w-full h-[3.25rem] flex items-center justify-between px-4 sm:px-6 z-40 sticky top-0 shrink-0 select-none transition-colors border-b border-[var(--border-subtle)]"
+        className="w-full h-[3.25rem] z-40 sticky top-0 shrink-0 select-none transition-colors border-b border-[var(--border-subtle)]"
         style={{
           backgroundColor: 'var(--bg-surface)',
         }}
       >
-        {/* Brand and desktop nav travel together: centred as one block from xl
-            up, so the logo starts the menu instead of sitting at the far edge. */}
-        <div className="flex items-center gap-6 min-w-0 xl:absolute xl:left-1/2 xl:-translate-x-1/2">
+        {/* Same container as the page content (landing .lx-container), so the
+            logo lines up with the headline and sections below it. */}
+        <div className="nav-container relative h-full flex items-center gap-6">
         <Link
           to="/"
           className="flex items-center gap-2.5 group shrink-0"
@@ -132,8 +132,9 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
           </span>
         </Link>
 
-        {/* Desktop nav: the simulators as direct links, the rest in menus. */}
-        <div ref={menuRef} className="hidden lg:flex items-center gap-1" role="menubar">
+        {/* Desktop nav: the simulators as direct links, the rest in menus;
+            centred on the page from xl up. */}
+        <div ref={menuRef} className="hidden lg:flex items-center gap-1 xl:absolute xl:left-1/2 xl:-translate-x-1/2" role="menubar">
           {GROUPS.filter((g) => g.id === 'simulate').flatMap(groupItems).map((item) => {
             const Icon = item.icon;
             return (
@@ -193,7 +194,6 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
             );
           })}
         </div>
-        </div>
 
         {/* Right actions */}
         <div className="flex items-center gap-1.5 ml-auto shrink-0">
@@ -237,6 +237,7 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
           >
             {mobileOpen ? <X size={15} /> : <Menu size={15} />}
           </button>
+        </div>
         </div>
       </nav>
 

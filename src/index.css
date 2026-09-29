@@ -1147,3 +1147,17 @@ circle[stroke="#a855f7"],
   [data-testid="analyzer-plot"], [data-testid="quiz-page"] button { touch-action: manipulation; }
   svg { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 }
+
+/* Navbar content: the landing page's container (1480px, same gutters), so the
+   logo sits on the same left edge as the page content. */
+.nav-container {
+  width: min(100%, 1480px);
+  margin: 0 auto;
+  padding: 0 calc(24px + clamp(0px, 3.2vw, 48px));
+}
+@media (max-width: 900px) {
+  .nav-container { padding: 0 28px; }
+}
+@media (max-width: 560px) {
+  .nav-container { padding: 0 16px; }
+}
