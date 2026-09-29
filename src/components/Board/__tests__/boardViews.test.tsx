@@ -122,6 +122,8 @@ import { buildLabReport } from '../../../report/labReport';
 import * as Gates from '../../../gates/circuit';
 import * as Num from '../../../logic/numbers';
 import * as Fsm from '../../../fsm/fsm';
+import * as QuizGen from '../../../quiz/quiz';
+import * as Bool from '../../../logic/boolean';
 import { autoLayout } from '../../../gates/layout';
 import { verilogToCircuit } from '../../../gates/fromVerilog';
 import { exerciseCircuit } from '../../Gates/GateExercisePanel';
@@ -3650,6 +3652,36 @@ endmodule`;
 endmodule`, det.sequential);
   assert.ok(seqGood.kind === 'graded' && seqGood.passed === seqGood.total);
   pass('classroom: teacher tasks (truth table or Verilog) travel in the link and are graded like built-in exercises');
+}
+
+{
+  // Quiz: every generated question is answerable, its own answer is accepted,
+  // choices hold exactly one correct option, and a seed repeats the quiz.
+  for (let seed = 1; seed <= 60; seed++) {
+    const quiz = QuizGen.makeQuiz([...QuizGen.TOPICS], 12, seed);
+    assert.strictEqual(quiz.length, 12);
+    for (const q of quiz) {
+      assert.ok(QuizGen.checkAnswer(q, q.answer), `own answer accepted: ${q.text.en} ${q.detail}`);
+      if (q.kind === 'choice') {
+        assert.ok(q.options!.includes(q.answer), 'the answer is among the options');
+        assert.strictEqual(new Set(q.options).size, q.options!.length, 'options are distinct');
+        if (q.topic !== 'numbers' && q.options!.length > 2 && !/^\d+$/.test(q.answer)) {
+          const vars = q.detail!.includes('d') && q.topic === 'kmap' ? ['a', 'b', 'c', 'd'] : ['a', 'b', 'c'];
+          const tab = (e: string) => Bool.tableOf(Bool.parseExpression(e), vars).join('');
+          const same = q.options!.filter((o) => tab(o) === tab(q.answer));
+          assert.strictEqual(same.length, 1, `only one option is equivalent: ${q.options!.join(' | ')}`);
+        }
+      }
+    }
+    assert.deepStrictEqual(QuizGen.makeQuiz(['numbers'], 5, seed), QuizGen.makeQuiz(['numbers'], 5, seed), 'a seed repeats the quiz');
+  }
+  const bin: QuizGen.Question = { topic: 'numbers', kind: 'input', format: 'bin', answer: '00101', text: { en: '', tr: '' }, explain: { en: '', tr: '' } };
+  assert.ok(QuizGen.checkAnswer(bin, '101') && QuizGen.checkAnswer(bin, '0b0000 0101') && !QuizGen.checkAnswer(bin, '110') && !QuizGen.checkAnswer(bin, '12'));
+  const hex: QuizGen.Question = { ...bin, format: 'hex', answer: '3F' };
+  assert.ok(QuizGen.checkAnswer(hex, '0x3f') && QuizGen.checkAnswer(hex, '3Fh') && !QuizGen.checkAnswer(hex, '3E'));
+  const dec: QuizGen.Question = { ...bin, format: 'dec', answer: '-17' };
+  assert.ok(QuizGen.checkAnswer(dec, ' -17 ') && !QuizGen.checkAnswer(dec, '17'));
+  pass('quiz: generated questions check their own answers, offer one correct choice and repeat by seed');
 }
 
 console.log(`--- DE2 Board Renderer Regression: PASS (${checks.length} checks) ---`);

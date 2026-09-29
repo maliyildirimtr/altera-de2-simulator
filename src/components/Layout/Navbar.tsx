@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
-import { Cpu, Activity, GitGraph, BookOpen, Sun, Moon, Menu, X, Layers, Grid, GraduationCap, Users, Shapes, BookOpenCheck, ChevronDown, Grid3x3, Binary, Workflow } from 'lucide-react';
+import { Cpu, Activity, GitGraph, BookOpen, Sun, Moon, Menu, X, Layers, Grid, GraduationCap, Users, Shapes, BookOpenCheck, ChevronDown, Grid3x3, Binary, Workflow, CircleHelp } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nProvider';
 import { PLATFORM_NAME } from '../../lib/platform';
 
@@ -23,6 +23,7 @@ const EXPLORE_LINKS = [
   { to: '/exercises',     key: 'exercises', icon: GraduationCap },
   { to: '/kmap',          key: 'kmap', icon: Grid3x3 },
   { to: '/numbers',       key: 'numbers', icon: Binary },
+  { to: '/quiz',          key: 'quiz', icon: CircleHelp },
   { to: '/classroom',     key: 'classroom', icon: Users },
   { to: '/digital-logic', key: 'digitalLogic', icon: Layers },
   { to: '/fpga',          key: 'fpga', icon: Grid },
