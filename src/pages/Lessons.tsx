@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpenCheck, CheckCircle2, ChevronRight, Circle, Cpu, GraduationCap, Shapes } from 'lucide-react';
+import { Binary, BookOpenCheck, CheckCircle2, ChevronRight, Circle, Cpu, GraduationCap, Rocket, Shapes, Workflow } from 'lucide-react';
 import { LESSONS, type Lesson, type LessonAction } from '../lessons/lessons';
 import { PRESETS } from '../gates/circuit';
+import { FSM_PRESETS } from '../fsm/fsm';
 import { getExampleById } from '../examples/registry';
 import { setPendingHandoff } from '../services/exampleHandoff';
 import { useI18n } from '../i18n/I18nProvider';
@@ -67,6 +68,18 @@ export default function Lessons() {
         /* the editor opens with its last design */
       }
       navigate('/gates');
+    } else if (a.kind === 'gateExercise') {
+      navigate(`/gates?exercise=${encodeURIComponent(a.id)}`);
+    } else if (a.kind === 'fsm') {
+      try {
+        const preset = FSM_PRESETS[a.preset];
+        if (preset) localStorage.setItem('logiclab_fsm_v1', JSON.stringify(preset.design));
+      } catch {
+        /* the designer opens with its last machine */
+      }
+      navigate('/fsm');
+    } else if (a.kind === 'numbers') {
+      navigate('/numbers');
     } else if (a.kind === 'kmap') {
       navigate(`/kmap?expr=${encodeURIComponent(a.expr)}`);
     } else if (a.kind === 'example') {
@@ -94,7 +107,15 @@ export default function Lessons() {
     if (score === lesson.quiz.length) setProgress((p) => ({ ...p, done: { ...p.done, [lesson.id]: true } }));
   };
 
-  const actionIcon = (a: LessonAction) => (a.kind === 'gates' || a.kind === 'kmap' ? <Shapes size={14} /> : a.kind === 'example' ? <Cpu size={14} /> : <GraduationCap size={14} />);
+  const actionIcon = (a: LessonAction) =>
+    a.kind === 'gates' || a.kind === 'kmap' ? <Shapes size={14} />
+    : a.kind === 'example' ? <Cpu size={14} />
+    : a.kind === 'fsm' ? <Workflow size={14} />
+    : a.kind === 'numbers' ? <Binary size={14} />
+    : <GraduationCap size={14} />;
+  // After a passed quiz: the lesson's first task, in Verilog and with gates.
+  const nextTask = lesson.actions.find((a): a is Extract<LessonAction, { kind: 'exercise' }> => a.kind === 'exercise')
+    ?? lesson.actions.find((a) => a.kind !== 'example');
 
   return (
     <div data-testid="lessons-page" className="absolute inset-0 flex flex-col md:flex-row overflow-hidden" style={{ backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)' }}>
@@ -189,6 +210,18 @@ export default function Lessons() {
                 </button>
               )}
             </div>
+            {checked && score === lesson.quiz.length && nextTask && (
+              <div data-testid="lesson-now-you" className="rounded-[0.375rem] border p-3 flex flex-col gap-2" style={{ borderColor: 'var(--accent-primary)', backgroundColor: 'var(--accent-subtle)' }}>
+                <p className="text-[0.875rem] font-semibold flex items-center gap-2"><Rocket size={15} /> {t.nowYou}</p>
+                <p className="text-[0.8125rem]" style={{ color: 'var(--text-secondary)' }}>{nextTask.label[lang]}</p>
+                <div className="flex gap-2 flex-wrap">
+                  <button type="button" data-testid="lesson-now-go" onClick={() => run(nextTask)} className="h-8 px-3 rounded-[0.25rem] text-[0.8125rem] font-semibold text-white" style={{ backgroundColor: 'var(--accent-primary)' }}>{nextTask.kind === 'exercise' ? t.solveVerilog : t.open}</button>
+                  {nextTask.kind === 'exercise' && (
+                    <button type="button" data-testid="lesson-now-gates" onClick={() => run({ kind: 'gateExercise', id: nextTask.id, label: nextTask.label })} className="h-8 px-3 rounded-[0.25rem] border text-[0.8125rem]" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>{t.solveGates}</button>
+                  )}
+                </div>
+              </div>
+            )}
           </section>
         </article>
       </main>

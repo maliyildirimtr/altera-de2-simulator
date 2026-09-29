@@ -9,7 +9,12 @@ export type LessonAction =
   | { kind: 'gates'; preset: string; label: L }
   | { kind: 'example'; id: string; label: L }
   | { kind: 'exercise'; id: string; label: L }
-  | { kind: 'kmap'; expr: string; label: L };
+  | { kind: 'kmap'; expr: string; label: L }
+  /** An auto-graded task solved by drawing gates (Gate Designer exercise mode). */
+  | { kind: 'gateExercise'; id: string; label: L }
+  /** A machine opened in the FSM designer. */
+  | { kind: 'fsm'; preset: string; label: L }
+  | { kind: 'numbers'; label: L };
 
 export interface QuizQuestion {
   q: L;
@@ -32,6 +37,32 @@ const t = (en: string, tr: string): L => ({ en, tr });
 
 export const LESSONS: Lesson[] = [
   {
+    id: 'numbers',
+    title: t('Number systems', 'Sayı sistemleri'),
+    summary: t('Binary, hexadecimal and negative numbers in two\'s complement.', 'İkilik, onaltılık ve ikiye tümleyende negatif sayılar.'),
+    body: [
+      t('Digital circuits store numbers as bits. In binary each position is worth twice the one to its right: 1011₂ = 8 + 2 + 1 = 11. Hexadecimal groups four bits into one digit 0–F, so 1011 0110₂ = B6₁₆.',
+        'Sayısal devreler sayıları bit olarak saklar. İkilik tabanda her basamak sağındakinin iki katı değerindedir: 1011₂ = 8 + 2 + 1 = 11. Onaltılık taban dört biti tek bir 0–F basamağında toplar: 1011 0110₂ = B6₁₆.'),
+      t('With n bits you can count from 0 to 2ⁿ − 1. Negative numbers use two\'s complement: invert every bit and add 1. In 8 bits, −5 is 1111 1011, and the range is −128 … 127.',
+        "n bitle 0'dan 2ⁿ − 1'e kadar sayılır. Negatif sayılar ikiye tümleyen ile yazılır: tüm bitleri ters çevirip 1 ekle. 8 bitte −5, 1111 1011'dir ve aralık −128 … 127'dir."),
+      t('In Verilog a number carries its width and base: 4\'b1011, 8\'hB6, 6\'d42.', "Verilog'da bir sayı genişliğini ve tabanını taşır: 4'b1011, 8'hB6, 6'd42."),
+    ],
+    points: [
+      t('One hex digit = four bits.', 'Bir onaltılık basamak = dört bit.'),
+      t('Two\'s complement: invert and add 1.', 'İkiye tümleyen: ters çevir ve 1 ekle.'),
+      t('n bits hold 2ⁿ different values.', 'n bit 2ⁿ farklı değer tutar.'),
+    ],
+    actions: [
+      { kind: 'numbers', label: t('Convert and see the steps', 'Dönüştür ve adımları gör') },
+      { kind: 'example', id: 'de2_interactive_io', label: t('Switches as a hex digit on the DE2', "Anahtarlar DE2'de onaltılık rakam olarak") },
+    ],
+    quiz: [
+      { q: t('What is 1101₂ in decimal?', '1101₂ onluk tabanda kaçtır?'), options: [t('11', '11'), t('13', '13'), t('14', '14')], answer: 1, why: t('8 + 4 + 1 = 13.', '8 + 4 + 1 = 13.') },
+      { q: t('What is 0x2F in binary?', '0x2F ikilik tabanda nedir?'), options: [t('0010 1111', '0010 1111'), t('0010 1110', '0010 1110'), t('1111 0010', '1111 0010')], answer: 0, why: t('2 = 0010 and F = 1111.', '2 = 0010 ve F = 1111.') },
+      { q: t('In 8-bit two\'s complement, 1111 1111 is…', '8 bitlik ikiye tümleyende 1111 1111 kaçtır?'), options: [t('255', '255'), t('−1', '−1'), t('−127', '−127')], answer: 1, why: t('Invert (0000 0000) and add 1: the magnitude is 1, so the value is −1.', "Ters çevir (0000 0000) ve 1 ekle: büyüklük 1, yani değer −1.") },
+    ],
+  },
+  {
     id: 'gates',
     title: t('Logic gates', 'Mantık kapıları'),
     summary: t('The building blocks: AND, OR, NOT and their relatives.', 'Yapı taşları: VE, VEYA, DEĞİL ve akrabaları.'),
@@ -52,6 +83,7 @@ export const LESSONS: Lesson[] = [
       { kind: 'gates', preset: 'half_adder', label: t('Build with gates', 'Kapılarla kur') },
       { kind: 'example', id: 'basic_gates', label: t('Try all gates on the DE2', "Tüm kapıları DE2'de dene") },
       { kind: 'exercise', id: 'and_or', label: t('Exercise: AND-OR function', 'Alıştırma: VE-VEYA fonksiyonu') },
+      { kind: 'gateExercise', id: 'and_or', label: t('Solve with gates: AND-OR function', 'Kapılarla çöz: VE-VEYA fonksiyonu') },
     ],
     quiz: [
       { q: t('A = 1, B = 0. What is A AND B?', 'A = 1, B = 0. A VE B nedir?'), options: [t('0', '0'), t('1', '1')], answer: 0, why: t('AND needs every input to be 1.', 'VE kapısı tüm girişlerin 1 olmasını ister.') },
@@ -80,6 +112,7 @@ export const LESSONS: Lesson[] = [
       { kind: 'kmap', expr: "ab + a'c + bc", label: t('Simplify with a Karnaugh map', 'Karnaugh haritasıyla sadeleştir') },
       { kind: 'exercise', id: 'majority3', label: t('Exercise: majority of three', 'Alıştırma: üçün çoğunluğu') },
       { kind: 'exercise', id: 'parity4', label: t('Exercise: parity bit', 'Alıştırma: eşlik biti') },
+      { kind: 'gateExercise', id: 'majority3', label: t('Solve with gates: majority of three', 'Kapılarla çöz: üçün çoğunluğu') },
     ],
     quiz: [
       { q: t('How many rows does a truth table with 4 inputs have?', '4 girişli bir doğruluk tablosunda kaç satır vardır?'), options: [t('8', '8'), t('16', '16'), t('4', '4')], answer: 1, why: t('2⁴ = 16.', '2⁴ = 16.') },
@@ -107,6 +140,8 @@ export const LESSONS: Lesson[] = [
       { kind: 'example', id: 'full_adder', label: t('Full adder on the DE2', "Tam toplayıcı DE2'de") },
       { kind: 'exercise', id: 'full_adder', label: t('Exercise: full adder', 'Alıştırma: tam toplayıcı') },
       { kind: 'exercise', id: 'adder4', label: t('Exercise: 4-bit adder', 'Alıştırma: 4 bitlik toplayıcı') },
+      { kind: 'gates', preset: 'adder4', label: t('4-bit adder with gates', 'Kapılarla 4 bitlik toplayıcı') },
+      { kind: 'gateExercise', id: 'half_adder', label: t('Solve with gates: half adder', 'Kapılarla çöz: yarım toplayıcı') },
     ],
     quiz: [
       { q: t('Half adder, a = 1, b = 1: sum and carry?', 'Yarım toplayıcı, a = 1, b = 1: toplam ve elde?'), options: [t('sum 1, carry 0', 'toplam 1, elde 0'), t('sum 0, carry 1', 'toplam 0, elde 1'), t('sum 1, carry 1', 'toplam 1, elde 1')], answer: 1, why: t('1 + 1 = 10 in binary.', 'İkilikte 1 + 1 = 10.') },
@@ -133,6 +168,8 @@ export const LESSONS: Lesson[] = [
       { kind: 'example', id: 'decoder_3to8', label: t('3-to-8 decoder on the DE2', "3'ten 8'e kod çözücü DE2'de") },
       { kind: 'exercise', id: 'mux4', label: t('Exercise: 4:1 mux', 'Alıştırma: 4:1 mux') },
       { kind: 'exercise', id: 'decoder2to4', label: t('Exercise: 2-to-4 decoder', "Alıştırma: 2'den 4'e kod çözücü") },
+      { kind: 'gates', preset: 'mux4', label: t('4:1 mux with gates', 'Kapılarla 4:1 mux') },
+      { kind: 'gateExercise', id: 'mux2', label: t('Solve with gates: 2:1 mux', 'Kapılarla çöz: 2:1 mux') },
     ],
     quiz: [
       { q: t('How many select bits does an 8:1 mux need?', '8:1 mux kaç seçme biti gerektirir?'), options: [t('2', '2'), t('3', '3'), t('8', '8')], answer: 1, why: t('2³ = 8.', '2³ = 8.') },
@@ -162,11 +199,41 @@ export const LESSONS: Lesson[] = [
       { kind: 'exercise', id: 'dff_en', label: t('Exercise: D flip-flop with enable', 'Alıştırma: yetkili D flip-flop') },
       { kind: 'exercise', id: 'counter4', label: t('Exercise: 4-bit counter', 'Alıştırma: 4 bitlik sayıcı') },
       { kind: 'exercise', id: 'shift4', label: t('Exercise: shift register', 'Alıştırma: kaydırmalı yazmaç') },
+      { kind: 'gates', preset: 'counter4', label: t('Ripple counter with flip-flops', "Flip-flop'larla dalgalı sayıcı") },
+      { kind: 'gates', preset: 'reg_counter', label: t('Counter with a register and buses', 'Yazmaç ve bus ile sayıcı') },
+      { kind: 'gateExercise', id: 'dff_en', label: t('Solve with gates: D flip-flop with enable', 'Kapılarla çöz: yetkili D flip-flop') },
     ],
     quiz: [
       { q: t('When does a positive-edge D flip-flop update Q?', 'Yükselen kenar D flip-flop Q\'yu ne zaman günceller?'), options: [t('Whenever D changes', 'D her değiştiğinde'), t('At the clock\'s 0→1 transition', 'Saatin 0→1 geçişinde'), t('While the clock is 1', 'Saat 1 olduğu sürece')], answer: 1, why: t('Only the rising edge matters.', 'Yalnızca yükselen kenar önemlidir.') },
       { q: t('Which assignment belongs in always_ff?', 'always_ff içinde hangi atama kullanılır?'), options: [t('=', '='), t('<=', '<='), t('assign', 'assign')], answer: 1, why: t('Non-blocking assignments update all registers together at the edge.', 'Non-blocking atamalar tüm yazmaçları kenarda birlikte günceller.') },
       { q: t('A 4-bit counter at 15 counts up once. Result?', '15\'teki 4 bitlik sayıcı bir kez sayarsa sonuç?'), options: [t('16', '16'), t('0', '0'), t('15', '15')], answer: 1, why: t('4 bits hold 0–15; it wraps around to 0.', '4 bit 0–15 tutar; 0\'a döner.') },
+    ],
+  },
+  {
+    id: 'memory',
+    title: t('Buses, registers and memory', 'Bus, yazmaç ve bellek'),
+    summary: t('Moving numbers instead of single bits.', 'Tek bitler yerine sayıları taşımak.'),
+    body: [
+      t('A bus is a group of wires that carries a number: a 4-bit bus carries 0–15. Splitters and mergers take a bus apart into its bits and put bits back together.',
+        'Bus, bir sayıyı taşıyan tel grubudur: 4 bitlik bir bus 0–15 arasını taşır. Ayırıcı ve birleştirici bir bus\'ı bitlerine ayırır ve bitleri yeniden bir araya getirir.'),
+      t('A register is a row of D flip-flops that share a clock: on each rising edge it stores the whole number at its input, optionally only while an enable input is 1.',
+        'Yazmaç, aynı saati paylaşan bir sıra D flip-flop\'tur: her yükselen kenarda girişindeki sayının tamamını saklar; istenirse yalnızca yetki (enable) girişi 1 iken.'),
+      t('A RAM stores many words: the address selects one, a write stores the data at that address on the clock edge, and the output always shows the addressed word. A ROM is read-only: its contents are fixed.',
+        'RAM birçok kelime saklar: adres birini seçer, yazma işlemi saat kenarında veriyi o adrese kaydeder ve çıkış her zaman seçili kelimeyi gösterir. ROM yalnızca okunur: içeriği sabittir.'),
+    ],
+    points: [
+      t('A register + an adder = a counter.', 'Yazmaç + toplayıcı = sayıcı.'),
+      t('An n-bit address selects one of 2ⁿ words.', 'n bitlik adres 2ⁿ kelimeden birini seçer.'),
+      t('In Verilog: logic [3:0] mem [0:7]; — or one register per word.', "Verilog'da: logic [3:0] mem [0:7]; — ya da her kelime için bir yazmaç."),
+    ],
+    actions: [
+      { kind: 'gates', preset: 'reg_counter', label: t('Register counter with buses', 'Bus ile yazmaçlı sayıcı') },
+      { kind: 'gates', preset: 'ram', label: t('Write and read a RAM', "RAM'e yaz ve oku") },
+      { kind: 'exercise', id: 'counter4', label: t('Exercise: 4-bit counter', 'Alıştırma: 4 bitlik sayıcı') },
+    ],
+    quiz: [
+      { q: t('How many words does a RAM with a 3-bit address hold?', '3 bitlik adresi olan bir RAM kaç kelime tutar?'), options: [t('3', '3'), t('6', '6'), t('8', '8')], answer: 2, why: t('2³ = 8 addresses.', '2³ = 8 adres.') },
+      { q: t('When does a register with enable load its input?', 'Yetkili bir yazmaç girişini ne zaman yükler?'), options: [t('Whenever the input changes', 'Giriş her değiştiğinde'), t('On a rising clock edge while enable is 1', 'Yetki 1 iken saatin yükselen kenarında'), t('When enable goes to 0', 'Yetki 0 olduğunda')], answer: 1, why: t('Clocked and enabled: both conditions are needed.', 'Saatli ve yetkili: iki koşul da gerekir.') },
     ],
   },
   {
@@ -188,6 +255,8 @@ export const LESSONS: Lesson[] = [
     actions: [
       { kind: 'exercise', id: 'seq101', label: t('Exercise: "101" sequence detector', 'Alıştırma: "101" dizi dedektörü') },
       { kind: 'exercise', id: 'edge_detect', label: t('Exercise: edge detector', 'Alıştırma: kenar dedektörü') },
+      { kind: 'fsm', preset: 'seq1011', label: t('Draw it: 1011 detector (Mealy)', 'Çizerek dene: 1011 dedektörü (Mealy)') },
+      { kind: 'fsm', preset: 'traffic', label: t('Draw it: traffic light (Moore)', 'Çizerek dene: trafik ışığı (Moore)') },
     ],
     quiz: [
       { q: t('In a Moore machine the outputs depend on…', 'Moore makinesinde çıkışlar neye bağlıdır?'), options: [t('only the current state', 'yalnızca o anki duruma'), t('the state and the inputs', 'duruma ve girişlere'), t('only the inputs', 'yalnızca girişlere')], answer: 0, why: t('That is the definition of a Moore machine.', 'Moore makinesinin tanımı budur.') },

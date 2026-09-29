@@ -126,6 +126,7 @@ import { autoLayout } from '../../../gates/layout';
 import { verilogToCircuit } from '../../../gates/fromVerilog';
 import { exerciseCircuit } from '../../Gates/GateExercisePanel';
 import { getExercise } from '../../../exercises/exercises';
+import { LESSONS } from '../../../lessons/lessons';
 import { gradeSubmission } from '../../../exercises/grader';
 import { defaultSpec, generateTestbench, readPorts, resizeSpec, setValue } from '../../../waveform/stimulus';
 import { kmapCircuit, minimize, parseExpression, posText, sopText, tableOf, variablesOf } from '../../../logic/boolean';
@@ -3601,6 +3602,21 @@ endmodule`);
   const r = rca.evaluate({ a: 7, b: 12, cin: 0 }, {});
   assert.deepStrictEqual([r.sum, r.cout], [3, 1], 'instances connected to bus bits work on the DE2 engine');
   pass(`Verilog to gates: ${converted} examples convert and match the DE2 engine; unsupported constructs are reported`);
+}
+
+{
+  // Lessons: every link points at something that exists, and every quiz answer is a valid option.
+  for (const l of LESSONS) {
+    for (const a of l.actions) {
+      if (a.kind === 'gates') assert.ok(Gates.PRESETS[a.preset], `${l.id}: gate preset ${a.preset}`);
+      if (a.kind === 'exercise' || a.kind === 'gateExercise') assert.ok(getExercise(a.id), `${l.id}: exercise ${a.id}`);
+      if (a.kind === 'fsm') assert.ok(Fsm.FSM_PRESETS[a.preset], `${l.id}: FSM preset ${a.preset}`);
+      if (a.kind === 'example') assert.ok(fs.existsSync(path.join(process.cwd(), 'src/examples/source', `${a.id}.sv`)), `${l.id}: example ${a.id}`);
+    }
+    for (const q of l.quiz) assert.ok(q.answer >= 0 && q.answer < q.options.length, `${l.id}: quiz answer in range`);
+  }
+  assert.strictEqual(new Set(LESSONS.map((l) => l.id)).size, LESSONS.length, 'lesson ids are unique');
+  pass(`lessons: ${LESSONS.length} lessons link only to existing presets, exercises, machines and examples`);
 }
 
 console.log(`--- DE2 Board Renderer Regression: PASS (${checks.length} checks) ---`);
