@@ -107,10 +107,12 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
           backgroundColor: 'var(--bg-surface)',
         }}
       >
-        {/* Brand */}
+        {/* Brand and desktop nav travel together: centred as one block from xl
+            up, so the logo starts the menu instead of sitting at the far edge. */}
+        <div className="flex items-center gap-6 min-w-0 xl:absolute xl:left-1/2 xl:-translate-x-1/2">
         <Link
           to="/"
-          className="flex items-center gap-2.5 group mr-6 sm:mr-8 shrink-0"
+          className="flex items-center gap-2.5 group shrink-0"
           aria-label={`${PLATFORM_NAME} — go to home`}
         >
           <div className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center shrink-0 transition-opacity group-hover:opacity-90">
@@ -130,9 +132,19 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
           </span>
         </Link>
 
-        {/* Desktop nav: one menu per group, centred from xl up. */}
-        <div ref={menuRef} className="hidden lg:flex items-center gap-1 flex-1 xl:flex-none xl:absolute xl:left-1/2 xl:-translate-x-1/2" role="menubar">
-          {GROUPS.map((g) => {
+        {/* Desktop nav: the simulators as direct links, the rest in menus. */}
+        <div ref={menuRef} className="hidden lg:flex items-center gap-1" role="menubar">
+          {GROUPS.filter((g) => g.id === 'simulate').flatMap(groupItems).map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavLink key={item.to} to={item.to} role="menuitem" data-testid={`nav-link-${item.key}`} title={d.nav.items[item.key].desc} className={desktopLinkClass}>
+                <Icon size={14} className="shrink-0" />
+                {d.nav.items[item.key].label}
+              </NavLink>
+            );
+          })}
+          <div className="w-px h-4 mx-2 shrink-0" style={{ backgroundColor: 'var(--border-subtle)' }} />
+          {GROUPS.filter((g) => g.id !== 'simulate').map((g) => {
             const isOpen = open === g.id;
             const here = activeGroup === g.id;
             return (
@@ -181,9 +193,10 @@ export const Navbar: React.FC<NavbarProps> = ({ isDarkMode, setIsDarkMode }) => 
             );
           })}
         </div>
+        </div>
 
         {/* Right actions */}
-        <div className="flex items-center gap-1.5 ml-auto lg:ml-0 xl:ml-auto shrink-0">
+        <div className="flex items-center gap-1.5 ml-auto shrink-0">
           {/* Language toggle */}
           <button
             data-testid="lang-toggle"
