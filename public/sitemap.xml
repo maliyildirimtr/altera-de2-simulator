@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+
+  <!-- Home / Landing -->
+  <url>
+    <loc>https://lab.maliyildirimtr.com/</loc>
+    <lastmod>2026-10-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://lab.maliyildirimtr.com/"/>
+    <xhtml:link rel="alternate" hreflang="tr" href="https://lab.maliyildirimtr.com/"/>
+  </url>
+
+  <!-- DE2 Simulator — Altera DE2 FPGA virtual board -->
+  <url>
+    <loc>https://lab.maliyildirimtr.com/#/de2-simulator</loc>
+    <lastmod>2026-10-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.95</priority>
+  </url>
+
+  <!-- Waveform Simulator — timing diagrams, Icarus Verilog -->
+  <url>
+    <loc>https://lab.maliyildirimtr.com/#/waveform</loc>
+    <lastmod>2026-10-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- Schematic — RTL synthesis, Yosys -->
+  <url>
+    <loc>https://lab.maliyildirimtr.com/#/schematic</loc>
+    <lastmod>2026-10-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- Gate Editor — logic gate designer -->
+  <url>
+    <loc>https://lab.maliyildirimtr.com/#/gates</loc>
+    <lastmod>2026-10-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.80</priority>
+  </url>
+
+  <!-- FSM Designer — finite state machine -->
+  <url>
+    <loc>https://lab.maliyildirimtr.com/#/fsm</loc>
+    <lastmod>2026-10-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.80</priority>
+  </url>
+
+  <!-- Karnaugh Map — Boolean minimization -->
+  <url>
+    <loc>https://lab.maliyildirimtr.com/#/kmap</loc>
+    <lastmod>2026-10-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+
+  <!-- Number Systems — binary, hex, two's complement -->
+  <url>
+    <loc>https://lab.maliyildirimtr.com/#/numbers</loc>
+    <lastmod>2026-10-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+
+  <!-- Digital Logic Hub — educational content -->
+  <url>
+    <loc>https://lab.maliyildirimtr.com/#/digital-logic</loc>
+    <lastmod>2026-10-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.80</priority>
+  </url>
+
+  <!-- FPGA Hub — FPGA educational content -->
+  <url>
+    <loc>https://lab.maliyildirimtr.com/#/fpga</loc>
+    <lastmod>2026-10-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.80</priority>
+  </url>
+
+  <!-- Exercises — auto-graded Verilog tasks -->
+  <url>
+    <loc>https://lab.maliyildirimtr.com/#/exercises</loc>
+    <lastmod>2026-10-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+
+  <!-- Lessons — digital logic course -->
+  <url>
+    <loc>https://lab.maliyildirimtr.com/#/lessons</loc>
+    <lastmod>2026-10-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+
+  <!-- Quiz -->
+  <url>
+    <loc>https://lab.maliyildirimtr.com/#/quiz</loc>
+    <lastmod>2026-10-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.70</priority>
+  </url>
+
+  <!-- Examples / Projects -->
+  <url>
+    <loc>https://lab.maliyildirimtr.com/#/examples</loc>
+    <lastmod>2026-10-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.70</priority>
+  </url>
+
+  <!-- Classroom -->
+  <url>
+    <loc>https://lab.maliyildirimtr.com/#/classroom</loc>
+    <lastmod>2026-10-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.65</priority>
+  </url>
+
+</urlset>

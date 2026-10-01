@@ -64,6 +64,19 @@ export function Footer() {
           <span>{PLATFORM_NAME} — {t.bottom}</span>
           <span>Altera DE2 · Cyclone II EP2C35</span>
         </div>
+
+        {/* SEO: Semantically meaningful description — visible to crawlers and screen readers */}
+        <p className="sr-only">
+          Logic Lab is a free, browser-based digital logic simulation platform featuring a virtual Altera DE2 FPGA board
+          (Cyclone II EP2C35). Write Verilog or SystemVerilog HDL code, compile and run it on the virtual DE2 board with
+          18 slide switches, 4 push buttons, 18 red LEDs, 9 green LEDs, eight 7-segment HEX displays, and a 16×2
+          character LCD. Inspect signal timing with the waveform viewer (Icarus Verilog) and explore synthesized RTL
+          schematics (Yosys). Design logic circuits visually with the gate editor, draw Moore/Mealy finite state machines
+          (FSM) and generate Verilog automatically, minimize Boolean functions with Karnaugh maps, and practice number
+          system conversions (binary, hexadecimal, two&apos;s complement). Includes step-by-step digital logic lessons,
+          auto-graded Verilog exercises, and a quiz mode. Ideal for university students learning digital design,
+          computer engineering courses, and FPGA-based laboratory assignments — no installation required.
+        </p>
       </div>
     </footer>
   );

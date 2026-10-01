@@ -2,14 +2,14 @@
   "id": "/",
   "name": "Logic Lab",
   "short_name": "Logic Lab",
-  "description": "Browser-based FPGA lab: Verilog/SystemVerilog, a virtual Altera DE2 board, waveforms and RTL schematics.",
+  "description": "Logic Lab — Tarayıcı tabanlı FPGA simülatörü. Verilog/SystemVerilog yaz, sanal Altera DE2 kartında çalıştır, dalga formu ve RTL şematik incele. Dijital mantık devre tasarımı öğren.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#081424",
   "theme_color": "#081424",
-  "categories": ["education", "developer"],
+  "categories": ["education", "developer", "productivity", "utilities"],
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }

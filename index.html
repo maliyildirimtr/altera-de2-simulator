@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" prefix="og: https://ogp.me/ns#">
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -10,8 +10,11 @@
     <link rel="icon" href="/favicon.ico?v=2" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Logic Lab — Digital Logic Simulation</title>
-    <meta name="description" content="Write Verilog/SystemVerilog in the browser, run it on a virtual Altera DE2 board, and inspect waveforms and synthesized RTL schematics. No installation required." />
+    <title>Logic Lab — Altera DE2 FPGA Simülatörü | Dijital Mantık Devre Tasarımı</title>
+    <meta name="description" content="Logic Lab: Tarayıcı tabanlı FPGA simülatörü. Verilog/SystemVerilog yazın, sanal Altera DE2 kartı üzerinde çalıştırın, dalga formu ve RTL şematik inceleyin. Dijital mantık devre tasarımı öğrenin — kurulum gerektirmez." />
+    <meta name="keywords" content="Logic Lab, Altera DE2, FPGA simülatör, Verilog simülatör, SystemVerilog, dijital mantık, digital logic simulation, logic circuit simulator, FPGA online, Altera DE2 simulator, mantıksal devre tasarımı, sayısal mantık, RTL schematic, waveform simulator, Icarus Verilog, Yosys, Karnaugh map, finite state machine, FSM designer, gate editor, flip flop, kombinasyonel devre, sıralı devre, half adder, full adder, multiplexer, decoder, 7 segment display, FPGA board simulation, digital design, HDL, hardware description language, logic gates, AND OR NOT NAND NOR XOR, truth table, boolean algebra" />
+    <meta name="author" content="Logic Lab" />
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
     <meta name="theme-color" content="#081424" />
     <link rel="canonical" href="https://lab.maliyildirimtr.com/" />
     <link rel="manifest" href="/manifest.webmanifest" />
@@ -20,16 +23,95 @@
     <meta name="apple-mobile-web-app-title" content="Logic Lab" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Logic Lab" />
-    <meta property="og:title" content="Logic Lab — Build digital logic. See it behave." />
-    <meta property="og:description" content="Browser-based FPGA lab: Verilog/SystemVerilog, a virtual Altera DE2 board, waveforms and RTL schematics." />
+    <meta property="og:title" content="Logic Lab — Altera DE2 FPGA Simülatörü & Dijital Mantık Tasarımı" />
+    <meta property="og:description" content="Tarayıcıda Verilog/SystemVerilog yazın, sanal Altera DE2 FPGA kartı üzerinde test edin. Dalga formu, RTL şematik, kapı tasarımı ve daha fazlası — ücretsiz, kurulum yok." />
     <meta property="og:url" content="https://lab.maliyildirimtr.com/" />
     <meta property="og:image" content="https://lab.maliyildirimtr.com/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="tr_TR" />
+    <meta property="og:locale:alternate" content="en_US" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Logic Lab — Build digital logic. See it behave." />
-    <meta name="twitter:description" content="Browser-based FPGA lab: Verilog/SystemVerilog, a virtual Altera DE2 board, waveforms and RTL schematics." />
+    <meta name="twitter:title" content="Logic Lab — Altera DE2 FPGA Simülatörü & Dijital Mantık Tasarımı" />
+    <meta name="twitter:description" content="Tarayıcıda Verilog/SystemVerilog yazın, sanal Altera DE2 FPGA kartı üzerinde test edin. Ücretsiz, kurulum gerektirmez." />
     <meta name="twitter:image" content="https://lab.maliyildirimtr.com/og-image.png" />
+
+    <!-- JSON-LD Structured Data: WebApplication -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Logic Lab",
+      "alternateName": ["Altera DE2 Simulator", "FPGA Logic Simulator", "Digital Logic Lab"],
+      "url": "https://lab.maliyildirimtr.com/",
+      "description": "Browser-based FPGA simulation environment. Write Verilog/SystemVerilog, run designs on a virtual Altera DE2 board (Cyclone II EP2C35), inspect timing waveforms and synthesized RTL schematics. Free, no installation required.",
+      "applicationCategory": "EducationalApplication",
+      "applicationSubCategory": "Digital Logic Design",
+      "operatingSystem": "Any (Web Browser)",
+      "browserRequirements": "Requires JavaScript",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "featureList": [
+        "Virtual Altera DE2 FPGA board simulation",
+        "Verilog and SystemVerilog simulator (Icarus Verilog)",
+        "RTL schematic synthesis (Yosys)",
+        "Waveform / timing diagram viewer",
+        "Logic gate editor",
+        "Finite state machine (FSM) designer",
+        "Karnaugh map minimizer",
+        "Digital logic lessons and exercises",
+        "Auto-graded Verilog exercises",
+        "Number systems converter"
+      ],
+      "keywords": "Altera DE2, FPGA simulator, Verilog, SystemVerilog, digital logic, logic circuit, RTL schematic, waveform, Icarus Verilog, Yosys, Karnaugh map, FSM, logic gates, digital design, FPGA online, mantıksal devre, sayısal mantık",
+      "inLanguage": ["en", "tr"],
+      "isAccessibleForFree": true,
+      "creator": {
+        "@type": "Person",
+        "name": "maliyildirimtr",
+        "url": "https://github.com/maliyildirimtr"
+      },
+      "softwareVersion": "2.0",
+      "screenshot": "https://lab.maliyildirimtr.com/og-image.png"
+    }
+    </script>
+
+    <!-- JSON-LD Structured Data: FAQPage for common search queries -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Altera DE2 FPGA simülatörü nedir?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Logic Lab, Altera DE2 FPGA kartını sanal olarak tarayıcıda simüle eden ücretsiz bir araçtır. Verilog veya SystemVerilog kodu yazarak DE2 kartındaki LED, 7 segment ekran, switch ve butonları kontrol edebilirsiniz."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Verilog online nasıl simüle edilir?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Logic Lab ile Verilog veya SystemVerilog kodunuzu tarayıcıda yazıp Icarus Verilog ile anında simüle edebilirsiniz. Dalga formu (waveform) görüntüleyici ve RTL şematik sentezi de dahildir."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Dijital mantık devresi tasarımı nasıl öğrenilir?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Logic Lab, kapı tasarımı, Karnaugh haritaları, sonlu durum makineleri (FSM), sayı sistemleri ve Verilog dersleri ile adım adım dijital mantık öğrenmeni sağlar."
+          }
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>
